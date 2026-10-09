@@ -1,5 +1,5 @@
 using Plataforma.Domain;
-
+//lol
 namespace Plataforma.Application;
 
 public interface IEnvioRepositorio
