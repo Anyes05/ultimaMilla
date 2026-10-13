@@ -1,0 +1,36 @@
+# Copiar como terraform.tfvars y completar para la cuenta AWS Academy activa.
+# No guardar database_master_password en este archivo.
+
+aws_region   = "us-east-1"
+project_name = "tallernet"
+environment  = "lab"
+
+vpc_id = "vpc-REEMPLAZAR"
+
+eks_control_plane_subnet_ids = [
+	"subnet-REEMPLAZAR-A",
+	"subnet-REEMPLAZAR-B",
+]
+
+eks_node_subnet_ids = [
+	"subnet-REEMPLAZAR-A",
+	"subnet-REEMPLAZAR-B",
+]
+
+alb_subnet_ids = [
+	"subnet-REEMPLAZAR-A",
+	"subnet-REEMPLAZAR-B",
+]
+
+rds_subnet_ids = [
+	"subnet-REEMPLAZAR-A",
+	"subnet-REEMPLAZAR-B",
+]
+
+eks_cluster_role_arn = "arn:aws:iam::CUENTA:role/ROL_EKS_CLUSTER_EXISTENTE"
+eks_node_role_arn    = "arn:aws:iam::CUENTA:role/ROL_EKS_NODOS_EXISTENTE"
+
+database_name            = "tallernet"
+database_identifier      = "tallernet-postgres"
+database_master_username = "tallernet_admin"
+domain_name              = "tallernet.ejemplo.com"

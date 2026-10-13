@@ -1,0 +1,81 @@
+name: CI and ECR delivery
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore Plataforma.sln
+
+      - name: Build
+        run: dotnet build Plataforma.sln --configuration Release --no-restore
+
+      - name: Run domain tests
+        run: dotnet test tests/Plataforma.Domain.Tests/Plataforma.Domain.Tests.csproj --configuration Release --no-build --no-restore
+
+      - name: Run architecture tests
+        run: dotnet test tests/Plataforma.Architecture.Tests/Plataforma.Architecture.Tests.csproj --configuration Release --no-build --no-restore
+
+  publish-images:
+    name: Build and publish images
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag and push Backoffice
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build --file src/Plataforma.Backoffice/Dockerfile --tag tallernet-backoffice:$IMAGE_TAG .
+          docker tag tallernet-backoffice:$IMAGE_TAG $ECR_REGISTRY/tallernet/backend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/tallernet/backend:$IMAGE_TAG
+
+      - name: Build, tag and push Portal
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build --file src/Plataforma.PortalComercio/Dockerfile --tag tallernet-portal:$IMAGE_TAG .
+          docker tag tallernet-portal:$IMAGE_TAG $ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG
+          docker push $ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG

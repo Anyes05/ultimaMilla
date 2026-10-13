@@ -1,0 +1,10 @@
+.git
+.idea
+**/bin
+**/obj
+infra/terraform/.terraform
+infra/terraform/.env
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfvars
+!infra/terraform/terraform.tfvars.example
