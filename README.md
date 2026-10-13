@@ -26,4 +26,4 @@ El workflow `.github/workflows/ci-cd.yml` prueba Domain y Architecture en cada p
 - Backoffice: `tallernet/backend`
 - Portal de Comercio: `tallernet/frontend`
 
-Para publicar desde GitHub Actions, configure los secretos de repositorio temporales de AWS Academy `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` y `AWS_SESSION_TOKEN`; configure también la variable `AWS_REGION` si no usa `us-east-1`. Estas credenciales caducan y deben rotarse al renovar la sesión de AWS Academy.
+Para publicar desde GitHub Actions, configure los secretos de repositorio temporales de AWS Academy `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` y `AWS_SESSION_TOKEN`. Cuando los tres secretos estén cargados, cree la variable de repositorio `AWS_PUBLISH_ENABLED` con el valor `true`; hasta entonces solo se ejecuta CI. Configure también `AWS_REGION` si no usa `us-east-1`. Estas credenciales caducan y deben rotarse al renovar la sesión de AWS Academy.
