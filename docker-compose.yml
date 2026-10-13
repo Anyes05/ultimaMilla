@@ -68,6 +68,8 @@ services:
       RabbitMq__Host: rabbitmq
     ports:
       - "8081:8080"
+    volumes:
+      - portal-keys:/app/keys
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,3 +78,4 @@ services:
 
 volumes:
   postgres-data:
+  portal-keys:
