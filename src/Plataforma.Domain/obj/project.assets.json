@@ -8,25 +8,24 @@
     "net10.0": []
   },
   "packageFolders": {
-    "C:\\Users\\nadia\\.nuget\\packages\\": {}
+    "C:\\Users\\Anyes\\AppData\\Local\\Temp\\cursor-sandbox-cache\\0d01c93c4171f5973f676c18466c1ea1\\nuget": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\src\\Plataforma.Domain\\Plataforma.Domain.csproj",
+      "projectUniqueName": "C:\\Users\\Anyes\\OneDrive\\Desktop\\NET\\ultimaMilla\\src\\Plataforma.Domain\\Plataforma.Domain.csproj",
       "projectName": "Plataforma.Domain",
-      "projectPath": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\src\\Plataforma.Domain\\Plataforma.Domain.csproj",
-      "packagesPath": "C:\\Users\\nadia\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\src\\Plataforma.Domain\\obj\\",
+      "projectPath": "C:\\Users\\Anyes\\OneDrive\\Desktop\\NET\\ultimaMilla\\src\\Plataforma.Domain\\Plataforma.Domain.csproj",
+      "packagesPath": "C:\\Users\\Anyes\\AppData\\Local\\Temp\\cursor-sandbox-cache\\0d01c93c4171f5973f676c18466c1ea1\\nuget",
+      "outputPath": "C:\\Users\\Anyes\\OneDrive\\Desktop\\NET\\ultimaMilla\\src\\Plataforma.Domain\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\nadia\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\Anyes\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -68,7 +67,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.400/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",

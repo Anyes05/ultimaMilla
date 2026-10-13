@@ -922,7 +922,6 @@
   },
   "projectFileDependencyGroups": {
     "net10.0": [
-      "C:\\Users\\nadia\\RiderProjects\\Plataforma\\tests\\Plataforma.Domain\\Plataforma.Domain.csproj",
       "Microsoft.NET.Test.Sdk >= 17.14.1",
       "Plataforma.Domain >= 1.0.0",
       "coverlet.collector >= 6.0.4",
@@ -931,25 +930,24 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\nadia\\.nuget\\packages\\": {}
+    "C:\\Users\\Anyes\\AppData\\Local\\Temp\\cursor-sandbox-cache\\0d01c93c4171f5973f676c18466c1ea1\\nuget": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\tests\\Plataforma.Domain.Tests\\Plataforma.Domain.Tests.csproj",
+      "projectUniqueName": "C:\\Users\\Anyes\\OneDrive\\Desktop\\NET\\ultimaMilla\\tests\\Plataforma.Domain.Tests\\Plataforma.Domain.Tests.csproj",
       "projectName": "Plataforma.Domain.Tests",
-      "projectPath": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\tests\\Plataforma.Domain.Tests\\Plataforma.Domain.Tests.csproj",
-      "packagesPath": "C:\\Users\\nadia\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\tests\\Plataforma.Domain.Tests\\obj\\",
+      "projectPath": "C:\\Users\\Anyes\\OneDrive\\Desktop\\NET\\ultimaMilla\\tests\\Plataforma.Domain.Tests\\Plataforma.Domain.Tests.csproj",
+      "packagesPath": "C:\\Users\\Anyes\\AppData\\Local\\Temp\\cursor-sandbox-cache\\0d01c93c4171f5973f676c18466c1ea1\\nuget",
+      "outputPath": "C:\\Users\\Anyes\\OneDrive\\Desktop\\NET\\ultimaMilla\\tests\\Plataforma.Domain.Tests\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\nadia\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\Anyes\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
-        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -957,11 +955,8 @@
           "framework": "net10.0",
           "targetAlias": "net10.0",
           "projectReferences": {
-            "C:\\Users\\nadia\\RiderProjects\\Plataforma\\src\\Plataforma.Domain\\Plataforma.Domain.csproj": {
-              "projectPath": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\src\\Plataforma.Domain\\Plataforma.Domain.csproj"
-            },
-            "C:\\Users\\nadia\\RiderProjects\\Plataforma\\tests\\Plataforma.Domain\\Plataforma.Domain.csproj": {
-              "projectPath": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\tests\\Plataforma.Domain\\Plataforma.Domain.csproj"
+            "C:\\Users\\Anyes\\OneDrive\\Desktop\\NET\\ultimaMilla\\src\\Plataforma.Domain\\Plataforma.Domain.csproj": {
+              "projectPath": "C:\\Users\\Anyes\\OneDrive\\Desktop\\NET\\ultimaMilla\\src\\Plataforma.Domain\\Plataforma.Domain.csproj"
             }
           }
         }
@@ -1016,7 +1011,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.400/PortableRuntimeIdentifierGraph.json",
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
         "packagesToPrune": {
           "Microsoft.CSharp": "(,4.7.32767]",
           "Microsoft.VisualBasic": "(,10.4.32767]",
@@ -1293,16 +1288,5 @@
         }
       }
     }
-  },
-  "logs": [
-    {
-      "code": "NU1104",
-      "level": "Error",
-      "message": "Unable to find project 'C:\\Users\\nadia\\RiderProjects\\Plataforma\\tests\\Plataforma.Domain\\Plataforma.Domain.csproj'. Check that the project reference is valid and that the project file exists.",
-      "libraryId": "C:\\Users\\nadia\\RiderProjects\\Plataforma\\tests\\Plataforma.Domain\\Plataforma.Domain.csproj",
-      "targetGraphs": [
-        "net10.0"
-      ]
-    }
-  ]
+  }
 }

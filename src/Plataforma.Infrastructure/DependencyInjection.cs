@@ -16,6 +16,13 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString), ServiceLifetime.Scoped);
 
         services.AddScoped<IEnvioRepositorio, EnvioRepositorio>();
+        services.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
+        services.AddScoped<IOperadorRepositorio, OperadorRepositorio>();
+        services.AddScoped<IRutaRepositorio, RutaRepositorio>();
+        services.AddScoped<IVerificadorClave, HashClave>();
+        services.AddScoped<IEmisorToken, EmisorTokenJwt>();
+        services.AddScoped<IniciarSesion>();
+        services.AddScoped<ListarEnvios>();
 
         return services;
     }

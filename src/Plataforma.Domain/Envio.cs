@@ -18,6 +18,8 @@ public class Envio
     public EstadoEnvio Estado { get; private set; }
     public decimal TarifaCalculada { get; private set; }
     public DateTime FechaCreacion { get; private set; }
+    public Guid? RutaId { get; private set; }
+    public int IntentosRealizados { get; private set; }
 
     // Constructor sin parámetros requerido por EF Core
     private Envio()
@@ -79,5 +81,25 @@ public class Envio
     public void CambiarEstado(EstadoEnvio nuevoEstado, string usuario, string motivo)
     {
         CambiarEstado(nuevoEstado);
+    }
+
+    public void AsignarARuta(Guid rutaId)
+    {
+        if (rutaId == Guid.Empty)
+            throw new ArgumentException("La ruta es requerida.");
+
+        CambiarEstado(EstadoEnvio.AsignadoARuta);
+        RutaId = rutaId;
+    }
+
+    public void RegistrarIntentoFallido(int maximoIntentos)
+    {
+        if (maximoIntentos < 1)
+            throw new ArgumentOutOfRangeException(nameof(maximoIntentos), "El máximo de intentos debe ser al menos 1.");
+
+        if (IntentosRealizados >= maximoIntentos)
+            throw new InvalidOperationException($"Se alcanzó el máximo de {maximoIntentos} intentos.");
+
+        IntentosRealizados++;
     }
 }
