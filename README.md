@@ -12,6 +12,19 @@ docker compose up --build
 
 El Backoffice queda en `http://localhost:8080` y el Portal de Comercio en `http://localhost:8081`. PostgreSQL, Redis y RabbitMQ se ejecutan en la misma red Docker. Backoffice aplica la migración inicial de Entity Framework Core sobre PostgreSQL al iniciar; Portal usa la misma cadena de conexión. RabbitMQ Management queda en `http://localhost:15672` (usuario y contraseña de `.env`).
 
+### Recorrido Portal a Backoffice
+
+Con los servicios iniciados, abra el Portal en `http://localhost:8081` e ingrese con `norte.comercio` / `Demo123!`. Cree un envío con un destinatario y dirección cualquiera; el Portal mostrará el número de tracking al guardarlo.
+
+Abra el Backoffice en `http://localhost:8080` e ingrese con `norte.despachador` / `Demo123!`. El envío recién creado aparece en la tabla de monitoreo y puede cambiarse de estado. Ambos usuarios pertenecen al mismo operador, por lo que comparten los envíos. Para probar el otro operador, use `sur.comercio` y `sur.despachador` con la misma contraseña; sus envíos se mantienen aislados de Norte.
+
+Para reiniciar la demostración desde una base vacía, detenga el stack y elimine sus volúmenes antes de volver a levantarlo:
+
+```powershell
+docker compose down --volumes
+docker compose up --build
+```
+
 Para crear una migración posterior, defina `ConnectionStrings__Default` en la terminal y ejecute:
 
 ```powershell
