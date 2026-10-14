@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,20 +10,33 @@
     <link rel="stylesheet" href="~/Plataforma.Backoffice.styles.css" asp-append-version="true" />
 </head>
 <body>
+    @{
+        var usuario = Context.User;
+        var puedeMonitorear = usuario.IsInRole(Roles.Administrador)
+            || usuario.IsInRole(Roles.Despachador)
+            || usuario.IsInRole(Roles.OperarioDeposito);
+    }
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">Plataforma.Backoffice</a>
+                <a class="navbar-brand" asp-area="" asp-page="/Index">Backoffice</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
+                        @if (puedeMonitorear)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-page="/Index">Monitoreo</a>
+                            </li>
+                        }
                     </ul>
+                    @if (usuario.Identity?.IsAuthenticated == true)
+                    {
+                        <span class="navbar-text me-3">@usuario.Identity.Name</span>
+                    }
                 </div>
             </div>
         </nav>

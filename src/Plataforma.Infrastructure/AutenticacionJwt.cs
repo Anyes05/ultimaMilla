@@ -13,7 +13,8 @@ public static class AutenticacionJwt
     public static IServiceCollection AddAutenticacionJwt(
         this IServiceCollection services,
         IConfiguration configuration,
-        string? rutaLogin = null)
+        string? rutaLogin = null,
+        string cookieNombre = CookieAcceso.Nombre)
     {
         var clave = Clave(configuration);
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -38,7 +39,7 @@ public static class AutenticacionJwt
                     OnMessageReceived = contexto =>
                     {
                         if (string.IsNullOrEmpty(contexto.Token) &&
-                            contexto.Request.Cookies.TryGetValue(CookieAcceso.Nombre, out var cookie))
+                            contexto.Request.Cookies.TryGetValue(cookieNombre, out var cookie))
                         {
                             contexto.Token = cookie;
                         }
@@ -75,6 +76,8 @@ public static class AutenticacionJwt
 public static class CookieAcceso
 {
     public const string Nombre = "acceso";
+    public const string Portal = "acceso_portal";
+    public const string Backoffice = "acceso_backoffice";
 
     public static CookieOptions Opciones => new()
     {

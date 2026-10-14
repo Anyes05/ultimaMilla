@@ -1,5 +1,16 @@
+:root {
+    --portal-ink: #172554;
+    --portal-primary: #4f46e5;
+    --portal-primary-dark: #3730a3;
+    --portal-accent: #f97316;
+    --portal-surface: #ffffff;
+    --portal-background: #f8fafc;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    background: var(--portal-background);
+    color: #1e293b;
 }
 
 a, .btn-link {
@@ -8,12 +19,19 @@ a, .btn-link {
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: var(--portal-primary);
+    border-color: var(--portal-primary);
+    box-shadow: 0 0.35rem 0.8rem rgba(79, 70, 229, 0.22);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--portal-primary-dark);
+    border-color: var(--portal-primary-dark);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem var(--portal-primary);
 }
 
 .content {
@@ -34,6 +52,24 @@ h1:focus {
 
 .validation-message {
     color: #e50000;
+}
+
+.card {
+    border-radius: 1rem;
+}
+
+.form-control {
+    border-color: #cbd5e1;
+    border-radius: 0.7rem;
+}
+
+.form-control:focus {
+    border-color: var(--portal-primary);
+}
+
+.bg-primary-subtle {
+    background: linear-gradient(145deg, #eef2ff, #ffedd5) !important;
+    border: 1px solid #e0e7ff;
 }
 
 .blazor-error-boundary {

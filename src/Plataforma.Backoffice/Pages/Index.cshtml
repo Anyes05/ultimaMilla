@@ -4,18 +4,33 @@
     ViewData["Title"] = "Monitoreo de Envíos";
 }
 
-<div class="text-center mb-4">
-    <h1 class="display-4">Monitoreo de Envíos</h1>
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @Model.ColorMarcaCss">Backoffice</p>
+        <h1 class="display-6 fw-bold mb-1">Monitoreo de envíos</h1>
+        <p class="text-muted mb-0">Gestioná los envíos de <strong>@Model.Operador?.Nombre</strong>.</p>
+    </div>
+    <form method="post" action="/logout">
+        <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+    </form>
 </div>
 
-<div class="container">
-    <table class="table table-striped table-bordered shadow-sm">
-        <thead class="table-dark">
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
         <tr>
             <th>N° Tracking</th>
             <th>Destinatario</th>
             <th>Dirección de Entrega</th>
             <th>Estado</th>
+            <th class="text-end">Acciones</th>
         </tr>
         </thead>
         <tbody>
@@ -24,11 +39,30 @@
             @foreach (var envio in Model.Envios)
             {
                 <tr>
-                    <td>@envio.NumeroSeguimiento</td>
+                    <td><span class="tracking-number">@envio.NumeroSeguimiento</span></td>
                     <td>@envio.Destinatario</td>
                     <td>@envio.DireccionEntrega</td>
-                    <td>
-                        <span class="badge bg-primary">@envio.Estado</span>
+                    <td><span class="status-badge @EstadoClase(envio.Estado)">@EstadoNombre(envio.Estado)</span></td>
+                    <td class="text-end">
+                        @if (Model.DestinosDesde(envio.Estado).Count > 0)
+                        {
+                            <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                @foreach (var destino in Model.DestinosDesde(envio.Estado))
+                                {
+                                    <form method="post" asp-page-handler="CambiarEstado">
+                                        <input type="hidden" name="envioId" value="@envio.Id" />
+                                        <input type="hidden" name="nuevoEstado" value="@destino" />
+                                        <button class="btn btn-sm btn-outline-primary" type="submit">
+                                            @EstadoTexto(destino)
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted small">Sin acciones</span>
+                        }
                     </td>
                 </tr>
             }
@@ -36,9 +70,47 @@
         else
         {
             <tr>
-                <td colspan="4" class="text-center text-muted">No hay envíos registrados todavía.</td>
+                <td colspan="5" class="text-center text-muted py-5">No hay envíos registrados para este operador.</td>
             </tr>
         }
         </tbody>
-    </table>
+            </table>
+        </div>
+    </div>
 </div>
+
+@functions {
+    private static string EstadoTexto(EstadoEnvio estado) => estado switch
+    {
+        EstadoEnvio.EnDeposito => "Recibir en depósito",
+        EstadoEnvio.AsignadoARuta => "Asignar a ruta",
+        EstadoEnvio.EnTransito => "Pasar a tránsito",
+        EstadoEnvio.Entregado => "Marcar entregado",
+        EstadoEnvio.NoEntregado => "Marcar no entregado",
+        EstadoEnvio.Reprogramado => "Reprogramar",
+        EstadoEnvio.EnDevolucion => "Iniciar devolución",
+        EstadoEnvio.Devuelto => "Marcar devuelto",
+        EstadoEnvio.Extraviado => "Marcar extraviado",
+        _ => estado.ToString()
+    };
+
+    private static string EstadoClase(EstadoEnvio estado) => estado switch
+    {
+        EstadoEnvio.EnDeposito => "status-en-deposito",
+        EstadoEnvio.AsignadoARuta => "status-asignado-a-ruta",
+        EstadoEnvio.EnTransito => "status-en-transito",
+        EstadoEnvio.NoEntregado => "status-no-entregado",
+        EstadoEnvio.EnDevolucion => "status-en-devolucion",
+        _ => "status-" + estado.ToString().ToLowerInvariant()
+    };
+
+    private static string EstadoNombre(EstadoEnvio estado) => estado switch
+    {
+        EstadoEnvio.EnDeposito => "En depósito",
+        EstadoEnvio.AsignadoARuta => "Asignado a ruta",
+        EstadoEnvio.EnTransito => "En tránsito",
+        EstadoEnvio.NoEntregado => "No entregado",
+        EstadoEnvio.EnDevolucion => "En devolución",
+        _ => estado.ToString()
+    };
+}

@@ -19,7 +19,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Plataforma.Domain\Plataforma.Domain.csproj" />
       <ProjectReference Include="..\..\src\Plataforma.Domain\Plataforma.Domain.csproj" />
     </ItemGroup>
 

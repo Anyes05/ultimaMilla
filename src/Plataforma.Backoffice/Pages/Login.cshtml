@@ -1,0 +1,35 @@
+@page
+@model LoginModel
+@{
+    ViewData["Title"] = "Ingresar";
+}
+
+<div class="row justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="col-sm-10 col-md-6 col-lg-4">
+        <div class="text-center mb-4">
+            <p class="text-uppercase text-primary fw-semibold small mb-1">Backoffice</p>
+            <h1 class="h2 fw-bold">Ingresá a tu cuenta</h1>
+            <p class="text-muted">Monitoreá y actualizá el estado de tus envíos.</p>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                @if (Model.Error)
+                {
+                    <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
+                }
+                <form method="post" action="/session/login">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" asp-for="Usuario"></label>
+                        <input class="form-control form-control-lg" asp-for="Usuario" autocomplete="username" />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" asp-for="Clave"></label>
+                        <input class="form-control form-control-lg" asp-for="Clave" type="password" autocomplete="current-password" />
+                    </div>
+                    <button class="btn btn-primary btn-lg w-100" type="submit">Ingresar</button>
+                </form>
+                <p class="small text-muted mt-3 mb-0">Demo: norte.despachador / Demo123!</p>
+            </div>
+        </div>
+    </div>
+</div>
