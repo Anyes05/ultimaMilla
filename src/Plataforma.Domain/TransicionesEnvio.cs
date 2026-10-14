@@ -55,4 +55,11 @@ public static class TransicionesEnvio
         return Permitidas.TryGetValue(origen, out var permitidos)
                && permitidos.Contains(destino);
     }
+
+    public static IReadOnlyList<EstadoEnvio> DestinosDesde(EstadoEnvio origen)
+    {
+        return Permitidas.TryGetValue(origen, out var permitidos)
+            ? permitidos
+            : Array.Empty<EstadoEnvio>();
+    }
 }

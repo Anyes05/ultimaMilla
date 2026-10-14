@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddAutenticacionJwt(builder.Configuration);
 
 var keysPath = Path.Combine(builder.Environment.ContentRootPath, "keys");
 Directory.CreateDirectory(keysPath);
@@ -21,6 +22,11 @@ builder.Services.AddAntiforgery(options =>
 
 var app = builder.Build();
 
+if (string.Equals(builder.Configuration["Database:MigrateOnStartup"], "true", StringComparison.OrdinalIgnoreCase))
+{
+    await app.Services.MigrarBaseDeDatosAsync();
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -29,6 +35,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();

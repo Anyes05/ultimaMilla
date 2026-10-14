@@ -19,11 +19,31 @@ public sealed class IniciarSesion
             return new ResultadoInicio.CredencialesInvalidas();
 
         var encontrado = await _usuarios.BuscarPorNombreAsync(usuario, cancellationToken);
-        if (encontrado is null || !_claves.Coincide(clave, encontrado.HashClave))
+        if (encontrado is null || !encontrado.Activo || !_claves.Coincide(clave, encontrado.HashClave))
             return new ResultadoInicio.CredencialesInvalidas();
 
         if (encontrado.Rol != rolEsperado)
             return new ResultadoInicio.RolNoPermitido();
+
+        return new ResultadoInicio.Ok(new Sesion(
+            encontrado.Id,
+            encontrado.NombreUsuario,
+            encontrado.Rol,
+            encontrado.OperadorId,
+            encontrado.ComercioId));
+    }
+
+    /// <summary>
+    /// Login sin forzar rol: emite la sesión con el rol real del usuario (claims listos para Nadia).
+    /// </summary>
+    public async Task<ResultadoInicio> Ejecutar(string usuario, string clave, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(usuario) || string.IsNullOrWhiteSpace(clave))
+            return new ResultadoInicio.CredencialesInvalidas();
+
+        var encontrado = await _usuarios.BuscarPorNombreAsync(usuario, cancellationToken);
+        if (encontrado is null || !encontrado.Activo || !_claves.Coincide(clave, encontrado.HashClave))
+            return new ResultadoInicio.CredencialesInvalidas();
 
         return new ResultadoInicio.Ok(new Sesion(
             encontrado.Id,

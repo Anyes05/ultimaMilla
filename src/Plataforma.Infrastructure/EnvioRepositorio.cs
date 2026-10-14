@@ -24,6 +24,11 @@ public class EnvioRepositorio : IEnvioRepositorio
         return await _context.Envios.ToListAsync();
     }
 
+    public Task<Envio?> ObtenerPorOperadorAsync(Guid envioId, Guid operadorId, CancellationToken cancellationToken = default) =>
+        _context.Envios.FirstOrDefaultAsync(
+            envio => envio.Id == envioId && envio.OperadorId == operadorId,
+            cancellationToken);
+
     public Task<List<Envio>> ListarAsync(Guid operadorId, Guid? comercioId, CancellationToken cancellationToken = default)
     {
         var consulta = _context.Envios.AsNoTracking().Where(envio => envio.OperadorId == operadorId);

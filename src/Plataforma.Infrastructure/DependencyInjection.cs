@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IRutaRepositorio, RutaRepositorio>();
         services.AddScoped<IVerificadorClave, HashClave>();
         services.AddScoped<IEmisorToken, EmisorTokenJwt>();
+        services.AddScoped<ITransicionEnvio, TransicionEnvio>();
         services.AddScoped<IniciarSesion>();
         services.AddScoped<ListarEnvios>();
 
@@ -33,5 +34,6 @@ public static class DependencyInjection
         var context = scope.ServiceProvider.GetRequiredService<PlataformaDbContext>();
 
         await context.Database.MigrateAsync();
+        await SemillaDatos.AplicarAsync(context);
     }
 }
