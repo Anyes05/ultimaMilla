@@ -3,13 +3,14 @@ Plataforma de gestión logística multi-tenant de extremo a extremo desarrollada
 
 ## Ejecución local
 
-Copie `.env.example` como `.env`, defina contraseñas locales y ejecute:
+Hace falta [Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) con el motor en ejecución. Copie `.env.example` como `.env` (si aún no existe) y levante todo el stack:
 
 ```powershell
+copy .env.example .env
 docker compose up --build
 ```
 
-El Backoffice queda en `http://localhost:8080` y el Portal de Comercio en `http://localhost:8081`. PostgreSQL, Redis y RabbitMQ se ejecutan en la misma red Docker. Backoffice aplica la migración inicial de Entity Framework Core sobre PostgreSQL al iniciar; Portal usa la misma cadena de conexión.
+El Backoffice queda en `http://localhost:8080` y el Portal de Comercio en `http://localhost:8081`. PostgreSQL, Redis y RabbitMQ se ejecutan en la misma red Docker. Backoffice aplica la migración inicial de Entity Framework Core sobre PostgreSQL al iniciar; Portal usa la misma cadena de conexión. RabbitMQ Management queda en `http://localhost:15672` (usuario y contraseña de `.env`).
 
 Para crear una migración posterior, defina `ConnectionStrings__Default` en la terminal y ejecute:
 

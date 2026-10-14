@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-tallernet}
       POSTGRES_USER: ${POSTGRES_USER:-tallernet_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD antes de iniciar Compose}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tallernet_dev}
     ports:
       - "5432:5432"
     volumes:
@@ -27,12 +27,16 @@ services:
 
   rabbitmq:
     image: rabbitmq:4.1.3-management-alpine
+    hostname: rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-tallernet_worker}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Defina RABBITMQ_PASSWORD antes de iniciar Compose}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-tallernet_dev}
+      RABBITMQ_ERLANG_COOKIE: tallernet_dev_cookie
     ports:
       - "5672:5672"
       - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 15s
@@ -46,15 +50,19 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       Database__MigrateOnStartup: "true"
-      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tallernet};Username=${POSTGRES_USER:-tallernet_admin};Password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD antes de iniciar Compose}
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tallernet};Username=${POSTGRES_USER:-tallernet_admin};Password=${POSTGRES_PASSWORD:-tallernet_dev}
       Redis__Configuration: redis:6379
       RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USERNAME:-tallernet_worker}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD:-tallernet_dev}
     ports:
       - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   portal:
@@ -63,9 +71,11 @@ services:
       dockerfile: src/Plataforma.PortalComercio/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tallernet};Username=${POSTGRES_USER:-tallernet_admin};Password=${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD antes de iniciar Compose}
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tallernet};Username=${POSTGRES_USER:-tallernet_admin};Password=${POSTGRES_PASSWORD:-tallernet_dev}
       Redis__Configuration: redis:6379
       RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USERNAME:-tallernet_worker}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD:-tallernet_dev}
     ports:
       - "8081:8080"
     volumes:
@@ -75,7 +85,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   postgres-data:
   portal-keys:
+  rabbitmq-data:
