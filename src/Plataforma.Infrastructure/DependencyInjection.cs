@@ -12,8 +12,15 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("La cadena de conexion 'Default' es requerida.");
 
-        services.AddDbContext<PlataformaDbContext>(options =>
-            options.UseNpgsql(connectionString), ServiceLifetime.Scoped);
+        services.AddHttpContextAccessor();
+        services.AddScoped<IOperadorActual, OperadorActualHttp>();
+        services.AddScoped<OperadorSaveChangesInterceptor>();
+
+        services.AddDbContext<PlataformaDbContext>((proveedor, options) =>
+        {
+            options.UseNpgsql(connectionString);
+            options.AddInterceptors(proveedor.GetRequiredService<OperadorSaveChangesInterceptor>());
+        });
 
         services.AddScoped<IEnvioRepositorio, EnvioRepositorio>();
         services.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
@@ -21,7 +28,8 @@ public static class DependencyInjection
         services.AddScoped<IRutaRepositorio, RutaRepositorio>();
         services.AddScoped<IVerificadorClave, HashClave>();
         services.AddScoped<IEmisorToken, EmisorTokenJwt>();
-        services.AddScoped<ITransicionEnvio, TransicionEnvio>();
+        services.AddScoped<CambiarEstadoEnvio>();
+        services.AddScoped<ITransicionEnvio>(proveedor => proveedor.GetRequiredService<CambiarEstadoEnvio>());
         services.AddScoped<IniciarSesion>();
         services.AddScoped<ListarEnvios>();
 

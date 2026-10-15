@@ -32,6 +32,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        Error = TempData["Error"] as string;
         await CargarAsync();
     }
 
@@ -46,11 +47,11 @@ public class IndexModel : PageModel
         }
         catch (InvalidOperationException ex)
         {
-            Error = ex.Message;
+            TempData["Error"] = ex.Message;
         }
 
-        await CargarAsync();
-        return Page();
+        // PRG: evita reenviar el mismo cambio al refrescar o con doble clic.
+        return RedirectToPage();
     }
 
     public IReadOnlyList<EstadoEnvio> DestinosDesde(EstadoEnvio estado) =>

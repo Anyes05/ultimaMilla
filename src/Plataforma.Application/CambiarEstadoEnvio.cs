@@ -2,11 +2,14 @@ using Plataforma.Domain;
 
 namespace Plataforma.Application;
 
-public sealed class TransicionEnvio : ITransicionEnvio
+/// <summary>
+/// Caso de uso que aplica <see cref="Envio.CambiarEstado"/> dentro del operador autenticado.
+/// </summary>
+public sealed class CambiarEstadoEnvio : ITransicionEnvio
 {
     private readonly IEnvioRepositorio _envios;
 
-    public TransicionEnvio(IEnvioRepositorio envios)
+    public CambiarEstadoEnvio(IEnvioRepositorio envios)
     {
         _envios = envios;
     }
