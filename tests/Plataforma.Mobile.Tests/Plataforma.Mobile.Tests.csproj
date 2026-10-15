@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+  <!-- Compile the platform-independent code without requiring Android on the test host. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\contracts\repartidor\*.json"
+                      LogicalName="Contratos.Repartidor.%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\Plataforma.Mobile\Services\ContratosRepartidor.cs" Link="Services\ContratosRepartidor.cs" />
+    <Compile Include="..\..\src\Plataforma.Mobile\Services\ServidorRepartidorDemo.cs" Link="Services\ServidorRepartidorDemo.cs" />
+    <Compile Include="..\..\src\Plataforma.Mobile\Data\*.cs" Link="Data\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\Plataforma.Mobile\Models\*.cs" Link="Models\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\Plataforma.Mobile\ViewModels\*.cs" Link="ViewModels\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\Plataforma.Mobile\Services\IRepartidorService.cs" Link="Services\IRepartidorService.cs" />
+    <Compile Include="..\..\src\Plataforma.Mobile\Services\RepartidorDemoService.cs" Link="Services\RepartidorDemoService.cs" />
+    <Compile Include="..\..\src\Plataforma.Mobile\Services\INavigationService.cs" Link="Services\INavigationService.cs" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

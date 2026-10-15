@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Plataforma.Mobile.ViewModels"
+             x:Class="Plataforma.Mobile.Pages.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             HideSoftInputOnTapped="True"
+             SafeAreaEdges="All"
+             Title="Acceso de repartidor">
+    <Grid Padding="24">
+        <ScrollView>
+            <VerticalStackLayout Spacing="16" MaximumWidthRequest="500" HorizontalOptions="Fill">
+                <Label Text="ULTIMA MILLA / REPARTIDOR" Style="{StaticResource SectionLabel}" HorizontalTextAlignment="Center" />
+                <Label Text="Ingresa a tu cuenta" Style="{StaticResource HeadingLabel}" HorizontalTextAlignment="Center" />
+                <Label Text="Consulta tu ruta y registra entregas sin conexion." Style="{StaticResource MutedLabel}" HorizontalTextAlignment="Center" />
+                <Border Padding="20">
+                  <VerticalStackLayout Spacing="12">
+                <Label Text="Correo de demostracion" FontAttributes="Bold" />
+                <Entry x:Name="EmailEntry" Text="{Binding Email}" Keyboard="Email" Placeholder="alvaro@demo.test"
+                       AutomationId="LoginEmail" />
+                <Label Text="Clave de demostracion" FontAttributes="Bold" />
+                <Entry x:Name="ClaveEntry" Text="{Binding Clave}" IsPassword="True" Placeholder="Clave"
+                       ReturnType="Go" ReturnCommand="{Binding IngresarCommand}"
+                       AutomationId="LoginClave" />
+                <Label Text="Acceso de prueba: alvaro@demo.test / Demo123!" Style="{StaticResource MutedLabel}" />
+                <Button Text="Ingresar a la demo" Command="{Binding IngresarCommand}"
+                        AutomationId="LoginIngresar" />
+                <Button Text="Continuar sesion demo guardada (sin red)"
+                        Style="{StaticResource SecondaryButton}"
+                        Command="{Binding ContinuarSesionCommand}" AutomationId="LoginContinuar" />
+                <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" />
+                <Label Text="{Binding Mensaje}" AutomationId="LoginMensaje"
+                       SemanticProperties.Description="{Binding Mensaje}" />
+                  </VerticalStackLayout>
+                </Border>
+                <Label Text="DEMOSTRACION: ruta y cola en SQLite; servidor y login simulados. Usa solo datos ficticios: la base aun no esta cifrada." Style="{StaticResource MutedLabel}" />
+                <Label Text="Usa la propuesta JSON de contracts/repartidor, pendiente de revision con Ana." Style="{StaticResource MutedLabel}" />
+            </VerticalStackLayout>
+        </ScrollView>
+    </Grid>
+</ContentPage>

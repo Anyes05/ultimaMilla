@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Plataforma.Mobile.ViewModels"
+             xmlns:models="clr-namespace:Plataforma.Mobile.Models"
+             x:Class="Plataforma.Mobile.Pages.RutaPage"
+             x:DataType="vm:RutaViewModel"
+             HideSoftInputOnTapped="True"
+             SafeAreaEdges="All"
+             Title="Ruta del dia">
+    <Grid Padding="16">
+      <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8" IsVisible="{Binding MostrarRuta}">
+        <VerticalStackLayout Spacing="6">
+            <Label Text="ULTIMA MILLA / REPARTIDOR" Style="{StaticResource SectionLabel}" />
+            <Label Text="{Binding Titulo}" Style="{StaticResource HeadingLabel}" FontSize="20" />
+            <Label Text="DEMO: ruta y cola en SQLite. Sin API real; solo datos ficticios (base sin cifrado)." Style="{StaticResource MutedLabel}" />
+            <HorizontalStackLayout Spacing="10">
+                <Label Text="Conexion simulada" VerticalOptions="Center" />
+                <Switch IsToggled="{Binding ConexionSimulada}" AutomationId="ConexionSimulada" />
+            </HorizontalStackLayout>
+            <Label Text="{Binding Resumen}" AutomationId="RutaResumen" FontAttributes="Bold" />
+            <Label Text="Prueba: 001 se acepta; 002 se rechaza por Entregado; 003 por Extraviado." Style="{StaticResource MutedLabel}" />
+        </VerticalStackLayout>
+        <Label Grid.Row="1" Text="{Binding Mensaje}" AutomationId="RutaMensaje"
+               SemanticProperties.Description="{Binding Mensaje}" />
+        <CollectionView Grid.Row="2" ItemsSource="{Binding Envios}" SelectionMode="None">
+            <CollectionView.EmptyView>
+                <Label Text="No hay envios en la ruta." />
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:Envio">
+                    <Border Padding="16" Margin="0,6">
+                        <VerticalStackLayout Spacing="8">
+                            <Label Text="{Binding NumeroSeguimiento}" FontAttributes="Bold" FontSize="18"
+                                   TextColor="{AppThemeBinding Light={StaticResource Tertiary}, Dark={StaticResource PrimaryDark}}" />
+                            <Label Text="{Binding Destinatario}" />
+                            <Label Text="{Binding Direccion}" />
+                            <Label Text="{Binding EstadoServidorTexto}" Style="{StaticResource EnvioStatusLabel}" />
+                            <Label Text="{Binding EstadoLocalTexto}" FontAttributes="Bold" />
+                            <Label Text="{Binding ComprobanteTexto}" Style="{StaticResource MutedLabel}" />
+                            <Button Text="Registrar entrega" IsEnabled="{Binding PuedeEntregar}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding Source={RelativeSource AncestorType={x:Type vm:RutaViewModel}}, Path=SeleccionarEntregaCommand}"
+                                    CommandParameter="{Binding .}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="8">
+            <Button Text="Sincronizar demo" Command="{Binding SincronizarCommand}"
+                    AutomationId="RutaSincronizar" />
+            <Button Grid.Column="1" Text="Cerrar sesion" Command="{Binding CerrarSesionCommand}" Style="{StaticResource SecondaryButton}" />
+        </Grid>
+      </Grid>
+        <Grid IsVisible="{Binding HaySeleccion}"
+              BackgroundColor="{AppThemeBinding Light={StaticResource AppBackground}, Dark={StaticResource AppBackgroundDark}}" Padding="8">
+            <ScrollView>
+              <Border Padding="20" VerticalOptions="Start">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="COMPROBANTE DE ENTREGA" Style="{StaticResource SectionLabel}" />
+                    <Label Text="Registrar entrega de demostracion" Style="{StaticResource HeadingLabel}" FontSize="22" />
+                    <Label Text="{Binding EnvioSeleccionado.NumeroSeguimiento}" Style="{StaticResource SectionLabel}" />
+                    <Label Text="Nombre de quien recibe (dato ficticio)" FontAttributes="Bold" />
+                    <Entry Text="{Binding NombreReceptor}" MaxLength="100"
+                           Placeholder="Receptor de prueba" AutomationId="EntregaReceptor" />
+                    <Label Text="Observaciones opcionales" FontAttributes="Bold" />
+                    <Editor Text="{Binding Observaciones}" MaxLength="500" HeightRequest="90"
+                            AutomationId="EntregaObservaciones" />
+                    <Label Text="Se registra la hora del dispositivo. Sin foto, firma ni GPS todavia." Style="{StaticResource MutedLabel}" />
+                    <Label Text="{Binding Mensaje}" AutomationId="EntregaMensaje" />
+                    <Button Text="Guardar entrega pendiente" Command="{Binding GuardarEntregaCommand}"
+                            AutomationId="EntregaGuardar" />
+                    <Button Text="Cancelar" Command="{Binding CancelarEntregaCommand}" Style="{StaticResource SecondaryButton}" />
+                </VerticalStackLayout>
+              </Border>
+            </ScrollView>
+        </Grid>
+    </Grid>
+</ContentPage>

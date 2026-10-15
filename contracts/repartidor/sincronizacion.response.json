@@ -1,0 +1,21 @@
+{
+  "aplicados": [
+    {
+      "envioId": "40000000-0000-0000-0000-000000000001",
+      "estado": "Entregado",
+      "intentosRealizados": 0
+    }
+  ],
+  "rechazados": [
+    {
+      "envioId": "40000000-0000-0000-0000-000000000002",
+      "motivo": "El servidor informa Entregado; no se sobrescribe.",
+      "estadoActual": "Entregado"
+    },
+    {
+      "envioId": "40000000-0000-0000-0000-000000000003",
+      "motivo": "El servidor informa Extraviado; no se sobrescribe.",
+      "estadoActual": "Extraviado"
+    }
+  ]
+}

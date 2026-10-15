@@ -33,6 +33,76 @@ Para crear una migración posterior, defina `ConnectionStrings__Default` en la t
 dotnet ef migrations add NombreDeLaMigracion --project src/Plataforma.Infrastructure --startup-project src/Plataforma.Backoffice
 ```
 
+## Aplicacion movil: avance offline del 15/10
+
+El proyecto [Plataforma.Mobile](src/Plataforma.Mobile/Plataforma.Mobile.csproj) usa
+MAUI .NET 10 y CommunityToolkit.Mvvm. Sigue fuera de `Plataforma.sln` para no
+exigir las herramientas MAUI al CI del servidor. Requiere la carga MAUI, Android
+SDK y JDK 21. En VS Code seleccione el proyecto movil y el dispositivo Android,
+configure la ruta local de JDK 21 y ejecute con F5.
+
+- `Models`: ruta, envio y comprobante local con estado de sincronizacion.
+- `Pages`: acceso y ruta con formulario de entrega.
+- `ViewModels`: estado de pantalla, validacion y comandos.
+- `Services`: interfaces, navegacion y doble del servidor.
+- `Data`: SQLite en el almacenamiento privado de la app (`repartidor-demo.db`).
+  Guarda transaccionalmente la ruta, los comprobantes y su estado en la cola,
+  junto con la sesion demo y el estado del servidor falso para repetir las
+  pruebas tras un reinicio. No guarda la clave.
+
+Las vistas nativas reutilizan la identidad visual de `site.css` del Backoffice
+y `app.css` del Portal: indigo `#4f46e5`, fondo `#f8fafc`, tarjetas redondeadas,
+botones primarios/secundarios y los colores de estado del Backoffice. Se
+mantienen los controles MAUI y una variante oscura; no se incorporo Bootstrap
+ni se cambiaron los flujos por adaptar el estilo. La fuente sigue siendo la
+Open Sans ya incluida en la app (Inter no esta incluida).
+
+Recorrido de prueba, sin levantar el backend:
+
+1. Ingresar con `alvaro@demo.test` / `Demo123!`. Es un acceso fijo de
+   demostracion, no autenticacion de produccion ni un contrato acordado con la API.
+2. Ver los tres envios ficticios y desactivar **Conexion simulada**.
+   Tambien se puede activar el modo avion del telefono: este doble no usa la red.
+3. Registrar una entrega con nombre ficticio. Queda pendiente en SQLite; se
+   puede seguir operando sin conexion. Sincronizar sin conexion simulada informa el error
+   y conserva los datos.
+4. Cerrar completamente la app y abrirla. Pulsar **Continuar sesion demo guardada
+   (sin red)**; recupera la misma ruta y sus entregas, sin descargar ni reemplazar
+   la cola. Es una facilidad del doble, no autenticacion offline de produccion.
+5. Activar la conexion simulada y pulsar **Sincronizar demo**. `DEMO-001` se acepta; `DEMO-002` y
+   `DEMO-003` simulan cambios posteriores en el servidor a Entregado y
+   Extraviado. Se rechazan sin sobrescribir el servidor ni borrar el comprobante
+   local. Repetir la sincronizacion no duplica entregas aceptadas.
+6. El cierre de sesion se bloquea si quedan pendientes o rechazos, para evitar
+   descartarlos inadvertidamente. Si no quedan cambios sin resolver, cierra la
+   sesion y restablece la conexion simulada para el siguiente acceso.
+   No hay resolucion manual de rechazos todavia.
+
+**Limites:** cerrar el proceso ya no pierde la ruta ni las entregas confirmadas.
+Desinstalar la app o borrar sus datos si elimina la base. El interruptor solo
+simula disponibilidad del servidor; no mide la conectividad real.
+La base aun no esta cifrada: use exclusivamente datos ficticios. Quedan fuera de
+este avance API/autenticacion real y capacidades de terreno (foto/firma/GPS).
+
+**Contratos provisionales:** a pedido de Alvaro se creo una
+[propuesta de JSON para revisar con Ana](contracts/repartidor/README.md).
+El login y la ruta del doble leen esos archivos; la sincronizacion intercambia
+JSON con los datos de la cola SQLite. Los ejemplos estan incluidos como recursos
+desde `contracts/repartidor`, sin mantener otra copia en la app.
+Las pruebas verifican solicitudes y respuestas de ejemplo. No hay HTTP ni API
+real, y **el formato sigue pendiente de acuerdo con Ana**. El documento detalla
+que campos vienen de Application y cuales son propuestas nuevas.
+
+Las pruebas del recorrido y los ViewModels se ejecutan por separado:
+
+```powershell
+dotnet test '.\tests\Plataforma.Mobile.Tests\Plataforma.Mobile.Tests.csproj'
+```
+
+Ese proyecto enlaza el codigo independiente de plataforma de la app para
+probarlo en .NET sin instalar Android; no verifica XAML ni reemplaza las pruebas
+en telefono.
+
 ## Infraestructura y entrega
 
 La infraestructura AWS vive en `infra/terraform`: EKS, RDS PostgreSQL, ECR, ALB/ACM, NGINX, Redis, RabbitMQ y la base del worker. El state y las variables sensibles no se versionan.

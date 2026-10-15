@@ -1,0 +1,29 @@
+{
+  "fecha": "2026-10-15",
+  "eventos": [
+    {
+      "eventoId": "50000000-0000-0000-0000-000000000001",
+      "envioId": "40000000-0000-0000-0000-000000000001",
+      "estado": "Entregado",
+      "nombreReceptor": "Receptor de prueba 1",
+      "observaciones": "",
+      "fechaDispositivo": "2026-10-15T12:00:00-03:00"
+    },
+    {
+      "eventoId": "50000000-0000-0000-0000-000000000002",
+      "envioId": "40000000-0000-0000-0000-000000000002",
+      "estado": "Entregado",
+      "nombreReceptor": "Receptor de prueba 2",
+      "observaciones": "Comprobante local que se conserva",
+      "fechaDispositivo": "2026-10-15T12:05:00-03:00"
+    },
+    {
+      "eventoId": "50000000-0000-0000-0000-000000000003",
+      "envioId": "40000000-0000-0000-0000-000000000003",
+      "estado": "Entregado",
+      "nombreReceptor": "Receptor de prueba 3",
+      "observaciones": "Comprobante local que se conserva",
+      "fechaDispositivo": "2026-10-15T12:10:00-03:00"
+    }
+  ]
+}

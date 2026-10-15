@@ -1,0 +1,43 @@
+[
+  {
+    "id": "30000000-0000-0000-0000-000000000001",
+    "fecha": "2026-10-15",
+    "operador": {
+      "nombre": "Operador de demostracion",
+      "colorMarca": "#512BD4",
+      "maximoIntentos": 3
+    },
+    "envios": [
+      {
+        "id": "40000000-0000-0000-0000-000000000001",
+        "numeroSeguimiento": "DEMO-001",
+        "destinatario": "Destinatario de prueba 1",
+        "direccionEntrega": "Calle Demo 101",
+        "emailDestinatario": "destinatario1@example.test",
+        "estado": "EnTransito",
+        "tarifaCalculada": 100.00,
+        "intentosRealizados": 0
+      },
+      {
+        "id": "40000000-0000-0000-0000-000000000002",
+        "numeroSeguimiento": "DEMO-002",
+        "destinatario": "Destinatario de prueba 2",
+        "direccionEntrega": "Calle Demo 202",
+        "emailDestinatario": "destinatario2@example.test",
+        "estado": "EnTransito",
+        "tarifaCalculada": 120.00,
+        "intentosRealizados": 0
+      },
+      {
+        "id": "40000000-0000-0000-0000-000000000003",
+        "numeroSeguimiento": "DEMO-003",
+        "destinatario": "Destinatario de prueba 3",
+        "direccionEntrega": "Calle Demo 303",
+        "emailDestinatario": "destinatario3@example.test",
+        "estado": "EnTransito",
+        "tarifaCalculada": 150.00,
+        "intentosRealizados": 0
+      }
+    ]
+  }
+]
