@@ -10,6 +10,8 @@ copy .env.example .env
 docker compose up --build
 ```
 
+Defina en `.env` `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD` y `RABBITMQ_ERLANG_COOKIE` antes de iniciar. Ese archivo contiene las credenciales locales y está excluido de Git; no las copie en `docker-compose.yml` ni las suba al repositorio.
+
 El Backoffice queda en `http://localhost:8080` y el Portal de Comercio en `http://localhost:8081`. PostgreSQL, Redis y RabbitMQ se ejecutan en la misma red Docker. Backoffice aplica la migración inicial de Entity Framework Core sobre PostgreSQL al iniciar; Portal usa la misma cadena de conexión. RabbitMQ Management queda en `http://localhost:15672` (usuario y contraseña de `.env`).
 
 ### Recorrido Portal a Backoffice

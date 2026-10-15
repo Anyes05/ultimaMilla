@@ -37,6 +37,9 @@ jobs:
       - name: Run domain tests
         run: dotnet test tests/Plataforma.Domain.Tests/Plataforma.Domain.Tests.csproj --configuration Release --no-build --no-restore
 
+      - name: Run tenant-isolation tests
+        run: dotnet test tests/Plataforma.Infrastructure.Tests/Plataforma.Infrastructure.Tests.csproj --configuration Release --no-build --no-restore
+
       - name: Run architecture tests
         run: dotnet test tests/Plataforma.Architecture.Tests/Plataforma.Architecture.Tests.csproj --configuration Release --no-build --no-restore
 
