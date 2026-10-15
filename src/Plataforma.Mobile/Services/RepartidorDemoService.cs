@@ -9,17 +9,18 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
     public bool HaySesion => data.Leer().HaySesion;
     public bool ConexionSimulada { get; set; } = true;
 
-    public bool IniciarSesion(string email, string clave)
+    public bool IniciarSesion(string usuario, string clave)
     {
         if (!ConexionSimulada)
             throw new InvalidOperationException("Activa la conexion simulada para iniciar sesion.");
 
         var respuestaJson = ServidorRepartidorDemo.Login(
-            ContratosRepartidor.Escribir(new LoginSolicitud(email, clave)));
+            ContratosRepartidor.Escribir(new LoginSolicitud(usuario, clave)));
         if (respuestaJson is null)
             return false;
         var sesion = ContratosRepartidor.Leer<LoginRespuesta>(respuestaJson);
-        if (sesion.Rol != "Repartidor" || sesion.Autenticacion != "Simulada"
+        if (!string.Equals(sesion.Rol, "repartidor", StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(sesion.Token)
             || sesion.RepartidorId == Guid.Empty || sesion.OperadorId == Guid.Empty)
             throw new InvalidOperationException("El JSON de login no contiene una sesion demo de repartidor valida.");
 
@@ -89,7 +90,7 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
             var envio = pendientes.Single(item => item.Id == rechazado.EnvioId);
             estado = Reemplazar(estado, envio with
             {
-                Estado = rechazado.EstadoActual,
+                Estado = rechazado.EstadoActual ?? envio.Estado,
                 Sincronizacion = EstadoSincronizacion.Rechazado,
                 MotivoRechazo = rechazado.Motivo
             });

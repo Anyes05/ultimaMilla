@@ -16,8 +16,8 @@ public sealed class ContratosRepartidorTests
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse(respuesta),
             JsonNode.Parse(ContratosRepartidor.LeerEjemplo("login.response.json"))));
         var sesion = ContratosRepartidor.Leer<LoginRespuesta>(respuesta);
-        Assert.Equal("Repartidor", sesion.Rol);
-        Assert.Equal("Simulada", sesion.Autenticacion);
+        Assert.Equal("repartidor", sesion.Rol);
+        Assert.False(string.IsNullOrWhiteSpace(sesion.Token));
         Assert.Null(ServidorRepartidorDemo.Login(
             ContratosRepartidor.Escribir(new LoginSolicitud("alvaro@demo.test", "incorrecta"))));
     }
@@ -119,7 +119,7 @@ public sealed class ContratosRepartidorTests
             var service = new RepartidorDemoService(data);
             var login = ContratosRepartidor.Leer<LoginSolicitud>(
                 ContratosRepartidor.LeerEjemplo("login.request.json"));
-            Assert.True(service.IniciarSesion(login.Email, login.Clave));
+            Assert.True(service.IniciarSesion(login.Usuario, login.Clave));
             var contrato = Assert.Single(
                 ContratosRepartidor.Leer<RutaContrato[]>(ServidorRepartidorDemo.DescargarRutas()));
             var ruta = service.ObtenerRuta();
@@ -137,7 +137,7 @@ public sealed class ContratosRepartidorTests
             var previa = data.Leer();
             var idAnterior = Guid.NewGuid();
             data.Guardar(previa with { Ruta = previa.Ruta! with { Id = idAnterior } });
-            Assert.True(reiniciado.IniciarSesion(login.Email, login.Clave));
+            Assert.True(reiniciado.IniciarSesion(login.Usuario, login.Clave));
             Assert.Equal(idAnterior, reiniciado.ObtenerRuta().Id);
             Assert.Equal(comprobantes, reiniciado.ObtenerRuta().Envios.Select(envio => envio.Entrega).ToArray());
         }

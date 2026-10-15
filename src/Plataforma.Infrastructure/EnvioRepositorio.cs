@@ -29,6 +29,11 @@ public class EnvioRepositorio : IEnvioRepositorio
             envio => envio.Id == envioId && envio.OperadorId == operadorId,
             cancellationToken);
 
+    public Task<Envio?> ObtenerPorTokenAsync(string tokenSeguimientoPublico, CancellationToken cancellationToken = default) =>
+        _context.Envios.AsNoTracking().FirstOrDefaultAsync(
+            envio => envio.TokenSeguimientoPublico == tokenSeguimientoPublico,
+            cancellationToken);
+
     public Task<List<Envio>> ListarAsync(Guid operadorId, Guid? comercioId, CancellationToken cancellationToken = default)
     {
         var consulta = _context.Envios.AsNoTracking().Where(envio => envio.OperadorId == operadorId);

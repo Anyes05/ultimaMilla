@@ -15,9 +15,9 @@
                 <Label Text="Consulta tu ruta y registra entregas sin conexion." Style="{StaticResource MutedLabel}" HorizontalTextAlignment="Center" />
                 <Border Padding="20">
                   <VerticalStackLayout Spacing="12">
-                <Label Text="Correo de demostracion" FontAttributes="Bold" />
-                <Entry x:Name="EmailEntry" Text="{Binding Email}" Keyboard="Email" Placeholder="alvaro@demo.test"
-                       AutomationId="LoginEmail" />
+                <Label Text="Usuario de demostracion" FontAttributes="Bold" />
+                <Entry x:Name="UsuarioEntry" Text="{Binding Usuario}" Placeholder="alvaro@demo.test"
+                       AutomationId="LoginUsuario" />
                 <Label Text="Clave de demostracion" FontAttributes="Bold" />
                 <Entry x:Name="ClaveEntry" Text="{Binding Clave}" IsPassword="True" Placeholder="Clave"
                        ReturnType="Go" ReturnCommand="{Binding IngresarCommand}"
@@ -34,7 +34,7 @@
                   </VerticalStackLayout>
                 </Border>
                 <Label Text="DEMOSTRACION: ruta y cola en SQLite; servidor y login simulados. Usa solo datos ficticios: la base aun no esta cifrada." Style="{StaticResource MutedLabel}" />
-                <Label Text="Usa la propuesta JSON de contracts/repartidor, pendiente de revision con Ana." Style="{StaticResource MutedLabel}" />
+                <Label Text="Contrato JSON aceptado en contracts/repartidor (v1)." Style="{StaticResource MutedLabel}" />
             </VerticalStackLayout>
         </ScrollView>
     </Grid>

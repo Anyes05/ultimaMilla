@@ -22,16 +22,25 @@ public static class DependencyInjection
             options.AddInterceptors(proveedor.GetRequiredService<OperadorSaveChangesInterceptor>());
         });
 
+        services.AddCacheRedis(configuration);
+
         services.AddScoped<IEnvioRepositorio, EnvioRepositorio>();
         services.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
         services.AddScoped<IOperadorRepositorio, OperadorRepositorio>();
         services.AddScoped<IRutaRepositorio, RutaRepositorio>();
+        services.AddScoped<IRepartidorRepositorio, RepartidorRepositorio>();
         services.AddScoped<IVerificadorClave, HashClave>();
         services.AddScoped<IEmisorToken, EmisorTokenJwt>();
+        services.AddScoped<ConfiguracionOperador>();
         services.AddScoped<CambiarEstadoEnvio>();
         services.AddScoped<ITransicionEnvio>(proveedor => proveedor.GetRequiredService<CambiarEstadoEnvio>());
         services.AddScoped<IniciarSesion>();
+        services.AddScoped<IniciarSesionRepartidor>();
         services.AddScoped<ListarEnvios>();
+        services.AddScoped<DespacharRuta>();
+        services.AddScoped<ObtenerRutasDeHoy>();
+        services.AddScoped<SincronizarEntregas>();
+        services.AddScoped<ObtenerSeguimientoEnvio>();
 
         return services;
     }

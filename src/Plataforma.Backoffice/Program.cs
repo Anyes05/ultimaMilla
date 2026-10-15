@@ -1,6 +1,7 @@
 using Plataforma.Infrastructure;
 using Plataforma.Application;
 using Plataforma.Domain;
+using Plataforma.Backoffice;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,11 @@ builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Backoffice);
+builder.Services.ConfigureHttpJsonOptions(opciones =>
+{
+    foreach (var converter in ObtenerRutasDeHoy.OpcionesJson.Converters)
+        opciones.SerializerOptions.Converters.Add(converter);
+});
 
 var app = builder.Build();
 
@@ -53,8 +59,12 @@ app.MapPost("/logout", (HttpContext httpContext) =>
     return Results.Redirect("/login");
 });
 
+app.MapApisRepartidor();
+
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
 
 app.Run();
+
+public partial class Program;

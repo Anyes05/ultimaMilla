@@ -1,7 +1,7 @@
 {
   "repartidorId": "10000000-0000-0000-0000-000000000001",
-  "operadorId": "20000000-0000-0000-0000-000000000001",
+  "operadorId": "11111111-1111-1111-1111-111111111111",
   "nombre": "Alvaro - demostracion",
-  "rol": "Repartidor",
-  "autenticacion": "Simulada"
+  "rol": "repartidor",
+  "token": "demo.jwt.repartidor"
 }

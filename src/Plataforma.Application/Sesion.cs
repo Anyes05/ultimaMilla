@@ -7,7 +7,8 @@ public sealed record Sesion(
     string NombreUsuario,
     RolUsuario Rol,
     Guid OperadorId,
-    Guid? ComercioId)
+    Guid? ComercioId,
+    Guid? RepartidorId = null)
 {
     public string RolClaim => Roles.De(Rol);
 }

@@ -4,9 +4,9 @@ using Plataforma.Mobile.Models;
 
 namespace Plataforma.Mobile.Services;
 
-public sealed record LoginSolicitud(string Email, string Clave);
+public sealed record LoginSolicitud(string Usuario, string Clave);
 public sealed record LoginRespuesta(
-    Guid RepartidorId, Guid OperadorId, string Nombre, string Rol, string Autenticacion);
+    Guid RepartidorId, Guid OperadorId, string Nombre, string Rol, string Token);
 public sealed record OperadorContrato(string Nombre, string ColorMarca, int MaximoIntentos);
 public sealed record EnvioContrato(
     Guid Id, string NumeroSeguimiento, string Destinatario, string DireccionEntrega,
@@ -18,7 +18,7 @@ public sealed record EntregaContrato(
     string Observaciones, DateTimeOffset FechaDispositivo);
 public sealed record SincronizacionSolicitud(DateOnly Fecha, IReadOnlyList<EntregaContrato> Eventos);
 public sealed record AplicadoContrato(Guid EnvioId, EstadoEnvio Estado, int IntentosRealizados);
-public sealed record RechazadoContrato(Guid EnvioId, string Motivo, EstadoEnvio EstadoActual);
+public sealed record RechazadoContrato(Guid EnvioId, string Motivo, EstadoEnvio? EstadoActual);
 public sealed record SincronizacionRespuesta(
     IReadOnlyList<AplicadoContrato> Aplicados, IReadOnlyList<RechazadoContrato> Rechazados);
 

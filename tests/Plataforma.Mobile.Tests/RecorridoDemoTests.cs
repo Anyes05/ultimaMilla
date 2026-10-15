@@ -46,7 +46,7 @@ public sealed class RecorridoDemoTests : IDisposable
         Assert.False(service.HaySesion);
         Assert.Equal(0, navigation.Rutas);
 
-        vm.Email = " ALVARO@DEMO.TEST ";
+        vm.Usuario = " ALVARO@DEMO.TEST ";
         vm.Clave = "Demo123!";
         await vm.IngresarCommand.ExecuteAsync(null);
         Assert.True(service.HaySesion);

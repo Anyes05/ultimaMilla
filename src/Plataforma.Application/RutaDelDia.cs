@@ -32,10 +32,27 @@ public sealed record EnvioDeRuta(
 
 public sealed record RutaDelDia(Guid Id, DateOnly Fecha, OperadorVisible Operador, IReadOnlyList<EnvioDeRuta> Envios);
 
+/// <summary>Comprobante offline del móvil (contrato de sincronización).</summary>
+public sealed record ComprobanteEntrega(
+    Guid EventoId,
+    Guid EnvioId,
+    EstadoEnvio Estado,
+    string NombreReceptor,
+    string Observaciones,
+    DateTimeOffset FechaDispositivo);
+
 public sealed record EventoAplicado(Guid EnvioId, EstadoEnvio Estado, int IntentosRealizados);
 
-public sealed record EventoRechazado(Guid EnvioId, string Motivo);
+public sealed record EventoRechazado(Guid EnvioId, string Motivo, EstadoEnvio? EstadoActual = null);
 
 public sealed record ResultadoSincronizacion(
     IReadOnlyList<EventoAplicado> Aplicados,
     IReadOnlyList<EventoRechazado> Rechazados);
+
+/// <summary>Sesión del repartidor según contrato de login.</summary>
+public sealed record SesionRepartidor(
+    Guid RepartidorId,
+    Guid OperadorId,
+    string Nombre,
+    string Rol,
+    string Token);

@@ -12,13 +12,13 @@ public sealed class ObtenerRutasDeHoy
 
     private readonly IRutaRepositorio _rutas;
     private readonly IEnvioRepositorio _envios;
-    private readonly IOperadorRepositorio _operadores;
+    private readonly ConfiguracionOperador _operadores;
     private readonly ICacheLectura _cache;
 
     public ObtenerRutasDeHoy(
         IRutaRepositorio rutas,
         IEnvioRepositorio envios,
-        IOperadorRepositorio operadores,
+        ConfiguracionOperador operadores,
         ICacheLectura cache)
     {
         _rutas = rutas;
@@ -38,9 +38,7 @@ public sealed class ObtenerRutasDeHoy
         if (cacheado is not null)
             return JsonSerializer.Deserialize<List<RutaDelDia>>(cacheado, OpcionesJson) ?? [];
 
-        var operador = await _operadores.ObtenerAsync(operadorId, cancellationToken)
-            ?? throw new InvalidOperationException("El operador de la sesión no existe.");
-
+        var operador = await _operadores.ObtenerAsync(operadorId, cancellationToken);
         var rutas = await _rutas.ObtenerDeHoyAsync(operadorId, repartidorId, fecha, cancellationToken);
         var resultado = new List<RutaDelDia>(rutas.Count);
         foreach (var ruta in rutas)
@@ -49,7 +47,7 @@ public sealed class ObtenerRutasDeHoy
             resultado.Add(new RutaDelDia(
                 ruta.Id,
                 ruta.Fecha,
-                OperadorVisible.Desde(operador),
+                operador,
                 envios.Select(EnvioDeRuta.Desde).ToList()));
         }
 

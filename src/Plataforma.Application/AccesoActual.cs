@@ -2,7 +2,7 @@ using System.Security.Claims;
 
 namespace Plataforma.Application;
 
-public sealed record AccesoActual(Guid UsuarioId, Guid OperadorId, Guid? ComercioId, string Rol)
+public sealed record AccesoActual(Guid UsuarioId, Guid OperadorId, Guid? ComercioId, string Rol, Guid? RepartidorId = null)
 {
     public static bool Intentar(ClaimsPrincipal principal, out AccesoActual acceso)
     {
@@ -18,7 +18,11 @@ public sealed record AccesoActual(Guid UsuarioId, Guid OperadorId, Guid? Comerci
         if (Guid.TryParse(principal.FindFirst(ClaimsPlataforma.ComercioId)?.Value, out var comercio))
             comercioId = comercio;
 
-        acceso = new AccesoActual(usuarioId, operadorId, comercioId, rol);
+        Guid? repartidorId = null;
+        if (Guid.TryParse(principal.FindFirst(ClaimsPlataforma.RepartidorId)?.Value, out var repartidor))
+            repartidorId = repartidor;
+
+        acceso = new AccesoActual(usuarioId, operadorId, comercioId, rol, repartidorId);
         return true;
     }
 }

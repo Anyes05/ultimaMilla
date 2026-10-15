@@ -9,4 +9,9 @@ public interface IRutaRepositorio
         Guid repartidorId,
         DateOnly fecha,
         CancellationToken cancellationToken = default);
+
+    Task GuardarDespachoAsync(
+        Ruta ruta,
+        IReadOnlyList<Parada> paradas,
+        CancellationToken cancellationToken = default);
 }

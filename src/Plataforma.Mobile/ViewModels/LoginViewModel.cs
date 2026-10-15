@@ -11,7 +11,7 @@ public partial class LoginViewModel(
     ILogger<LoginViewModel> logger) : ObservableObject
 {
     [ObservableProperty]
-    private string email = "alvaro@demo.test";
+    private string usuario = "alvaro@demo.test";
 
     [ObservableProperty]
     private string clave = string.Empty;
@@ -56,18 +56,18 @@ public partial class LoginViewModel(
             return;
 
         Mensaje = string.Empty;
-        if (string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Clave))
+        if (string.IsNullOrWhiteSpace(Usuario) || string.IsNullOrWhiteSpace(Clave))
         {
-            Mensaje = "Completa el correo y la clave de demostracion.";
+            Mensaje = "Completa el usuario y la clave de demostracion.";
             return;
         }
 
         Ocupado = true;
         try
         {
-            if (!repartidor.IniciarSesion(Email, Clave))
+            if (!repartidor.IniciarSesion(Usuario, Clave))
             {
-                Mensaje = "Correo o clave incorrectos. Usa las credenciales de demostracion.";
+                Mensaje = "Usuario o clave incorrectos. Usa las credenciales de demostracion.";
                 return;
             }
 

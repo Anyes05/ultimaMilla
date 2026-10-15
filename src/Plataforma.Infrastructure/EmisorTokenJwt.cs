@@ -34,6 +34,9 @@ public sealed class EmisorTokenJwt : IEmisorToken
         if (sesion.ComercioId is Guid comercioId)
             claims.Add(new Claim(ClaimsPlataforma.ComercioId, comercioId.ToString()));
 
+        if (sesion.RepartidorId is Guid repartidorId)
+            claims.Add(new Claim(ClaimsPlataforma.RepartidorId, repartidorId.ToString()));
+
         var token = new JwtSecurityToken(
             issuer: AutenticacionJwt.Emisor(_configuration),
             audience: AutenticacionJwt.Audiencia(_configuration),

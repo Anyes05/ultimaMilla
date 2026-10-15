@@ -14,7 +14,7 @@ public partial class LoginPage : ContentPage
     {
         base.OnDisappearing();
         await ClaveEntry.HideSoftInputAsync(CancellationToken.None);
-        EmailEntry.Unfocus();
+        UsuarioEntry.Unfocus();
         ClaveEntry.Unfocus();
     }
 }

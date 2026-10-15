@@ -6,13 +6,13 @@ public sealed class SincronizarEntregas
 {
     private readonly IRutaRepositorio _rutas;
     private readonly IEnvioRepositorio _envios;
-    private readonly IOperadorRepositorio _operadores;
+    private readonly ConfiguracionOperador _operadores;
     private readonly ICacheLectura _cache;
 
     public SincronizarEntregas(
         IRutaRepositorio rutas,
         IEnvioRepositorio envios,
-        IOperadorRepositorio operadores,
+        ConfiguracionOperador operadores,
         ICacheLectura cache)
     {
         _rutas = rutas;
@@ -25,19 +25,42 @@ public sealed class SincronizarEntregas
         Guid operadorId,
         Guid repartidorId,
         DateOnly fecha,
-        IReadOnlyList<(Guid EnvioId, EstadoEnvio Estado)> eventos,
+        IReadOnlyList<ComprobanteEntrega> eventos,
         CancellationToken cancellationToken = default)
     {
-        var operador = await _operadores.ObtenerAsync(operadorId, cancellationToken)
-            ?? throw new InvalidOperationException("El operador de la sesión no existe.");
+        if (eventos.Select(evento => evento.EventoId).Distinct().Count() != eventos.Count)
+            throw new ArgumentException("Hay eventoId duplicados en el lote.", nameof(eventos));
 
+        if (eventos.Select(evento => evento.EnvioId).Distinct().Count() != eventos.Count)
+            throw new ArgumentException("Hay envíos duplicados en el lote.", nameof(eventos));
+
+        var operador = await _operadores.ObtenerEntidadAsync(operadorId, cancellationToken);
         var rutas = await _rutas.ObtenerDeHoyAsync(operadorId, repartidorId, fecha, cancellationToken);
         var rutasId = rutas.Select(ruta => ruta.Id).ToArray();
         var aplicados = new List<EventoAplicado>();
         var rechazados = new List<EventoRechazado>();
+        var enviosAplicados = new List<Envio>();
 
         foreach (var evento in eventos)
         {
+            if (evento.EventoId == Guid.Empty || evento.EnvioId == Guid.Empty)
+            {
+                rechazados.Add(new EventoRechazado(evento.EnvioId, "El comprobante no tiene identificadores válidos."));
+                continue;
+            }
+
+            if (evento.NombreReceptor.Length > 100 || evento.Observaciones.Length > 500)
+            {
+                rechazados.Add(new EventoRechazado(evento.EnvioId, "El comprobante supera los largos permitidos."));
+                continue;
+            }
+
+            if (evento.Estado == EstadoEnvio.Entregado && string.IsNullOrWhiteSpace(evento.NombreReceptor))
+            {
+                rechazados.Add(new EventoRechazado(evento.EnvioId, "La entrega requiere el nombre del receptor."));
+                continue;
+            }
+
             var envio = await _envios.ObtenerEnRutaAsync(evento.EnvioId, operadorId, rutasId, cancellationToken);
             if (envio is null)
             {
@@ -47,33 +70,45 @@ public sealed class SincronizarEntregas
 
             if (evento.Estado == EstadoEnvio.NoEntregado && envio.IntentosRealizados >= operador.MaximoIntentos)
             {
-                rechazados.Add(new EventoRechazado(evento.EnvioId, $"Se alcanzó el máximo de {operador.MaximoIntentos} intentos."));
+                rechazados.Add(new EventoRechazado(
+                    evento.EnvioId,
+                    $"Se alcanzó el máximo de {operador.MaximoIntentos} intentos.",
+                    envio.Estado));
                 continue;
             }
 
             if (evento.Estado == EstadoEnvio.Reprogramado && envio.IntentosRealizados >= operador.MaximoIntentos)
             {
-                rechazados.Add(new EventoRechazado(evento.EnvioId, $"El operador admite como máximo {operador.MaximoIntentos} intentos."));
+                rechazados.Add(new EventoRechazado(
+                    evento.EnvioId,
+                    $"El operador admite como máximo {operador.MaximoIntentos} intentos.",
+                    envio.Estado));
                 continue;
             }
 
             if (!TransicionesEnvio.EsValida(envio.Estado, evento.Estado))
             {
-                rechazados.Add(new EventoRechazado(evento.EnvioId, $"Transición inválida: {envio.Estado} -> {evento.Estado}"));
+                rechazados.Add(new EventoRechazado(
+                    evento.EnvioId,
+                    $"Transición inválida: {envio.Estado} -> {evento.Estado}",
+                    envio.Estado));
                 continue;
             }
 
             if (evento.Estado == EstadoEnvio.NoEntregado)
                 envio.RegistrarIntentoFallido(operador.MaximoIntentos);
 
-            envio.CambiarEstado(evento.Estado);
+            envio.CambiarEstado(evento.Estado, evento.NombreReceptor, evento.Observaciones);
             aplicados.Add(new EventoAplicado(envio.Id, envio.Estado, envio.IntentosRealizados));
+            enviosAplicados.Add(envio);
         }
 
         if (aplicados.Count > 0)
         {
             await _envios.GuardarAsync(cancellationToken);
             await _cache.QuitarAsync(ObtenerRutasDeHoy.Clave(operadorId, repartidorId, fecha), cancellationToken);
+            foreach (var envio in enviosAplicados)
+                await CacheSeguimiento.PublicarAsync(_cache, envio, cancellationToken);
         }
 
         return new ResultadoSincronizacion(aplicados, rechazados);

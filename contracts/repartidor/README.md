@@ -1,73 +1,64 @@
-# Propuesta de contratos del repartidor
+# Contratos del repartidor (aceptados v1)
 
-**PROPUESTA v0.1 - pendiente de revision y acuerdo con Ana.**
-No son contratos publicados por el backend ni aprobados por el equipo.
-Todos los datos y credenciales son ficticios.
+Acordados entre Álvaro (móvil) y Ana (backend). Los JSON de ejemplo son el
+contrato de intercambio; el doble móvil y los endpoints `/api/repartidor/*`
+deben respetarlos.
 
-## Archivos para revisar
+## Operaciones
 
-| Operacion propuesta | Solicitud | Respuesta de ejemplo |
+| Operación | Solicitud | Respuesta |
 |---|---|---|
-| POST `/api/repartidor/login` | [login.request.json](login.request.json) | [login.response.json](login.response.json) |
-| GET `/api/repartidor/rutas/hoy` | Sin cuerpo | [rutas-hoy.response.json](rutas-hoy.response.json) |
-| POST `/api/repartidor/sincronizacion` | [sincronizacion.request.json](sincronizacion.request.json) | [sincronizacion.response.json](sincronizacion.response.json) |
+| `POST /api/repartidor/login` | [login.request.json](login.request.json) | [login.response.json](login.response.json) |
+| `GET /api/repartidor/rutas/hoy` | Sin cuerpo (Bearer) | [rutas-hoy.response.json](rutas-hoy.response.json) |
+| `POST /api/repartidor/sincronizacion` | [sincronizacion.request.json](sincronizacion.request.json) | [sincronizacion.response.json](sincronizacion.response.json) |
 
-JSON camelCase, identificadores UUID, fechas `yyyy-MM-dd`, instantes ISO 8601 con
-offset y estados como texto (no numeros). Campos no nulos en estos ejemplos.
-La fecha del juego de prueba es fija: **15/10/2026**; no representa datos reales
-del dia en que se ejecute la app.
+## Convenciones
 
-## Que ya existe y que proponemos
+- JSON **camelCase**
+- UUID como string
+- Fechas de negocio `yyyy-MM-dd` (`DateOnly`)
+- Instantes ISO 8601 con offset
+- Estados de envío como **texto** (`EnTransito`, no números)
+- Campos de ejemplo no nulos
+- Fecha fija del juego de prueba: **2026-10-15**
 
-- **Rutas:** la forma de la lista, operador y envios sigue `RutaDelDia`,
-  `OperadorVisible` y `EnvioDeRuta` de Application. El caso de uso devuelve una
-  lista, no un objeto unico. El ejemplo tiene una ruta; el movil actual informa
-  error si el doble recibe cero o varias, en vez de descartar rutas sin avisar.
-- **Login:** `email`/`clave` y toda la respuesta son propuestos. `autenticacion`
-  vale `Simulada` exclusivamente para el doble. No hay JWT ni cookie real y este
-  JSON NO autoriza nada en el backend. Ana debe definir mecanismo, expiracion,
-  renovacion y errores antes de conectar el cliente real. El usuario y operador
-  reales deben derivarse de la identidad validada por el servidor.
-- **Sincronizacion:** `fecha` y `eventos[].envioId/estado` reflejan los argumentos
-  del caso de uso actual. **Son agregados propuestos**, aun no consumidos por
-  ese caso de uso: `eventoId`, `nombreReceptor`, `observaciones`,
-  `fechaDispositivo`. `eventoId` es el identificador durable del comprobante
-  SQLite; se reutiliza al reintentar. No se genera otro al sincronizar.
-- **Respuesta:** `aplicados` con `envioId/estado/intentosRealizados` y
-  `rechazados` con `envioId/motivo` siguen Application. **`estadoActual` en los
-  rechazos es un agregado propuesto**, no existe todavia en su DTO. Sirve para
-  mostrar el estado autoritativo sin borrar la entrega local.
+## Decisiones de contrato
 
-La respuesta de ejemplo supone que despues de descargar la ruta el envio 002
-paso a Entregado y el 003 a Extraviado. El 001 sigue EnTransito. Es el escenario
-de conflicto que la app ya tenia; no se agregaron nuevas capacidades de terreno.
+### Login
+- Identificador: **`usuario`** (mismo criterio que backoffice/portal: nombre de usuario;
+  en la demo el valor puede verse como correo).
+- Respuesta incluye **`token`** JWT (Bearer). El doble usa un token ficticio
+  `demo.jwt.repartidor`; el backend emite JWT real.
+- **`rol`**: claim de plataforma en minúsculas (`repartidor`), no el nombre del enum.
+- Errores: `401` credenciales inválidas; `403` rol distinto de repartidor.
 
-## Uso actual en la app
+### Rutas del día
+- Lista de `RutaDelDia` (`OperadorVisible` + `EnvioDeRuta`), igual que Application.
+- Puede haber 0..N rutas; el cliente elige cómo mostrarlas.
+- Requiere Bearer del login.
 
-Los JSON se incluyen como recursos desde esta misma carpeta, sin copias manuales.
-El doble lee las credenciales y respuesta de login y la lista de rutas.
-La app serializa cada lote desde la cola SQLite; el doble deserializa el lote,
-calcula su resultado y devuelve JSON que la app deserializa para actualizar la
-cola. Los ejemplos de sincronizacion se verifican con pruebas contra ese doble:
-no se devuelve una respuesta fija si el usuario registra otras entregas.
+### Sincronización
+- Cada evento lleva **`eventoId`** durable (idempotencia / reintentos offline).
+- Campos de comprobante: `nombreReceptor`, `observaciones`, `fechaDispositivo`.
+- Respuesta parcial: `aplicados` / `rechazados`.
+- **`estadoActual`** en rechazos cuando el envío existe en servidor (conflicto o
+  transición inválida). Si el envío no está en la ruta, puede omitirse (`null`).
+- Si el envío ya cambió en servidor (p. ej. otro canal), el reintento con el
+  mismo `eventoId` se **rechaza** con `estadoActual` (no se sobrescribe).
+  La idempotencia durable por `eventoId` queda para una iteración posterior.
+- Errores de lote inválido (duplicados, fecha ajena): `400`.
 
-**No hay servidor HTTP ni llamadas de red:** el intercambio JSON ocurre dentro
-del proceso para permitir la demostracion offline. Las rutas HTTP de esta tabla
-son propuestas; no se crearon endpoints ni se cambio el backend.
-Las credenciales invalidas se representan con rechazo del login en el doble.
-Codigos HTTP reales (401/403/validacion), formato de errores, autenticacion,
-idempotencia del servidor, fecha de negocio/zona horaria y limites de lote
-quedan pendientes de acordar; no se afirman implementados.
+## Errores HTTP mínimos
 
-Las bases SQLite creadas antes de estos contratos se conservan: no se borran
-entregas pendientes ni se reemplaza una ruta local al volver a ingresar.
-Los UUID fijos del JSON se usan al iniciar una demo sin ruta guardada.
+| Código | Cuándo |
+|---|---|
+| `400` | JSON/lote inválido |
+| `401` | Sin token o credenciales inválidas |
+| `403` | Token válido pero rol no repartidor |
 
-## Mensaje para Ana
+Cuerpo de error sugerido: `{ "mensaje": "texto legible" }`.
 
-> Prepare una propuesta en contracts/repartidor y el doble de la app ya la usa.
-> La ruta y parte de sincronizacion siguen los modelos de Application.
-> Necesito que revisemos login, los campos del comprobante, eventoId para
-> reintentos y estadoActual en los rechazos, porque son propuestas nuevas.
-> No cambie tus endpoints ni conecte la API real. Si acordamos otro formato,
-> adapto el cliente y los ejemplos juntos.
+## Alcance fuera de este contrato
+
+Seguimiento público Redis y webhooks no viven aquí; los define Ana en Application
+(`SeguimientoVisible`, claves de cache).

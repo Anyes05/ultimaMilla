@@ -2,7 +2,7 @@ using Plataforma.Mobile.Models;
 
 namespace Plataforma.Mobile.Services;
 
-// Doble en proceso: intercambia JSON, pero no implementa endpoints ni autenticacion real.
+// Doble en proceso: intercambia JSON del contrato aceptado; no es el backend real.
 public static class ServidorRepartidorDemo
 {
     public static string? Login(string solicitudJson)
@@ -10,9 +10,9 @@ public static class ServidorRepartidorDemo
         var solicitud = ContratosRepartidor.Leer<LoginSolicitud>(solicitudJson);
         var credenciales = ContratosRepartidor.Leer<LoginSolicitud>(
             ContratosRepartidor.LeerEjemplo("login.request.json"));
-        if (string.IsNullOrWhiteSpace(solicitud.Email) || string.IsNullOrWhiteSpace(solicitud.Clave))
+        if (string.IsNullOrWhiteSpace(solicitud.Usuario) || string.IsNullOrWhiteSpace(solicitud.Clave))
             return null;
-        if (!string.Equals(solicitud.Email.Trim(), credenciales.Email, StringComparison.OrdinalIgnoreCase)
+        if (!string.Equals(solicitud.Usuario.Trim(), credenciales.Usuario, StringComparison.OrdinalIgnoreCase)
             || solicitud.Clave != credenciales.Clave)
             return null;
         return ContratosRepartidor.LeerEjemplo("login.response.json");

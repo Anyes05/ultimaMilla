@@ -47,8 +47,12 @@ public static class CacheRedis
 {
     public static IServiceCollection AddCacheRedis(this IServiceCollection services, IConfiguration configuration)
     {
-        var conexion = configuration["Redis:Configuration"]
-            ?? throw new InvalidOperationException("Defina Redis__Configuration.");
+        var conexion = configuration["Redis:Configuration"];
+        if (string.IsNullOrWhiteSpace(conexion))
+        {
+            services.AddSingleton<ICacheLectura, CacheLecturaMemoria>();
+            return services;
+        }
 
         var opciones = ConfigurationOptions.Parse(conexion);
         opciones.AbortOnConnectFail = false;
