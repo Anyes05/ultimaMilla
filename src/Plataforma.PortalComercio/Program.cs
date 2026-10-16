@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
 using Plataforma.Application;
 using Plataforma.Domain;
 using Plataforma.Infrastructure;
 using Plataforma.PortalComercio.Components;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,10 +15,20 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Portal);
 
 var keysPath = Path.Combine(builder.Environment.ContentRootPath, "keys");
-Directory.CreateDirectory(keysPath);
-builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+var dataProtection = builder.Services.AddDataProtection()
     .SetApplicationName("Plataforma.PortalComercio");
+var opcionesRedis = CacheRedis.CrearOpciones(builder.Configuration);
+if (opcionesRedis is null)
+{
+    Directory.CreateDirectory(keysPath);
+    dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+}
+else
+{
+    dataProtection.PersistKeysToStackExchangeRedis(
+        ConnectionMultiplexer.Connect(opcionesRedis),
+        "plataforma:portal:data-protection");
+}
 
 builder.Services.AddAntiforgery(options =>
 {
@@ -41,6 +53,12 @@ app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages:
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+
+app.MapGet("/live", () => Results.Ok()).AllowAnonymous();
+app.MapGet("/ready", async (PlataformaDbContext context, CancellationToken cancellationToken) =>
+    await context.Database.CanConnectAsync(cancellationToken)
+        ? Results.Ok()
+        : Results.StatusCode(StatusCodes.Status503ServiceUnavailable)).AllowAnonymous();
 
 app.MapPost("/session/login", async (HttpRequest request, IniciarSesion iniciarSesion, IEmisorToken emisor, CancellationToken cancellationToken) =>
 {

@@ -21,7 +21,8 @@ resource "helm_release" "nginx_ingress" {
   count = var.install_platform ? 1 : 0
 
   name             = "ingress-nginx"
-  chart            = "https://github.com/kubernetes/ingress-nginx/releases/download/helm-chart-${var.ingress_nginx_chart_version}/ingress-nginx-${var.ingress_nginx_chart_version}.tgz"
+  repository       = "https://kubernetes.github.io/ingress-nginx"
+  chart            = "ingress-nginx"
   version          = var.ingress_nginx_chart_version
   namespace        = "ingress-nginx"
   create_namespace = true

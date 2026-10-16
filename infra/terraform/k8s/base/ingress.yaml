@@ -12,7 +12,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: api
+                name: backoffice
                 port:
                   name: http
     - host: app.tallernet.cloud-ip.cc
@@ -22,16 +22,16 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: backoffice
+                name: portal
                 port:
                   name: http
-    - host: tracking.tallernet.cloud-ip.cc
+    - host: backoffice.tallernet.cloud-ip.cc
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: tracking-public
+                name: backoffice
                 port:
                   name: http

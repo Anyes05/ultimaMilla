@@ -6,6 +6,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+Set-Location (Split-Path -Parent $PSScriptRoot)
+
 . (Join-Path $PSScriptRoot "Import-Environment.ps1")
 
 function Set-SensitiveEnvironmentVariable {
@@ -88,6 +90,18 @@ function Confirm-ManualCertificateRecords {
     }
 }
 
+function Initialize-NginxHelmRepository {
+    if ($null -eq (Get-Command helm -ErrorAction SilentlyContinue)) {
+        throw "Helm CLI es requerido para instalar ingress-nginx. Instale Helm y ejecute el script nuevamente."
+    }
+
+    & helm repo add ingress-nginx "https://kubernetes.github.io/ingress-nginx" --force-update
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    & helm repo update ingress-nginx
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
 function Get-AcmCertificateStatus {
     $certificateState = & terraform state show -no-color "aws_acm_certificate.public"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -116,6 +130,7 @@ function Get-AcmCertificateStatus {
 function Move-HttpListenerState {
     param(
         [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
         [string[]]$StateResources
     )
 
@@ -137,6 +152,7 @@ function Move-HttpListenerState {
 function Move-LegacyCertificateState {
     param(
         [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
         [string[]]$StateResources
     )
 
@@ -154,6 +170,8 @@ function Move-LegacyCertificateState {
 
 & terraform init -upgrade
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Initialize-NginxHelmRepository
 
 & terraform fmt -check -recursive
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -177,7 +195,6 @@ if ($Action -eq "Plan") {
 }
 
 Move-HttpListenerState -StateResources $stateResources
-Move-LegacyCertificateState -StateResources $stateResources
 
 $stateResources = @(& terraform state list)
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

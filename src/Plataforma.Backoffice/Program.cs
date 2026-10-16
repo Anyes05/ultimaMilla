@@ -2,6 +2,7 @@ using Plataforma.Infrastructure;
 using Plataforma.Application;
 using Plataforma.Domain;
 using Plataforma.Backoffice;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +23,11 @@ if (string.Equals(builder.Configuration["Database:MigrateOnStartup"], "true", St
     await app.Services.MigrarBaseDeDatosAsync();
 }
 
+if (string.Equals(builder.Configuration["Database:MigrateOnly"], "true", StringComparison.OrdinalIgnoreCase))
+{
+    return;
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -32,6 +38,12 @@ if (!app.Environment.IsDevelopment())
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapGet("/live", () => Results.Ok()).AllowAnonymous();
+app.MapGet("/ready", async (PlataformaDbContext context, CancellationToken cancellationToken) =>
+    await context.Database.CanConnectAsync(cancellationToken)
+        ? Results.Ok()
+        : Results.StatusCode(StatusCodes.Status503ServiceUnavailable)).AllowAnonymous();
 
 app.MapPost("/session/login", async (HttpRequest request, IniciarSesion iniciarSesion, IEmisorToken emisor, CancellationToken cancellationToken) =>
 {

@@ -45,18 +45,43 @@ public sealed class RedisCacheLectura : ICacheLectura
 
 public static class CacheRedis
 {
-    public static IServiceCollection AddCacheRedis(this IServiceCollection services, IConfiguration configuration)
+    public static ConfigurationOptions? CrearOpciones(IConfiguration configuration)
     {
         var conexion = configuration["Redis:Configuration"];
-        if (string.IsNullOrWhiteSpace(conexion))
+        ConfigurationOptions opciones;
+
+        if (!string.IsNullOrWhiteSpace(conexion))
+        {
+            opciones = ConfigurationOptions.Parse(conexion);
+        }
+        else
+        {
+            var host = configuration["Redis:Host"];
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                return null;
+            }
+
+            opciones = new ConfigurationOptions
+            {
+                Password = configuration["Redis:Password"]
+            };
+            opciones.EndPoints.Add(host, configuration.GetValue<int?>("Redis:Port") ?? 6379);
+        }
+
+        opciones.AbortOnConnectFail = false;
+        opciones.ConnectTimeout = 3000;
+        return opciones;
+    }
+
+    public static IServiceCollection AddCacheRedis(this IServiceCollection services, IConfiguration configuration)
+    {
+        var opciones = CrearOpciones(configuration);
+        if (opciones is null)
         {
             services.AddSingleton<ICacheLectura, CacheLecturaMemoria>();
             return services;
         }
-
-        var opciones = ConfigurationOptions.Parse(conexion);
-        opciones.AbortOnConnectFail = false;
-        opciones.ConnectTimeout = 3000;
 
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(opciones));
         services.AddSingleton<ICacheLectura, RedisCacheLectura>();

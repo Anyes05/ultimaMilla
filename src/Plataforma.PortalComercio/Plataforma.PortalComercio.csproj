@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.0" />
     <ProjectReference Include="..\Plataforma.Application\Plataforma.Application.csproj" />
     <ProjectReference Include="..\Plataforma.Infrastructure\Plataforma.Infrastructure.csproj" />
   </ItemGroup>
