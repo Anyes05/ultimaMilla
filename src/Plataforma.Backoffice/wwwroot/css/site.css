@@ -31,6 +31,32 @@ body {
   background: linear-gradient(90deg, #ffffff, #eef2ff) !important;
 }
 
+.brand-mark {
+  width: 0.65rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--operator-color, var(--primary-color));
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.operator-brand {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.operator-brand__name {
+  color: var(--operator-color, var(--primary-hover));
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.operator-brand__user {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
 .card {
   border: 1px solid var(--surface-border) !important;
   border-radius: 1rem;

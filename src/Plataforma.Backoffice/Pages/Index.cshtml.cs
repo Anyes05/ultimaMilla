@@ -9,7 +9,7 @@ namespace Plataforma.Backoffice.Pages;
 [Authorize(Roles = Roles.Administrador + "," + Roles.Despachador + "," + Roles.OperarioDeposito)]
 public class IndexModel : PageModel
 {
-    private readonly IEnvioRepositorio _repositorio;
+    private readonly ListarEnvios _listarEnvios;
     private readonly ITransicionEnvio _transicion;
     private readonly IOperadorRepositorio _operadores;
 
@@ -23,9 +23,9 @@ public class IndexModel : PageModel
         _ => "#6f42c1"
     };
 
-    public IndexModel(IEnvioRepositorio repositorio, ITransicionEnvio transicion, IOperadorRepositorio operadores)
+    public IndexModel(ListarEnvios listarEnvios, ITransicionEnvio transicion, IOperadorRepositorio operadores)
     {
-        _repositorio = repositorio;
+        _listarEnvios = listarEnvios;
         _transicion = transicion;
         _operadores = operadores;
     }
@@ -62,7 +62,7 @@ public class IndexModel : PageModel
         if (!AccesoActual.Intentar(User, out var acceso))
             return;
 
-        Envios = await _repositorio.ListarAsync(acceso.OperadorId, null);
+        Envios = await _listarEnvios.Ejecutar(acceso, HttpContext.RequestAborted);
         Operador = await _operadores.ObtenerAsync(acceso.OperadorId);
     }
 }

@@ -1,9 +1,36 @@
 ﻿@inherits LayoutComponentBase
+@using Plataforma.Application
+@using Plataforma.Domain
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IServiceScopeFactory ScopeFactory
 
 <div class="page">
     <div class="sidebar">
-        <NavMenu />
+        <NavMenu NombreOperador="@NombreOperador" ColorMarcaCss="@ColorMarcaCss" />
     </div>
+
+    @code {
+        private string? NombreOperador { get; set; }
+        private string ColorMarcaCss { get; set; } = "#4f46e5";
+
+        protected override async Task OnInitializedAsync()
+        {
+            var principal = HttpContextAccessor.HttpContext?.User;
+            if (principal is null || !AccesoActual.Intentar(principal, out var acceso))
+                return;
+
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var operadores = scope.ServiceProvider.GetRequiredService<IOperadorRepositorio>();
+            var operador = await operadores.ObtenerAsync(acceso.OperadorId);
+            NombreOperador = operador?.Nombre;
+            ColorMarcaCss = operador?.ColorMarca switch
+            {
+                "azul" => "#0d6efd",
+                "verde" => "#198754",
+                _ => "#4f46e5"
+            };
+        }
+    }
 
     <main>
         <article class="content px-4">

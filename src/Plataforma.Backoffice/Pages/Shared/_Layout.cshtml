@@ -1,4 +1,8 @@
-﻿<!DOCTYPE html>
+﻿@using Plataforma.Application
+@using Plataforma.Domain
+@inject IOperadorActual OperadorActual
+@inject IOperadorRepositorio Operadores
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
@@ -12,6 +16,16 @@
 <body>
     @{
         var usuario = Context.User;
+        var operadorId = OperadorActual.OperadorId;
+        var operador = operadorId is Guid id
+            ? await Operadores.ObtenerAsync(id, Context.RequestAborted)
+            : null;
+        var colorMarca = operador?.ColorMarca switch
+        {
+            "azul" => "#0d6efd",
+            "verde" => "#198754",
+            _ => "#4f46e5"
+        };
         var puedeMonitorear = usuario.IsInRole(Roles.Administrador)
             || usuario.IsInRole(Roles.Despachador)
             || usuario.IsInRole(Roles.OperarioDeposito);
@@ -19,7 +33,10 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">Backoffice</a>
+                <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-page="/Index">
+                    <span class="brand-mark" style="--operator-color: @colorMarca" aria-hidden="true"></span>
+                    <span>Backoffice</span>
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -35,7 +52,13 @@
                     </ul>
                     @if (usuario.Identity?.IsAuthenticated == true)
                     {
-                        <span class="navbar-text me-3">@usuario.Identity.Name</span>
+                        <div class="operator-brand me-3">
+                            @if (operador is not null)
+                            {
+                                <span class="operator-brand__name" style="--operator-color: @colorMarca">@operador.Nombre</span>
+                            }
+                            <span class="operator-brand__user">@usuario.Identity.Name</span>
+                        </div>
                     }
                 </div>
             </div>

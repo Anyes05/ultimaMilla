@@ -1,6 +1,15 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">Portal Comercio</a>
+        <a class="navbar-brand d-flex align-items-center gap-2" href="">
+            <span class="brand-mark" style="--operator-color: @ColorMarcaCss" aria-hidden="true"></span>
+            <span>
+                <span class="d-block">Portal Comercio</span>
+                @if (!string.IsNullOrWhiteSpace(NombreOperador))
+                {
+                    <small class="operator-brand">@NombreOperador</small>
+                }
+            </span>
+        </a>
     </div>
 </div>
 
@@ -11,5 +20,16 @@
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Nuevo envío</NavLink>
         </div>
+        <div class="nav-item px-3">
+            <a class="nav-link" href="/#mis-envios">Mis envíos</a>
+        </div>
     </nav>
 </div>
+
+@code {
+    [Parameter]
+    public string? NombreOperador { get; set; }
+
+    [Parameter]
+    public string ColorMarcaCss { get; set; } = "#4f46e5";
+}

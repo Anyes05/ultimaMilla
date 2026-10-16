@@ -4,6 +4,8 @@
 @using Plataforma.Domain
 @inject IHttpContextAccessor HttpContextAccessor
 @inject IEnvioRepositorio Repositorio
+@inject ListarEnvios ListarEnvios
+@inject NavigationManager Navegacion
 
 <PageTitle>Nuevo envío</PageTitle>
 
@@ -23,6 +25,10 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
                 <h2 class="h5 mb-4">Datos de la entrega</h2>
+                @if (mensajeError is not null)
+                {
+                    <div class="alert alert-danger" role="alert">@mensajeError</div>
+                }
                 <EditForm method="post" Model="Formulario" OnValidSubmit="GuardarEnvio" FormName="AltaEnvioForm">
                     <DataAnnotationsValidator />
                     <ValidationSummary class="alert alert-danger py-2" />
@@ -56,11 +62,56 @@
     </div>
 </div>
 
-@if (mensaje != null)
+<section id="mis-envios" class="mt-5" aria-labelledby="mis-envios-titulo">
+    <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+        <div>
+            <p class="text-uppercase text-primary fw-semibold small mb-1">Seguimiento</p>
+            <h2 id="mis-envios-titulo" class="h3 fw-bold mb-1">Mis envíos</h2>
+            <p class="text-muted mb-0">Envíos registrados por tu comercio.</p>
+        </div>
+        <span class="badge rounded-pill text-bg-light">@Envios.Count</span>
+    </div>
+
+    @if (Envios.Count == 0)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <h3 class="h5">Todavía no hay envíos</h3>
+                <p class="text-muted mb-0">Cuando crees un envío, aparecerá aquí con su número de seguimiento.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var envio in Envios)
+            {
+                <div class="col-12 col-xl-6" @key="envio.Id">
+                    <article class="card border-0 shadow-sm h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <span class="small text-muted d-block">Número de seguimiento</span>
+                                    <strong class="tracking-number">@envio.NumeroSeguimiento</strong>
+                                </div>
+                                <span class="status-badge @EstadoClase(envio.Estado)">@EstadoNombre(envio.Estado)</span>
+                            </div>
+                            <h3 class="h6 mb-1">@envio.Destinatario</h3>
+                            <p class="text-muted mb-0">@envio.DireccionEntrega</p>
+                            <p class="small text-muted mt-3 mb-0">Creado @envio.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+@if (MostrarConfirmacion)
 {
     <div class="alert alert-success shadow-sm mt-4">
         <strong>Envío creado.</strong>
-        <span class="d-block">@mensaje</span>
+        <span class="d-block">Envío creado con éxito. Tracking: @TrackingCreado</span>
     </div>
 }
 
@@ -68,21 +119,32 @@
     [SupplyParameterFromForm(FormName = "AltaEnvioForm")]
     private ModelForm? Formulario { get; set; }
 
-    private string? mensaje;
+    [SupplyParameterFromQuery(Name = "tracking")]
+    private string? TrackingCreado { get; set; }
+
+    private List<Envio> Envios { get; set; } = [];
+    private string? mensajeError;
+    private bool MostrarConfirmacion =>
+        !string.IsNullOrWhiteSpace(TrackingCreado)
+        && Envios.Any(envio => envio.NumeroSeguimiento == TrackingCreado);
 
     protected override void OnInitialized()
     {
         Formulario ??= new();
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        await ActualizarEnviosAsync();
+    }
+
     private async Task GuardarEnvio()
     {
         Formulario ??= new();
 
-        if (!AccesoActual.Intentar(HttpContextAccessor.HttpContext?.User ?? new System.Security.Claims.ClaimsPrincipal(), out var acceso)
-            || acceso.ComercioId is not Guid comercioId)
+        if (!IntentarObtenerAcceso(out var acceso) || acceso.ComercioId is not Guid comercioId)
         {
-            mensaje = "No se pudo identificar el comercio autenticado.";
+            mensajeError = "No se pudo identificar el comercio autenticado. Volvé a iniciar sesión.";
             return;
         }
 
@@ -93,9 +155,50 @@
             Formulario.Direccion);
 
         await Repositorio.AgregarAsync(envio);
-        mensaje = $"Envío creado con éxito. Tracking: {envio.NumeroSeguimiento}";
-        Formulario = new();
+        mensajeError = null;
+        Navegacion.NavigateTo(
+            $"/?tracking={Uri.EscapeDataString(envio.NumeroSeguimiento)}#mis-envios",
+            forceLoad: true);
     }
+
+    private async Task ActualizarEnviosAsync()
+    {
+        if (!IntentarObtenerAcceso(out var acceso))
+        {
+            mensajeError = "No se pudo cargar el comercio autenticado. Volvé a iniciar sesión.";
+            return;
+        }
+
+        Envios = await ListarEnvios.Ejecutar(acceso);
+    }
+
+    private bool IntentarObtenerAcceso(out AccesoActual acceso)
+    {
+        var principal = HttpContextAccessor.HttpContext?.User ?? new System.Security.Claims.ClaimsPrincipal();
+        return AccesoActual.Intentar(principal, out acceso)
+            && acceso.Rol == Roles.Comercio
+            && acceso.ComercioId.HasValue;
+    }
+
+    private static string EstadoClase(EstadoEnvio estado) => estado switch
+    {
+        EstadoEnvio.EnDeposito => "status-en-deposito",
+        EstadoEnvio.AsignadoARuta => "status-asignado-a-ruta",
+        EstadoEnvio.EnTransito => "status-en-transito",
+        EstadoEnvio.NoEntregado => "status-no-entregado",
+        EstadoEnvio.EnDevolucion => "status-en-devolucion",
+        _ => "status-" + estado.ToString().ToLowerInvariant()
+    };
+
+    private static string EstadoNombre(EstadoEnvio estado) => estado switch
+    {
+        EstadoEnvio.EnDeposito => "En depósito",
+        EstadoEnvio.AsignadoARuta => "Asignado a ruta",
+        EstadoEnvio.EnTransito => "En tránsito",
+        EstadoEnvio.NoEntregado => "No entregado",
+        EstadoEnvio.EnDevolucion => "En devolución",
+        _ => estado.ToString()
+    };
 
     public class ModelForm
     {
