@@ -87,3 +87,25 @@ jobs:
           docker build --file src/Plataforma.PortalComercio/Dockerfile --tag tallernet-portal:$IMAGE_TAG .
           docker tag tallernet-portal:$IMAGE_TAG $ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG
           docker push $ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG
+
+      - name: Configure kubectl
+        if: env.AWS_PUBLISH_ENABLED == 'true'
+        uses: azure/setup-kubectl@v4
+
+      - name: Deploy applications to EKS
+        if: env.AWS_PUBLISH_ENABLED == 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          aws eks update-kubeconfig --name tallernet-cluster --region "$AWS_REGION"
+          kubectl -n tallernet get secret tallernet-application-secrets
+          kubectl -n tallernet delete job database-migration --ignore-not-found
+          sed "s|tallernet/backend:bootstrap|$ECR_REGISTRY/tallernet/backend:$IMAGE_TAG|g" infra/terraform/k8s/base/migration.yaml | kubectl apply -f -
+          kubectl -n tallernet wait --for=condition=complete job/database-migration --timeout=5m
+          kubectl kustomize infra/terraform/k8s/base \
+            | sed -e "s|tallernet/backend:bootstrap|$ECR_REGISTRY/tallernet/backend:$IMAGE_TAG|g" \
+                  -e "s|tallernet/frontend:bootstrap|$ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG|g" \
+            | kubectl apply -f -
+          kubectl -n tallernet rollout status deployment/backoffice --timeout=5m
+          kubectl -n tallernet rollout status deployment/portal --timeout=5m

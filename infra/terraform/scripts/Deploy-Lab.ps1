@@ -1,7 +1,9 @@
 param(
     [ValidateSet("Plan", "Apply")]
     [string]$Action = "Apply",
-    [switch]$ValidateManualDns
+    [switch]$ValidateManualDns,
+    [ValidatePattern("^[0-9a-f]{40}$")]
+    [string]$ApplicationImageTag
 )
 
 $ErrorActionPreference = "Stop"
@@ -257,5 +259,13 @@ Write-Host "En Cloudns seleccione CNAME, copie Host y Valor exactamente como se 
 Confirm-ManualCertificateRecords -Prompt "Cree el CNAME wildcard anterior en Cloudns y escriba CONTINUAR cuando haya guardado el registro"
 
 Invoke-TerraformApplyPhase -Name "Fase 8 de 8: instalar NGINX, RabbitMQ, Redis y worker" -Arguments $fullTerraformArguments
+
+if ([string]::IsNullOrWhiteSpace($ApplicationImageTag)) {
+    Write-Host "La plataforma esta lista. Despues de publicar imagenes en ECR, ejecute .\scripts\Deploy-Applications.ps1 -ImageTag <SHA-de-40-caracteres>."
+}
+else {
+    & (Join-Path $PSScriptRoot "Deploy-Applications.ps1") -ImageTag $ApplicationImageTag
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 
 exit $LASTEXITCODE

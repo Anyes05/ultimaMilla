@@ -2,6 +2,16 @@
 
 Terraform administra EKS, NGINX, Redis, RabbitMQ y el namespace `tallernet`. Estos manifiestos despliegan Portal y Backoffice con dos réplicas, usando Redis autenticado, probes `/live` y `/ready`, e imágenes inmutables de ECR.
 
+## Despliegue automatizado
+
+El script obtiene endpoints y repositorios desde Terraform, solicita las credenciales sensibles solamente en el terminal, crea o actualiza el Secret, ejecuta una migracion y despliega Portal, Backoffice e Ingress con el tag inmutable indicado:
+
+```powershell
+.\scripts\Deploy-Applications.ps1 -ImageTag <SHA-de-40-caracteres>
+```
+
+`Deploy-Lab.ps1 -Action Apply -ApplicationImageTag <SHA-de-40-caracteres>` ejecuta ese mismo paso al terminar la fase de plataforma. Sin ese parametro, Terraform no despliega aplicaciones ni solicita sus secretos.
+
 ## Secret de aplicación
 
 Antes del primer despliegue, cree `tallernet-application-secrets` en el namespace `tallernet`. Debe contener estas claves, sin versionar sus valores:

@@ -202,6 +202,15 @@ resource "aws_vpc_security_group_ingress_rule" "cluster_api_from_nodes" {
   to_port                      = 443
 }
 
+resource "aws_vpc_security_group_ingress_rule" "nginx_admission_from_cluster" {
+  description                  = "Webhook de admision NGINX desde el control plane EKS"
+  security_group_id            = aws_security_group.eks_nodes.id
+  referenced_security_group_id = aws_eks_cluster.main.vpc_config[0].cluster_security_group_id
+  ip_protocol                  = "tcp"
+  from_port                    = 8443
+  to_port                      = 8443
+}
+
 resource "aws_launch_template" "eks_nodes" {
   name_prefix            = "${local.name_prefix}-eks-nodes-"
   update_default_version = true
