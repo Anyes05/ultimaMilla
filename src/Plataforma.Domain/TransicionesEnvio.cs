@@ -1,8 +1,9 @@
 namespace Plataforma.Domain;
 
+/// <summary>Transiciones del diagrama de estados de envío.</summary>
 public static class TransicionesEnvio
 {
-    private static readonly Dictionary<EstadoEnvio, EstadoEnvio[]> Permitidas = new()  
+    private static readonly Dictionary<EstadoEnvio, EstadoEnvio[]> Permitidas = new()
     {
         [EstadoEnvio.Admitido] =
         [
@@ -32,7 +33,8 @@ public static class TransicionesEnvio
         [EstadoEnvio.NoEntregado] =
         [
             EstadoEnvio.Reprogramado,
-            EstadoEnvio.EnDevolucion
+            EstadoEnvio.EnDevolucion,
+            EstadoEnvio.Extraviado
         ],
 
         [EstadoEnvio.Reprogramado] =
@@ -44,22 +46,17 @@ public static class TransicionesEnvio
         [
             EstadoEnvio.Devuelto
         ],
+
         [EstadoEnvio.Entregado] = [],
         [EstadoEnvio.Devuelto] = [],
         [EstadoEnvio.Extraviado] = []
     };
-    public static bool EsValida(
-        EstadoEnvio origen,
-        EstadoEnvio destino)
-    {
-        return Permitidas.TryGetValue(origen, out var permitidos)
-               && permitidos.Contains(destino);
-    }
 
-    public static IReadOnlyList<EstadoEnvio> DestinosDesde(EstadoEnvio origen)
-    {
-        return Permitidas.TryGetValue(origen, out var permitidos)
+    public static bool EsValida(EstadoEnvio origen, EstadoEnvio destino) =>
+        Permitidas.TryGetValue(origen, out var permitidos) && permitidos.Contains(destino);
+
+    public static IReadOnlyList<EstadoEnvio> DestinosDesde(EstadoEnvio origen) =>
+        Permitidas.TryGetValue(origen, out var permitidos)
             ? permitidos
             : Array.Empty<EstadoEnvio>();
-    }
 }

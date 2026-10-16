@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IniciarSesion>();
         services.AddScoped<IniciarSesionRepartidor>();
         services.AddScoped<ListarEnvios>();
+        services.AddScoped<ListarRepartidoresActivos>();
         services.AddScoped<DespacharRuta>();
         services.AddScoped<ObtenerRutasDeHoy>();
         services.AddScoped<SincronizarEntregas>();

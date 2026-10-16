@@ -21,6 +21,7 @@ public class TransicionesEnvioTests
 
             new object[] { EstadoEnvio.NoEntregado, EstadoEnvio.Reprogramado },
             new object[] { EstadoEnvio.NoEntregado, EstadoEnvio.EnDevolucion },
+            new object[] { EstadoEnvio.NoEntregado, EstadoEnvio.Extraviado },
 
             new object[] { EstadoEnvio.Reprogramado, EstadoEnvio.AsignadoARuta },
 
@@ -36,6 +37,7 @@ public class TransicionesEnvioTests
         Assert.True(
             TransicionesEnvio.EsValida(origen, destino));
     }
+
     public static IEnumerable<object[]> TransicionesInvalidas()
     {
         var todos = Enum.GetValues<EstadoEnvio>();

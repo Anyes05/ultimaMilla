@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Mvc;
 using Plataforma.Application;
 using Plataforma.Domain;
 
@@ -9,6 +8,19 @@ public static class RepartidorApi
 {
     public static IEndpointRouteBuilder MapApisRepartidor(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/repartidores", async (
+            ClaimsPrincipal principal,
+            ListarRepartidoresActivos listar,
+            CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.Despachador or Roles.Administrador or Roles.OperarioDeposito))
+                return Results.Unauthorized();
+
+            var lista = await listar.EjecutarAsync(acceso.OperadorId, cancellationToken);
+            return Results.Json(lista, ObtenerRutasDeHoy.OpcionesJson);
+        }).RequireAuthorization();
+
         var repartidor = app.MapGroup("/api/repartidor");
 
         repartidor.MapPost("/login", async (

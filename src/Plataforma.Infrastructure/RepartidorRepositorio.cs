@@ -22,4 +22,12 @@ public sealed class RepartidorRepositorio : IRepartidorRepositorio
         _context.Repartidores.AsNoTracking().FirstOrDefaultAsync(
             repartidor => repartidor.UsuarioId == usuarioId && repartidor.OperadorId == operadorId,
             cancellationToken);
+
+    public async Task<IReadOnlyList<Repartidor>> ListarActivosAsync(
+        Guid operadorId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Repartidores.AsNoTracking()
+            .Where(repartidor => repartidor.OperadorId == operadorId && repartidor.Activo)
+            .OrderBy(repartidor => repartidor.Nombre)
+            .ToListAsync(cancellationToken);
 }

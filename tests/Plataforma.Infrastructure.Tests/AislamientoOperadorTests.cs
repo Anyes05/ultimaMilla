@@ -88,7 +88,7 @@ public class AislamientoOperadorTests
         }
 
         await using var contextoNorte = CrearContexto(db, DatosSemilla.OperadorNorteId);
-        var casoUso = new CambiarEstadoEnvio(new EnvioRepositorio(contextoNorte));
+        var casoUso = new CambiarEstadoEnvio(new EnvioRepositorio(contextoNorte), new CacheLecturaMemoria());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             casoUso.EjecutarAsync(envioSurId, DatosSemilla.OperadorNorteId, EstadoEnvio.EnDeposito));
@@ -113,7 +113,7 @@ public class AislamientoOperadorTests
         }
 
         await using var contextoNorte = CrearContexto(db, DatosSemilla.OperadorNorteId);
-        var casoUso = new CambiarEstadoEnvio(new EnvioRepositorio(contextoNorte));
+        var casoUso = new CambiarEstadoEnvio(new EnvioRepositorio(contextoNorte), new CacheLecturaMemoria());
 
         await casoUso.EjecutarAsync(envioNorteId, DatosSemilla.OperadorNorteId, EstadoEnvio.EnDeposito);
 
