@@ -254,9 +254,9 @@ Invoke-TerraformApplyPhase -Name "Fase 5 de 8: crear control plane EKS" -Argumen
 Invoke-TerraformApplyPhase -Name "Fase 6 de 8: crear node group EKS" -Arguments $nodeGroupArguments
 Invoke-TerraformApplyPhase -Name "Fase 7 de 8: crear ALB con HTTPS" -Arguments $loadBalancerArguments
 
-Show-ManualDnsRecords -OutputName "manual_application_dns_records" -Heading "CNAME wildcard publico hacia el ALB"
-Write-Host "En Cloudns seleccione CNAME, copie Host y Valor exactamente como se muestran, y use TTL 3600 (1 Hour)."
-Confirm-ManualCertificateRecords -Prompt "Cree el CNAME wildcard anterior en Cloudns y escriba CONTINUAR cuando haya guardado el registro"
+Show-ManualDnsRecords -OutputName "manual_application_dns_records" -Heading "CNAMEs publicos hacia el ALB"
+Write-Host "En Cloudns cree todos los CNAME mostrados, incluidos *, app, api y tracking. Copie Host y Valor exactamente como se muestran y use TTL 3600 (1 Hour)."
+Confirm-ManualCertificateRecords -Prompt "Cree todos los CNAME anteriores en Cloudns y escriba CONTINUAR cuando haya guardado los registros"
 
 Invoke-TerraformApplyPhase -Name "Fase 8 de 8: instalar NGINX, RabbitMQ, Redis y worker" -Arguments $fullTerraformArguments
 

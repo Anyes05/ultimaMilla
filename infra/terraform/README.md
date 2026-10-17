@@ -33,6 +33,16 @@ terraform plan
 terraform apply
 ```
 
+## Reanudar laboratorio
+
+No detenga instancias EC2 individuales del managed node group. Al reanudar un laboratorio AWS Academy, el Auto Scaling Group debe recrear los nodos y el attachment del ALB registra los targets automaticamente. Si el node group queda degradado o no hay targets saludables, ejecute:
+
+```powershell
+.\scripts\Resume-Lab.ps1
+```
+
+El script solo reinicia el ciclo de escala cuando faltan nodos o targets saludables: reduce temporalmente el node group a cero, lo restaura a minimo y deseado `2`, espera nodos `Ready` y verifica targets `healthy` en el ALB. Use `-Force` solo para forzar esa reconciliacion sobre un laboratorio que ya parece sano.
+
 ## Reconstruccion automatizada
 
 El script inicializa proveedores, formatea y valida Terraform. Por una restricción de Terraform, solicita la contraseña sensible de RDS antes de evaluar la configuración, pero no crea RDS hasta su fase específica. En Free DNS se detiene después de solicitar ACM para que cargue los CNAME de validación en Cloudns; con el certificado emitido, el resto se ejecuta en este orden:
@@ -48,7 +58,7 @@ El script inicializa proveedores, formatea y valida Terraform. Por una restricci
 .\scripts\Deploy-Lab.ps1 -Action Apply
 ```
 
-El script muestra el CNAME de validación ACM wildcard antes de crear los grupos de seguridad, RDS, EKS o el ALB; escriba `CONTINUAR` solamente después de cargarlo y esperar su propagación. El ALB se crea directamente con HTTPS y con redirección HTTP a HTTPS. Después de crear el ALB, el script muestra un único CNAME wildcard `*` hacia el ALB, indica los campos a completar en Cloudns y espera `CONTINUAR` antes de instalar la plataforma. Ese alias cubre `app`, `api`, `tracking` y futuros subdominios de la zona.
+El script muestra el CNAME de validación ACM wildcard antes de crear los grupos de seguridad, RDS, EKS o el ALB; escriba `CONTINUAR` solamente después de cargarlo y esperar su propagación. El ALB se crea directamente con HTTPS y con redirección HTTP a HTTPS. Después de crear el ALB, el script muestra los CNAME `*`, `app`, `api` y `tracking` hacia el ALB e indica los campos a completar en Cloudns. Cree todos antes de escribir `CONTINUAR`: los CNAME de validación ACM bajo esos hosts pueden impedir que el wildcard cubra los subdominios de la aplicación.
 
 ```powershell
 .\scripts\Deploy-Lab.ps1 -Action Apply
@@ -90,6 +100,6 @@ Esta carpeta incluye Dockerfiles base, `docker-compose.yml`, Redis y manifiestos
 
 ## Trafico publico
 
-ACM emite un certificado para `*.tallernet.cloud-ip.cc`. Terraform muestra el CNAME de validación y el alias wildcard hacia el ALB para crearlos manualmente; el ALB termina HTTPS para `app`, `api`, `tracking` y futuros subdominios de la zona.
+ACM emite un certificado para `*.tallernet.cloud-ip.cc`. Terraform muestra los CNAME de validación y los alias `*`, `app`, `api` y `tracking` hacia el ALB para crearlos manualmente. Los aliases explícitos son necesarios cuando los CNAME de validación de ACM crean nodos bajo esos subdominios; el ALB termina HTTPS para `app`, `api`, `tracking` y futuros subdominios de la zona.
 
 El ALB reenvia por HTTP al NodePort `32080` del controlador ingress-nginx. Los Ingress de frontend, API y seguimiento publico se agregaran cuando existan sus Services Kubernetes.

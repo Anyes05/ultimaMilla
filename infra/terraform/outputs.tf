@@ -73,9 +73,9 @@ output "manual_acm_validation_records" {
 }
 
 output "manual_application_dns_records" {
-  description = "CNAME wildcard hacia el ALB para crear manualmente despues de crear el ALB"
+  description = "CNAME wildcard y explicitos hacia el ALB para crear manualmente despues de crear el ALB"
   value = [
-    for name in ["*"] : {
+    for name in ["*", "app", "api", "tracking"] : {
       zone  = var.domain_name
       name  = name
       type  = "CNAME"
