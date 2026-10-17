@@ -1,0 +1,55 @@
+@page
+@model CacheModel
+@{
+    ViewData["Title"] = "Caché";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @Model.ColorMarcaCss">Backoffice</p>
+        <h1 class="display-6 fw-bold mb-1">Caché de lectura</h1>
+        <p class="text-muted mb-0">Aciertos y fallos de las lecturas cacheadas (seguimiento y rutas del día).</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-primary" asp-page="/Cache">Refrescar</a>
+        <form method="post" action="/logout">
+            <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <span class="small text-muted d-block">Aciertos (hits)</span>
+                <strong class="display-5 text-success">@Model.Estadisticas.Hits</strong>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <span class="small text-muted d-block">Fallos (misses)</span>
+                <strong class="display-5 text-danger">@Model.Estadisticas.Misses</strong>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <span class="small text-muted d-block">Relación de aciertos</span>
+                <strong class="display-5">@Model.RatioTexto</strong>
+                <div class="progress mt-2" role="progressbar" aria-label="Relación de aciertos"
+                     aria-valuenow="@((int)(Model.Estadisticas.Ratio * 100))" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar bg-success" style="width: @((int)(Model.Estadisticas.Ratio * 100))%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<p class="small text-muted">
+    @Model.Estadisticas.Total lecturas en total · actualizado a las @Model.ConsultadoEn.ToString("HH:mm:ss").
+    Los contadores son de esta instancia y se reinician al reiniciar el servicio.
+</p>

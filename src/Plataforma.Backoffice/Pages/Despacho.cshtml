@@ -1,0 +1,105 @@
+@page
+@model DespachoModel
+@{
+    ViewData["Title"] = "Despacho de rutas";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @Model.ColorMarcaCss">Backoffice</p>
+        <h1 class="display-6 fw-bold mb-1">Despacho de rutas</h1>
+        <p class="text-muted mb-0">Armá la ruta de <strong>@Model.Operador?.Nombre</strong>: es la hoja que descarga la app del repartidor.</p>
+    </div>
+    <form method="post" action="/logout">
+        <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+    </form>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+@if (Model.Repartidores.Count == 0)
+{
+    <div class="alert alert-warning">No hay repartidores activos para este operador.</div>
+}
+
+<form method="post">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="repartidor">Repartidor</label>
+                    <select id="repartidor" asp-for="RepartidorId" class="form-select form-select-lg" required>
+                        <option value="">Elegí un repartidor…</option>
+                        @foreach (var repartidor in Model.Repartidores)
+                        {
+                            <option value="@repartidor.Id">@repartidor.Nombre</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="fecha">Fecha de la ruta</label>
+                    <input id="fecha" asp-for="Fecha" type="date" class="form-control form-control-lg" required />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0">Envíos en depósito</h2>
+            <span class="badge rounded-pill text-bg-light">@Model.EnviosEnDeposito.Count</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 3rem"></th>
+                            <th>N° Tracking</th>
+                            <th>Destinatario</th>
+                            <th>Dirección de entrega</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (Model.EnviosEnDeposito.Count > 0)
+                    {
+                        @foreach (var envio in Model.EnviosEnDeposito)
+                        {
+                            <tr>
+                                <td>
+                                    <input class="form-check-input" type="checkbox" name="EnvioIds" value="@envio.Id"
+                                           id="envio-@envio.Id" aria-label="Incluir @envio.NumeroSeguimiento" />
+                                </td>
+                                <td><label for="envio-@envio.Id"><span class="tracking-number">@envio.NumeroSeguimiento</span></label></td>
+                                <td>@envio.Destinatario</td>
+                                <td>@envio.DireccionEntrega</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-5">
+                                No hay envíos en depósito para despachar. Recibilos primero desde el Monitoreo.
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-white text-end">
+            <button type="submit" class="btn btn-primary btn-lg"
+                    disabled="@(Model.EnviosEnDeposito.Count == 0 || Model.Repartidores.Count == 0)">
+                Despachar ruta
+            </button>
+        </div>
+    </div>
+</form>
