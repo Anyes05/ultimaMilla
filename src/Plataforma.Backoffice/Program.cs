@@ -3,6 +3,8 @@ using Plataforma.Application;
 using Plataforma.Domain;
 using Plataforma.Backoffice;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +12,18 @@ builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Backoffice);
+
+// Claves de Data Protection compartidas entre réplicas (igual que el Portal).
+// Sin esto, el token antiforgery emitido por un pod no se puede validar en otro: HTTP 400.
+var dataProtection = builder.Services.AddDataProtection()
+    .SetApplicationName("Plataforma.Backoffice");
+var opcionesRedis = CacheRedis.CrearOpciones(builder.Configuration);
+if (opcionesRedis is not null)
+{
+    dataProtection.PersistKeysToStackExchangeRedis(
+        ConnectionMultiplexer.Connect(opcionesRedis),
+        "plataforma:backoffice:data-protection");
+}
 builder.Services.ConfigureHttpJsonOptions(opciones =>
 {
     foreach (var converter in ObtenerRutasDeHoy.OpcionesJson.Converters)
