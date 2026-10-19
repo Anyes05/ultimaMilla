@@ -29,36 +29,72 @@
         var puedeMonitorear = usuario.IsInRole(Roles.Administrador)
             || usuario.IsInRole(Roles.Despachador)
             || usuario.IsInRole(Roles.OperarioDeposito);
+        var mostrarBarraLateral = usuario.Identity?.IsAuthenticated == true && puedeMonitorear;
+        var paginaActual = ViewContext.RouteData.Values["page"] as string ?? string.Empty;
+        string ClaseNav(string pagina) =>
+            string.Equals(paginaActual, pagina, StringComparison.OrdinalIgnoreCase)
+                ? "app-sidebar__link active"
+                : "app-sidebar__link";
     }
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-page="/Index">
-                    <span class="brand-mark" style="--operator-color: @colorMarca" aria-hidden="true"></span>
-                    <span>Backoffice</span>
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        @if (puedeMonitorear)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Index">Monitoreo</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Despacho">Despacho</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-page="/Cache">Caché</a>
-                            </li>
-                        }
-                    </ul>
+
+    @if (mostrarBarraLateral)
+    {
+        <div class="app-shell">
+            <aside class="app-sidebar">
+                <div class="app-sidebar__top">
+                    <a class="app-sidebar__brand" asp-area="" asp-page="/Index">
+                        <span class="brand-mark" style="--operator-color: @colorMarca" aria-hidden="true"></span>
+                        <span>
+                            <span class="d-block">Backoffice</span>
+                            @if (operador is not null)
+                            {
+                                <small class="app-sidebar__operator">@operador.Nombre</small>
+                            }
+                        </span>
+                    </a>
+                    <input type="checkbox" id="app-sidebar-toggle" class="app-sidebar__toggle-input" />
+                    <label for="app-sidebar-toggle" class="app-sidebar__toggle" aria-label="Abrir o cerrar el menú">
+                        <span></span><span></span><span></span>
+                    </label>
+
+                    <nav class="app-sidebar__nav" aria-label="Navegación principal">
+                        <a class="@ClaseNav("/Index")" asp-area="" asp-page="/Index">Monitoreo</a>
+                        <a class="@ClaseNav("/Despacho")" asp-area="" asp-page="/Despacho">Despacho</a>
+                        <a class="@ClaseNav("/Cache")" asp-area="" asp-page="/Cache">Caché</a>
+                    </nav>
+                </div>
+                <div class="app-sidebar__user">
+                    <span class="app-sidebar__user-label">Sesión</span>
+                    <span class="app-sidebar__user-name">@usuario.Identity!.Name</span>
+                </div>
+            </aside>
+
+            <div class="app-content">
+                <div class="container-xl px-4">
+                    <main role="main" class="pb-3">
+                        @RenderBody()
+                    </main>
+                </div>
+                <footer class="border-top footer text-muted">
+                    <div class="container-xl px-4">
+                        &copy; 2026 - Plataforma.Backoffice
+                    </div>
+                </footer>
+            </div>
+        </div>
+    }
+    else
+    {
+        <header>
+            <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+                <div class="container">
+                    <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-page="/Index">
+                        <span class="brand-mark" style="--operator-color: @colorMarca" aria-hidden="true"></span>
+                        <span>Backoffice</span>
+                    </a>
                     @if (usuario.Identity?.IsAuthenticated == true)
                     {
-                        <div class="operator-brand me-3">
+                        <div class="operator-brand ms-auto">
                             @if (operador is not null)
                             {
                                 <span class="operator-brand__name" style="--operator-color: @colorMarca">@operador.Nombre</span>
@@ -67,20 +103,20 @@
                         </div>
                     }
                 </div>
-            </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    <footer class="border-top footer text-muted">
+            </nav>
+        </header>
         <div class="container">
-            &copy; 2026 - Plataforma.Backoffice 
+            <main role="main" class="pb-3">
+                @RenderBody()
+            </main>
         </div>
-    </footer>
+
+        <footer class="border-top footer text-muted">
+            <div class="container">
+                &copy; 2026 - Plataforma.Backoffice
+            </div>
+        </footer>
+    }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

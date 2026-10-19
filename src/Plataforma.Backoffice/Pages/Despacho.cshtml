@@ -95,7 +95,13 @@
                 </table>
             </div>
         </div>
-        <div class="card-footer bg-white text-end">
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div class="form-check mb-0">
+                <input class="form-check-input" asp-for="IniciarAlDespachar" id="iniciarAlDespachar" />
+                <label class="form-check-label" for="iniciarAlDespachar">
+                    Iniciar la ruta al despachar <span class="text-muted small">(los envíos salen en tránsito)</span>
+                </label>
+            </div>
             <button type="submit" class="btn btn-primary btn-lg"
                     disabled="@(Model.EnviosEnDeposito.Count == 0 || Model.Repartidores.Count == 0)">
                 Despachar ruta
@@ -103,3 +109,71 @@
         </div>
     </div>
 </form>
+
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Rutas de hoy</h2>
+        <span class="badge rounded-pill text-bg-light">@Model.RutasDeHoy.Count</span>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.RutasDeHoy.Count == 0)
+        {
+            <p class="text-center text-muted py-5 mb-0">Todavía no se despachó ninguna ruta para hoy.</p>
+        }
+        @foreach (var ruta in Model.RutasDeHoy)
+        {
+            <div class="border-bottom p-4">
+                <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                    <div>
+                        <h3 class="h6 fw-bold mb-0">@ruta.Repartidor</h3>
+                        <span class="text-muted small">@ruta.Envios.Count envío(s)</span>
+                    </div>
+                    @if (ruta.PendientesDeSalir > 0)
+                    {
+                        <form method="post" asp-page-handler="IniciarRuta">
+                            <input type="hidden" name="rutaId" value="@ruta.RutaId" />
+                            <button type="submit" class="btn btn-success">
+                                Iniciar ruta (@ruta.PendientesDeSalir)
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="text-muted small">Ruta en curso</span>
+                    }
+                </div>
+                <ul class="list-unstyled mb-0">
+                    @foreach (var envio in ruta.Envios)
+                    {
+                        <li class="d-flex justify-content-between align-items-center py-1">
+                            <span><span class="tracking-number">@envio.NumeroSeguimiento</span> · @envio.Destinatario</span>
+                            <span class="status-badge @EstadoClase(envio.Estado)">@EstadoNombre(envio.Estado)</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@functions {
+    private static string EstadoClase(EstadoEnvio estado) => estado switch
+    {
+        EstadoEnvio.EnDeposito => "status-en-deposito",
+        EstadoEnvio.AsignadoARuta => "status-asignado-a-ruta",
+        EstadoEnvio.EnTransito => "status-en-transito",
+        EstadoEnvio.NoEntregado => "status-no-entregado",
+        EstadoEnvio.EnDevolucion => "status-en-devolucion",
+        _ => "status-" + estado.ToString().ToLowerInvariant()
+    };
+
+    private static string EstadoNombre(EstadoEnvio estado) => estado switch
+    {
+        EstadoEnvio.EnDeposito => "En depósito",
+        EstadoEnvio.AsignadoARuta => "Asignado a ruta",
+        EstadoEnvio.EnTransito => "En tránsito",
+        EstadoEnvio.NoEntregado => "No entregado",
+        EstadoEnvio.EnDevolucion => "En devolución",
+        _ => estado.ToString()
+    };
+}
