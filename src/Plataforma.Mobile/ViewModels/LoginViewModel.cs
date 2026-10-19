@@ -22,6 +22,25 @@ public partial class LoginViewModel(
     [ObservableProperty]
     private bool ocupado;
 
+    public bool ModoDemo
+    {
+        get => repartidor.ModoDemo;
+        set
+        {
+            if (Ocupado || value == repartidor.ModoDemo) return;
+            repartidor.ModoDemo = value;
+            Usuario = value ? "alvaro@demo.test" : string.Empty;
+            Clave = string.Empty;
+            Mensaje = string.Empty;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ModoTexto));
+        }
+    }
+
+    public string ModoTexto => ModoDemo
+        ? "DEMO EXPLICITA: servidor simulado; datos separados de la API."
+        : "API REAL: https://api.tallernet.cloud-ip.cc";
+
     [RelayCommand]
     private async Task ContinuarSesionAsync()
     {
@@ -33,7 +52,7 @@ public partial class LoginViewModel(
         {
             if (!repartidor.HaySesion)
             {
-                Mensaje = "No hay una sesion demo guardada. Ingresa primero con las credenciales de prueba.";
+                Mensaje = "No hay una sesion guardada en este modo. Inicia sesion primero.";
                 return;
             }
             await navigation.MostrarRutaAsync();
@@ -58,16 +77,16 @@ public partial class LoginViewModel(
         Mensaje = string.Empty;
         if (string.IsNullOrWhiteSpace(Usuario) || string.IsNullOrWhiteSpace(Clave))
         {
-            Mensaje = "Completa el usuario y la clave de demostracion.";
+            Mensaje = "Completa el usuario y la clave.";
             return;
         }
 
         Ocupado = true;
         try
         {
-            if (!repartidor.IniciarSesion(Usuario, Clave))
+            if (!await repartidor.IniciarSesionAsync(Usuario, Clave))
             {
-                Mensaje = "Usuario o clave incorrectos. Usa las credenciales de demostracion.";
+                Mensaje = "Usuario o clave incorrectos para el modo seleccionado.";
                 return;
             }
 

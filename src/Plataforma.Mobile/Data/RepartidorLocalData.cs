@@ -7,7 +7,9 @@ namespace Plataforma.Mobile.Data;
 public sealed record EstadoLocalDemo(
     Ruta? Ruta,
     bool HaySesion,
-    IReadOnlyDictionary<Guid, EstadoEnvio> EstadosServidor);
+    IReadOnlyDictionary<Guid, EstadoEnvio> EstadosServidor,
+    Guid? RepartidorId = null,
+    Guid? OperadorId = null);
 
 public sealed class RepartidorLocalData(string databasePath)
 {

@@ -7,6 +7,8 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\Plataforma.Mobile\Services\RepartidorHttpService.cs" Link="Services\RepartidorHttpService.cs" />
+    <Compile Include="..\..\src\Plataforma.Mobile\Services\RepartidorSeleccionService.cs" Link="Services\RepartidorSeleccionService.cs" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />

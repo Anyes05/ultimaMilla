@@ -42,12 +42,17 @@ public partial class RutaViewModel(
 
     public bool HaySeleccion => EnvioSeleccionado is not null;
     public bool MostrarRuta => !HaySeleccion;
+    public bool ModoDemo => repartidor.ModoDemo;
+    public string ModoTexto => ModoDemo ? "DEMO: servidor simulado." : "API REAL: api.tallernet.cloud-ip.cc";
 
     partial void OnConexionSimuladaChanged(bool value) => repartidor.ConexionSimulada = value;
 
     [RelayCommand]
     private void Cargar()
     {
+        if (Ocupado) return;
+        OnPropertyChanged(nameof(ModoDemo));
+        OnPropertyChanged(nameof(ModoTexto));
         Mensaje = string.Empty;
         CancelarEntrega();
         ConexionSimulada = repartidor.ConexionSimulada;
@@ -57,6 +62,7 @@ public partial class RutaViewModel(
     [RelayCommand]
     private void SeleccionarEntrega(Envio envio)
     {
+        if (Ocupado) return;
         Mensaje = string.Empty;
         if (!envio.PuedeEntregar)
         {
@@ -79,6 +85,7 @@ public partial class RutaViewModel(
     [RelayCommand]
     private void GuardarEntrega()
     {
+        if (Ocupado) return;
         if (EnvioSeleccionado is null)
         {
             Mensaje = "Selecciona un envio.";
@@ -95,15 +102,50 @@ public partial class RutaViewModel(
     }
 
     [RelayCommand]
-    private void Sincronizar()
+    private async Task SincronizarAsync()
     {
-        Ejecutar(() =>
+        if (Ocupado) return;
+        Ocupado = true;
+        Mensaje = string.Empty;
+        try
         {
-            var resultado = repartidor.Sincronizar();
+            var resultado = await repartidor.SincronizarAsync();
             ActualizarRuta();
-            Mensaje = $"Simulacion: {resultado.Aplicadas} aceptadas, {resultado.Rechazadas} rechazadas; " +
+            Mensaje = $"{(ModoDemo ? "Simulacion" : "API")}: {resultado.Aplicadas} aceptadas, {resultado.Rechazadas} rechazadas; " +
                       $"{resultado.Pendientes} sin resolver. Los rechazos conservan el comprobante local.";
-        });
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "No se pudo sincronizar la cola");
+            Mensaje = ex.Message;
+        }
+        finally { Ocupado = false; }
+    }
+
+    [RelayCommand]
+    private async Task DescargarRutaAsync()
+    {
+        if (Ocupado) return;
+        Ocupado = true;
+        Mensaje = string.Empty;
+        try
+        {
+            await repartidor.DescargarRutaAsync();
+            ActualizarRuta();
+            Mensaje = "Ruta actualizada.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "No se pudo descargar la ruta");
+            Mensaje = ex.Message;
+        }
+        finally { Ocupado = false; }
+    }
+
+    [RelayCommand]
+    private async Task VolverAccesoAsync()
+    {
+        if (!Ocupado) await navigation.MostrarLoginAsync();
     }
 
     [RelayCommand]

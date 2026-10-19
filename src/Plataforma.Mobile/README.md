@@ -51,17 +51,16 @@ dotnet test '.\tests\Plataforma.Mobile.Tests\Plataforma.Mobile.Tests.csproj' --n
 
 Los comandos de restore son instrucciones para preparar un checkout; no se
 repitieron para este cambio de documentacion. Build Android y tests se
-verificaron durante el desarrollo: 0 errores/advertencias y 24 tests aprobados.
+verificaron durante el desarrollo: 0 errores/advertencias y 36 tests aprobados.
 Los tests usan xUnit/VSTest sobre `net10.0`, enlazan el codigo independiente de
 MAUI y **no requieren emulador, dispositivo ni workloads MAUI**. Usan SQLite
 temporal; no son pruebas de interfaz. No se ha certificado su ejecucion en CI.
 
-En esta maquina se usaron directorios de salida aislados para evitar bloqueos
-de archivos del editor. Este es el comando exacto de la ultima compilacion e
-instalacion correcta (rutas de sesion locales, no copiar al workflow):
+Comando de compilacion e instalacion usado el 18/10 (serial y JDK locales,
+reemplazarlos en otros equipos):
 
 ```powershell
-dotnet build 'E:\Taller de .NET\ultimaMilla\src\Plataforma.Mobile\Plataforma.Mobile.csproj' -t:Run -f net10.0-android '-p:AdbTarget=-s%20RF8N72W61ZW' '-p:JavaSdkDirectory=C:\Users\agaru\.jdk\jdk-21.0.10' '-p:IntermediateOutputPath=C:\Users\agaru\.copilot\session-state\5b542746-8272-424a-9433-d388c3fa5569\files\mobile-contract-validation\obj\' '-p:OutputPath=C:\Users\agaru\.copilot\session-state\5b542746-8272-424a-9433-d388c3fa5569\files\mobile-contract-validation\bin\' --no-restore
+dotnet build 'E:\Taller de .NET\ultimaMilla\src\Plataforma.Mobile\Plataforma.Mobile.csproj' -t:Run -f net10.0-android '-p:AdbTarget=-s%20RF8N72W61ZW' '-p:JavaSdkDirectory=C:\Users\agaru\.jdk\jdk-21.0.10' --no-restore
 ```
 
 Para ejecutar en otro dispositivo, usar el comando de build normal agregando
@@ -71,30 +70,51 @@ depuracion MAUI activa.
 
 ## Contratos y configuracion por ambiente
 
-La app **no consume HTTP actualmente**: usa un doble dentro del proceso con
-JSON incluidos como recursos desde [contracts/repartidor](../../contracts/repartidor/README.md).
-Son una **propuesta v0.1 pendiente de acuerdo con Ana**, no endpoints publicados:
+La app inicia en **API real**, usando HTTPS y los
+[contratos aceptados v1](../../contracts/repartidor/README.md).
+La URL base esta configurada en `MauiProgram.cs`:
+`https://api.tallernet.cloud-ip.cc/` (Backoffice, no Portal).
+No se deshabilita la validacion TLS.
 
-| Operacion propuesta | Uso |
+| Operacion | Uso |
 |---|---|
-| POST `/api/repartidor/login` | Credenciales y sesion simuladas |
-| GET `/api/repartidor/rutas/hoy` | Lista con una ruta de prueba |
+| POST `/api/repartidor/login` | Usuario/clave; recibe JWT |
+| GET `/api/repartidor/rutas/hoy` | Bearer; lista de rutas del dia UTC del servidor |
 | POST `/api/repartidor/sincronizacion` | Lote de comprobantes y resultado por envio |
 
-La demo no necesita URL de API, secretos, JWT, cookies ni servicios externos.
-Las credenciales ficticias son `alvaro@demo.test` / `Demo123!`.
-La ruta de ejemplo tiene fecha fija 15/10/2026.
+El JWT se guarda con MAUI SecureStorage, no en SQLite; la clave no se guarda.
+401 requiere volver al acceso y autenticarse otra vez (sin borrar la cola).
+No hay refresh token automatico. 403 y demas errores se muestran explicitamente;
+un fallo de red nunca se convierte en una sincronizacion exitosa ni activa el
+doble silenciosamente. No se usan credenciales AWS desde la app.
 
-Para integrar la API real se deben acordar URL HTTPS por ambiente, autenticacion,
-expiracion/renovacion de sesion, errores HTTP y permisos por operador/repartidor.
-Eso aun no esta implementado. No incorporar secretos de backend a la app ni al
-repositorio; un cliente movil no puede proteger un secreto compartido embebido.
+El selector **Usar demo (sin API)** permite volver al doble de forma explicita.
+Las credenciales ficticias del doble son `alvaro@demo.test` / `Demo123!`.
+Su ruta de ejemplo tiene fecha fija 15/10/2026. El seed de API usa ese mismo
+usuario para Norte y `sur.repartidor` para Sur, con `Demo123!` en el laboratorio.
+No usar estos accesos de desarrollo en produccion.
+
+Se mantienen bases independientes: `repartidor-demo.db` (se conserva la demo
+anterior) y `repartidor-api.db`. No se migra la cola ficticia a la API.
+Cada base API queda ligada al operador y repartidor del login; se rechaza
+reemplazarla con otro usuario mientras conserve su ruta. Cerrar sesion exige
+no tener pendientes ni rechazos.
+
+Login descarga rutas cuando no hay ruta local; reautenticarse conserva los
+comprobantes. **Descargar ruta** actualiza desde el servidor solo sin pendientes
+ni rechazos. Si no hay rutas se muestra una lista vacia; tras despachar desde
+Backoffice hay que pulsar ese boton. Varias rutas del mismo dia/operador se
+presentan juntas sin descartar envios. No se mezclan dias diferentes.
+
+Para otro ambiente cambiar la URL HTTPS en `MauiProgram.cs` y recompilar.
+No incorporar secretos de backend a la app ni al repositorio.
 
 ## Casos offline y sincronizacion para validar
 
-- Login simulado, descarga JSON y conservacion de la ruta SQLite.
+- Login HTTP/Bearer y login simulado, descarga JSON y conservacion de ruta SQLite.
 - Registrar entrega sin conexion simulada y conservarla tras cerrar el proceso.
-- Continuar la sesion demo guardada sin red; no es autenticacion offline real.
+- Continuar la sesion guardada sin red; permite trabajar sobre datos previamente
+  descargados, no autentica ante el servidor ni renueva el token.
 - Sincronizar un lote construido desde la cola SQLite, incluido un lote vacio.
 - DEMO-001: aceptar entrega si el servidor doble sigue EnTransito.
 - DEMO-002 y DEMO-003: rechazar por Entregado/Extraviado y conservar el
@@ -102,14 +122,37 @@ repositorio; un cliente movil no puede proteger un secreto compartido embebido.
 - Impedir cierre de sesion con pendientes o rechazos para no perder comprobantes.
 - Serializacion/deserializacion de contratos y errores de entrada.
 
-Los 24 tests cubren logica, persistencia y contratos, no el renderizado XAML.
+Los 36 tests cubren logica, persistencia, contratos y HTTP con un handler de prueba
+(401/403/500, red/timeout, lotes inconsistentes, conflictos, reintento con el mismo
+eventoId, multiples rutas y aislamiento entre modos), no el renderizado XAML.
 En Samsung se verificaron arranque, recuperacion tras cierre del proceso,
-sincronizacion y navegacion/formulario. Sigue pendiente la prueba manual con
-modo avion real; el switch de conexion simula desconexion.
+sincronizacion y navegacion/formulario. Tambien login HTTPS real y descarga
+de cero rutas para el 19/10 UTC. Para cerrar el recorrido real falta despachar
+una ruta de Norte para ese dia y `alvaro@demo.test`, descargarla, entregar
+offline, sincronizar y comprobar el estado en Backoffice. No se crearon envios
+ni rutas en el backend durante esta validacion.
+
+Se creo el AVD `UltimaMilla_API36` con la imagen Android 36 ya instalada
+(`google_apis;x86_64`). Se verifico modo avion real en ese emulador (valor Android
+1): entrega ficticia en el doble, cierre forzado del proceso, recuperacion sin
+red y sincronizacion aceptada al volver. No se corto la conexion del telefono.
+Esto no certifica la persistencia del backend.
+
+Para ejecutar en el emulador desde la raiz del repositorio:
+
+```powershell
+& "$env:LOCALAPPDATA\Android\Sdk\emulator\emulator.exe" -avd UltimaMilla_API36 -memory 2048
+# En otra terminal, con el emulador iniciado:
+dotnet build '.\src\Plataforma.Mobile\Plataforma.Mobile.csproj' -t:Run -f net10.0-android '-p:AdbTarget=-s%20emulator-5554' '-p:JavaSdkDirectory=C:\Users\agaru\.jdk\jdk-21.0.10' -p:EmbedAssembliesIntoApk=true --no-restore
+```
+
+`EmbedAssembliesIntoApk=true` evita depender de archivos de Fast Deployment.
+Verificar el serial con `adb devices`.
 
 SQLite esta en el almacenamiento privado, **sin cifrado**: usar solo datos
-ficticios. API real, idempotencia de servidor, cifrado, foto/firma/GPS y push
-no quedan certificados por estas pruebas.
+ficticios. Idempotencia durable del servidor, cifrado, foto/firma/GPS y push
+no quedan certificados por estas pruebas. El contrato v1 permite rechazar un
+reintento ya aplicado; se conserva el comprobante para no perder evidencia.
 
 ## Futuro workflow separado
 

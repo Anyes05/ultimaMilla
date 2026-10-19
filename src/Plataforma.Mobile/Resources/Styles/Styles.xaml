@@ -30,9 +30,15 @@
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontAttributes" Value="Bold" />
         <Setter Property="Padding" Value="10,6" />
-        <Setter Property="TextColor" Value="#1e40af" />
-        <Setter Property="BackgroundColor" Value="#dbeafe" />
+        <Setter Property="TextColor" Value="#334155" />
+        <Setter Property="BackgroundColor" Value="#e2e8f0" />
         <Style.Triggers>
+            <DataTrigger TargetType="Label"
+                         Binding="{Binding Estado, x:DataType=models:Envio}"
+                         Value="{x:Static models:EstadoEnvio.EnTransito}">
+                <Setter Property="TextColor" Value="#1e40af" />
+                <Setter Property="BackgroundColor" Value="#dbeafe" />
+            </DataTrigger>
             <DataTrigger TargetType="Label"
                          Binding="{Binding Estado, x:DataType=models:Envio}"
                          Value="{x:Static models:EstadoEnvio.Entregado}">

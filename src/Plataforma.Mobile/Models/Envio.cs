@@ -4,7 +4,14 @@ public enum EstadoEnvio
 {
     EnTransito,
     Entregado,
-    Extraviado
+    Extraviado,
+    Admitido,
+    EnDeposito,
+    AsignadoARuta,
+    NoEntregado,
+    Reprogramado,
+    EnDevolucion,
+    Devuelto
 }
 
 public enum EstadoSincronizacion
@@ -30,7 +37,7 @@ public sealed record Envio(
     public string EstadoLocalTexto => Sincronizacion switch
     {
         EstadoSincronizacion.Pendiente => "Entrega guardada en SQLite: pendiente",
-        EstadoSincronizacion.Sincronizado => "Entrega aceptada por el servidor simulado",
+        EstadoSincronizacion.Sincronizado => "Entrega aceptada por el servidor",
         EstadoSincronizacion.Rechazado => $"Rechazada: {MotivoRechazo} Datos locales conservados.",
         _ => "Sin entrega local"
     };

@@ -4,6 +4,10 @@ namespace Plataforma.Mobile.Services;
 
 public interface IRepartidorService
 {
+    bool ModoDemo { get => true; set { if (!value) throw new InvalidOperationException("Este servicio solo admite demo."); } }
+    Task<bool> IniciarSesionAsync(string usuario, string clave) => Task.FromResult(IniciarSesion(usuario, clave));
+    Task<ResultadoSincronizacion> SincronizarAsync() => Task.FromResult(Sincronizar());
+    Task DescargarRutaAsync() => Task.CompletedTask;
     bool HaySesion { get; }
     bool ConexionSimulada { get; set; }
     bool IniciarSesion(string usuario, string clave);

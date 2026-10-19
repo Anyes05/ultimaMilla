@@ -33,7 +33,13 @@ Para crear una migración posterior, defina `ConnectionStrings__Default` en la t
 dotnet ef migrations add NombreDeLaMigracion --project src/Plataforma.Infrastructure --startup-project src/Plataforma.Backoffice
 ```
 
-## Aplicacion movil: avance offline del 15/10
+## Aplicacion movil: integracion API del 19/10
+
+La app usa por defecto `https://api.tallernet.cloud-ip.cc/` para login Bearer,
+descarga de rutas y sincronizacion. El selector **Usar demo (sin API)** mantiene
+el doble como modo explicito, con SQLite separado. Los contratos ya son
+[aceptados v1](contracts/repartidor/README.md).
+Ver [prerrequisitos, comandos y recorrido de API](src/Plataforma.Mobile/README.md).
 
 El proyecto [Plataforma.Mobile](src/Plataforma.Mobile/Plataforma.Mobile.csproj) usa
 MAUI .NET 10 y CommunityToolkit.Mvvm. Sigue fuera de `Plataforma.sln` para no
@@ -57,19 +63,19 @@ mantienen los controles MAUI y una variante oscura; no se incorporo Bootstrap
 ni se cambiaron los flujos por adaptar el estilo. La fuente sigue siendo la
 Open Sans ya incluida en la app (Inter no esta incluida).
 
-Recorrido de prueba, sin levantar el backend:
+Recorrido del doble, sin levantar el backend (activar **Usar demo (sin API)**):
 
 1. Ingresar con `alvaro@demo.test` / `Demo123!`. Es un acceso fijo de
-   demostracion, no autenticacion de produccion ni un contrato acordado con la API.
-2. Ver los tres envios ficticios y desactivar **Conexion simulada**.
+   demostracion, no autenticacion de produccion.
+2. Ver los tres envios ficticios y desactivar **Permitir conexion**.
    Tambien se puede activar el modo avion del telefono: este doble no usa la red.
 3. Registrar una entrega con nombre ficticio. Queda pendiente en SQLite; se
    puede seguir operando sin conexion. Sincronizar sin conexion simulada informa el error
    y conserva los datos.
-4. Cerrar completamente la app y abrirla. Pulsar **Continuar sesion demo guardada
-   (sin red)**; recupera la misma ruta y sus entregas, sin descargar ni reemplazar
+4. Cerrar completamente la app y abrirla. Seleccionar demo y pulsar
+   **Continuar sesion guardada (sin red)**; recupera la misma ruta y sus entregas, sin descargar ni reemplazar
    la cola. Es una facilidad del doble, no autenticacion offline de produccion.
-5. Activar la conexion simulada y pulsar **Sincronizar demo**. `DEMO-001` se acepta; `DEMO-002` y
+5. Activar **Permitir conexion** y pulsar **Sincronizar**. `DEMO-001` se acepta; `DEMO-002` y
    `DEMO-003` simulan cambios posteriores en el servidor a Entregado y
    Extraviado. Se rechazan sin sobrescribir el servidor ni borrar el comprobante
    local. Repetir la sincronizacion no duplica entregas aceptadas.
@@ -82,16 +88,15 @@ Recorrido de prueba, sin levantar el backend:
 Desinstalar la app o borrar sus datos si elimina la base. El interruptor solo
 simula disponibilidad del servidor; no mide la conectividad real.
 La base aun no esta cifrada: use exclusivamente datos ficticios. Quedan fuera de
-este avance API/autenticacion real y capacidades de terreno (foto/firma/GPS).
+este avance las capacidades de terreno (foto/firma/GPS).
 
-**Contratos provisionales:** a pedido de Alvaro se creo una
-[propuesta de JSON para revisar con Ana](contracts/repartidor/README.md).
+**Contratos aceptados v1:** los [JSON del repartidor](contracts/repartidor/README.md)
+se usan tanto para el intercambio HTTP como para el doble.
 El login y la ruta del doble leen esos archivos; la sincronizacion intercambia
 JSON con los datos de la cola SQLite. Los ejemplos estan incluidos como recursos
 desde `contracts/repartidor`, sin mantener otra copia en la app.
-Las pruebas verifican solicitudes y respuestas de ejemplo. No hay HTTP ni API
-real, y **el formato sigue pendiente de acuerdo con Ana**. El documento detalla
-que campos vienen de Application y cuales son propuestas nuevas.
+Las pruebas verifican solicitudes y respuestas de ejemplo y el cliente HTTP.
+La clave no se persiste; el token API se almacena con MAUI SecureStorage.
 
 Las pruebas del recorrido y los ViewModels se ejecutan por separado:
 

@@ -13,13 +13,19 @@
         <VerticalStackLayout Spacing="6">
             <Label Text="ULTIMA MILLA / REPARTIDOR" Style="{StaticResource SectionLabel}" />
             <Label Text="{Binding Titulo}" Style="{StaticResource HeadingLabel}" FontSize="20" />
-            <Label Text="DEMO: ruta y cola en SQLite. Sin API real; solo datos ficticios (base sin cifrado)." Style="{StaticResource MutedLabel}" />
+            <Label Text="{Binding ModoTexto}" Style="{StaticResource MutedLabel}" />
+            <Label Text="Solo datos ficticios: SQLite aun no esta cifrado." Style="{StaticResource MutedLabel}" />
             <HorizontalStackLayout Spacing="10">
-                <Label Text="Conexion simulada" VerticalOptions="Center" />
+                <Label Text="Permitir conexion" VerticalOptions="Center" />
                 <Switch IsToggled="{Binding ConexionSimulada}" AutomationId="ConexionSimulada" />
             </HorizontalStackLayout>
             <Label Text="{Binding Resumen}" AutomationId="RutaResumen" FontAttributes="Bold" />
-            <Label Text="Prueba: 001 se acepta; 002 se rechaza por Entregado; 003 por Extraviado." Style="{StaticResource MutedLabel}" />
+            <Label Text="Prueba: 001 se acepta; 002 se rechaza por Entregado; 003 por Extraviado." IsVisible="{Binding ModoDemo}" Style="{StaticResource MutedLabel}" />
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                <Button Text="Descargar ruta" Command="{Binding DescargarRutaCommand}" Style="{StaticResource SecondaryButton}" />
+                <Button Grid.Column="1" Text="Volver al acceso" Command="{Binding VolverAccesoCommand}" Style="{StaticResource SecondaryButton}" />
+            </Grid>
+            <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" />
         </VerticalStackLayout>
         <Label Grid.Row="1" Text="{Binding Mensaje}" AutomationId="RutaMensaje"
                SemanticProperties.Description="{Binding Mensaje}" />
@@ -48,7 +54,7 @@
             </CollectionView.ItemTemplate>
         </CollectionView>
         <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="8">
-            <Button Text="Sincronizar demo" Command="{Binding SincronizarCommand}"
+            <Button Text="Sincronizar" Command="{Binding SincronizarCommand}"
                     AutomationId="RutaSincronizar" />
             <Button Grid.Column="1" Text="Cerrar sesion" Command="{Binding CerrarSesionCommand}" Style="{StaticResource SecondaryButton}" />
         </Grid>
@@ -59,7 +65,7 @@
               <Border Padding="20" VerticalOptions="Start">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="COMPROBANTE DE ENTREGA" Style="{StaticResource SectionLabel}" />
-                    <Label Text="Registrar entrega de demostracion" Style="{StaticResource HeadingLabel}" FontSize="22" />
+                    <Label Text="Registrar entrega" Style="{StaticResource HeadingLabel}" FontSize="22" />
                     <Label Text="{Binding EnvioSeleccionado.NumeroSeguimiento}" Style="{StaticResource SectionLabel}" />
                     <Label Text="Nombre de quien recibe (dato ficticio)" FontAttributes="Bold" />
                     <Entry Text="{Binding NombreReceptor}" MaxLength="100"
