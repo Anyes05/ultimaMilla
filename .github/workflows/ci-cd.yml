@@ -107,5 +107,15 @@ jobs:
             | sed -e "s|tallernet/backend:bootstrap|$ECR_REGISTRY/tallernet/backend:$IMAGE_TAG|g" \
                   -e "s|tallernet/frontend:bootstrap|$ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG|g" \
             | kubectl apply -f -
-          kubectl -n tallernet rollout status deployment/backoffice --timeout=5m
-          kubectl -n tallernet rollout status deployment/portal --timeout=5m
+          rollout() {
+            local deployment="$1"
+            if ! kubectl -n tallernet rollout status "deployment/$deployment" --timeout=7m; then
+              kubectl -n tallernet get pods -o wide
+              kubectl -n tallernet describe "deployment/$deployment"
+              kubectl -n tallernet get events --sort-by=.metadata.creationTimestamp
+              kubectl -n tallernet logs "deployment/$deployment" --all-containers=true --tail=200 || true
+              exit 1
+            fi
+          }
+          rollout backoffice
+          rollout portal

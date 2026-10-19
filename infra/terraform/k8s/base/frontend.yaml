@@ -39,6 +39,12 @@ spec:
                 secretKeyRef:
                   name: tallernet-redis-credentials
                   key: redis-password
+          startupProbe:
+            httpGet:
+              path: /live
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
           readinessProbe:
             httpGet:
               path: /ready
@@ -108,6 +114,12 @@ spec:
                 secretKeyRef:
                   name: tallernet-redis-credentials
                   key: redis-password
+          startupProbe:
+            httpGet:
+              path: /live
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
           readinessProbe:
             httpGet:
               path: /ready
