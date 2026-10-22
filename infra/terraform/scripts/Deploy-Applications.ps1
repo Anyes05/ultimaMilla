@@ -1,5 +1,4 @@
 param(
-    [Parameter(Mandatory)]
     [ValidatePattern("^[0-9a-f]{40}$")]
     [string]$ImageTag,
     [string]$Namespace = "tallernet",
@@ -11,6 +10,16 @@ $ErrorActionPreference = "Stop"
 
 $terraformDirectory = Split-Path -Parent $PSScriptRoot
 Set-Location $terraformDirectory
+
+if ([string]::IsNullOrWhiteSpace($ImageTag)) {
+    $repositoryRoot = Split-Path -Parent (Split-Path -Parent $terraformDirectory)
+    $ImageTag = (& git -C $repositoryRoot rev-parse HEAD).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "No se pudo obtener el SHA del commit actual. Indique -ImageTag con el SHA publicado por CI/CD."
+    }
+
+    Write-Host "Usando la imagen del commit actual: $ImageTag"
+}
 
 function Assert-Command {
     param([Parameter(Mandatory)][string]$Name)
@@ -48,6 +57,7 @@ function Invoke-KubectlApply {
 Assert-Command -Name "aws"
 Assert-Command -Name "kubectl"
 Assert-Command -Name "terraform"
+Assert-Command -Name "git"
 
 $clusterName = (& terraform output -raw eks_cluster_name).Trim()
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

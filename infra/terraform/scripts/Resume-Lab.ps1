@@ -5,6 +5,7 @@ param(
     [int]$MinimumSize = 2,
     [int]$DesiredSize = 2,
     [int]$MaximumSize = 4,
+    [string]$Region,
     [switch]$Force
 )
 
@@ -30,14 +31,19 @@ function Wait-NodeGroupActive {
 Assert-Command -Name "aws"
 Assert-Command -Name "kubectl"
 
+if ([string]::IsNullOrWhiteSpace($Region)) {
+    $Region = (& aws configure get region).Trim()
+}
+if ([string]::IsNullOrWhiteSpace($Region)) { $Region = "us-east-1" }
+
 $nodeGroup = Get-NodeGroup
 $autoScalingGroupName = $nodeGroup.resources.autoScalingGroups[0].name
 $autoScalingGroup = (& aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $autoScalingGroupName --output json | ConvertFrom-Json).AutoScalingGroups[0]
 $inServiceCount = @($autoScalingGroup.Instances | Where-Object { $_.LifecycleState -eq "InService" }).Count
 
-$targetGroupArn = & aws elbv2 describe-target-groups --names $TargetGroupName --query "TargetGroups[0].TargetGroupArn" --output text
+$targetGroupArn = & aws elbv2 describe-target-groups --region $Region --names $TargetGroupName --query "TargetGroups[0].TargetGroupArn" --output text
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-$targetHealth = @(& aws elbv2 describe-target-health --target-group-arn $targetGroupArn --output json | ConvertFrom-Json).TargetHealthDescriptions
+$targetHealth = @(& aws elbv2 describe-target-health --region $Region --target-group-arn $targetGroupArn --output json | ConvertFrom-Json).TargetHealthDescriptions
 $healthyTargetCount = @($targetHealth | Where-Object { $_.TargetHealth.State -eq "healthy" }).Count
 
 if (-not $Force -and $inServiceCount -ge $DesiredSize -and $healthyTargetCount -ge $DesiredSize) {
@@ -47,29 +53,34 @@ if (-not $Force -and $inServiceCount -ge $DesiredSize -and $healthyTargetCount -
 
 Write-Host "Recuperando node group $NodeGroupName. Estado actual: $($nodeGroup.status), nodos InService: $inServiceCount, targets saludables: $healthyTargetCount."
 
-& aws eks update-nodegroup-config `
+& aws eks update-nodegroup-config --region $Region `
     --cluster-name $ClusterName `
     --nodegroup-name $NodeGroupName `
     --scaling-config "minSize=0,maxSize=$MaximumSize,desiredSize=0" | Out-Null
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Wait-NodeGroupActive
 
-& aws eks update-nodegroup-config `
+& aws eks update-nodegroup-config --region $Region `
     --cluster-name $ClusterName `
     --nodegroup-name $NodeGroupName `
     --scaling-config "minSize=$MinimumSize,maxSize=$MaximumSize,desiredSize=$DesiredSize" | Out-Null
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Wait-NodeGroupActive
 
-$awsRegion = (& aws configure get region).Trim()
-if ([string]::IsNullOrWhiteSpace($awsRegion)) { $awsRegion = "us-east-1" }
-
-& aws eks update-kubeconfig --region $awsRegion --name $ClusterName
+& aws eks update-kubeconfig --region $Region --name $ClusterName
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & kubectl wait --for=condition=Ready node --all --timeout=10m
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-& aws elbv2 wait target-in-service --target-group-arn $targetGroupArn
+$ingressController = & kubectl --namespace ingress-nginx get deployment ingress-nginx-controller --ignore-not-found -o name
+if ([string]::IsNullOrWhiteSpace(($ingressController | Out-String))) {
+    throw "NGINX Ingress no esta instalado. Ejecute Deploy-Lab.ps1 para completar la fase de plataforma antes de reanudar el laboratorio."
+}
+
+& kubectl --namespace ingress-nginx rollout status deployment/ingress-nginx-controller --timeout=10m
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+& aws elbv2 wait target-in-service --region $Region --target-group-arn $targetGroupArn
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Laboratorio reanudado. EKS y el ALB recuperaron los nodos automaticamente."

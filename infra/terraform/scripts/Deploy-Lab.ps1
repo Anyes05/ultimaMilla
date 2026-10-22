@@ -2,6 +2,7 @@ param(
     [ValidateSet("Plan", "Apply")]
     [string]$Action = "Apply",
     [switch]$ValidateManualDns,
+    [switch]$SkipApplicationDnsConfirmation,
     [ValidatePattern("^[0-9a-f]{40}$")]
     [string]$ApplicationImageTag
 )
@@ -104,6 +105,111 @@ function Initialize-NginxHelmRepository {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
+function Get-StateResources {
+    if (-not (Test-Path "terraform.tfstate")) {
+        return @()
+    }
+
+    $resources = @(& terraform state list)
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    return $resources
+}
+
+function Import-KubernetesResourceIfUnmanaged {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Address,
+        [Parameter(Mandatory)]
+        [string]$ImportId,
+        [Parameter(Mandatory)]
+        [string]$Resource,
+        [string]$Namespace
+    )
+
+    if ($Address -in @(Get-StateResources)) {
+        return
+    }
+
+    $arguments = @("get", $Resource, "--ignore-not-found", "-o", "name")
+    if (-not [string]::IsNullOrWhiteSpace($Namespace)) {
+        $arguments += @("--namespace", $Namespace)
+    }
+
+    $existingResource = & kubectl @arguments
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($existingResource | Out-String))) {
+        return
+    }
+
+    Write-Host "Adoptando recurso Kubernetes existente: $Address"
+    & terraform import -input=false $Address $ImportId
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+function Repair-UnmanagedHelmRelease {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Address,
+        [Parameter(Mandatory)]
+        [string]$Name,
+        [Parameter(Mandatory)]
+        [string]$Namespace
+    )
+
+    if ($Address -in @(Get-StateResources)) {
+        return
+    }
+
+    $releases = @(& helm list --all --namespace $Namespace --filter "^$Name$" --output json | ConvertFrom-Json)
+    if ($LASTEXITCODE -ne 0 -or $releases.Count -eq 0) {
+        return
+    }
+
+    if ($releases[0].status -eq "deployed") {
+        Write-Host "Adoptando release Helm existente: $Name"
+        & terraform import -input=false $Address "$Namespace/$Name"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        return
+    }
+
+    Write-Host "Eliminando release Helm incompleto: $Name ($($releases[0].status))"
+    & helm uninstall $Name --namespace $Namespace --wait
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+function Update-KubeconfigForExistingCluster {
+    if ("aws_eks_cluster.main" -notin @(Get-StateResources)) {
+        return
+    }
+
+    $clusterName = (& terraform output -raw eks_cluster_name).Trim()
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    $awsRegion = (& aws configure get region).Trim()
+    if ([string]::IsNullOrWhiteSpace($awsRegion)) { $awsRegion = "us-east-1" }
+
+    & aws eks update-kubeconfig --region $awsRegion --name $clusterName | Out-Null
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+function Repair-InterruptedPlatformState {
+    $stateResources = @(Get-StateResources)
+    if ("aws_eks_cluster.main" -notin $stateResources) {
+        return
+    }
+
+    if ($null -eq (Get-Command kubectl -ErrorAction SilentlyContinue) -or $null -eq (Get-Command helm -ErrorAction SilentlyContinue)) {
+        return
+    }
+
+    Import-KubernetesResourceIfUnmanaged -Address "kubernetes_namespace_v1.application[0]" -ImportId "tallernet" -Resource "namespace/tallernet"
+    Import-KubernetesResourceIfUnmanaged -Address "kubernetes_deployment_v1.redis[0]" -ImportId "tallernet/tallernet-redis" -Resource "deployment/tallernet-redis" -Namespace "tallernet"
+    Import-KubernetesResourceIfUnmanaged -Address "kubernetes_service_v1.redis[0]" -ImportId "tallernet/tallernet-redis" -Resource "service/tallernet-redis" -Namespace "tallernet"
+    Import-KubernetesResourceIfUnmanaged -Address "kubernetes_deployment_v1.queue_worker[0]" -ImportId "tallernet/queue-worker" -Resource "deployment/queue-worker" -Namespace "tallernet"
+    Repair-UnmanagedHelmRelease -Address "helm_release.nginx_ingress[0]" -Name "ingress-nginx" -Namespace "ingress-nginx"
+    Repair-UnmanagedHelmRelease -Address "helm_release.rabbitmq[0]" -Name "tallernet-rabbitmq" -Namespace "tallernet"
+}
+
 function Get-AcmCertificateStatus {
     $certificateState = & terraform state show -no-color "aws_acm_certificate.public"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -184,12 +290,14 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Write-Host "Terraform solicita la contrasena de RDS antes de evaluar la configuracion; RDS se crea recien en su fase dedicada."
 Set-SensitiveEnvironmentVariable -Name "TF_VAR_database_master_password" -Prompt "Contrasena maestra de PostgreSQL"
 
+Update-KubeconfigForExistingCluster
+Repair-InterruptedPlatformState
+
 $fullTerraformArguments = @(
     "-input=false",
     "-var=install_platform=true"
 )
-$stateResources = @(& terraform state list)
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$stateResources = @(Get-StateResources)
 if ($Action -eq "Plan") {
     & terraform plan @fullTerraformArguments
 
@@ -198,8 +306,7 @@ if ($Action -eq "Plan") {
 
 Move-HttpListenerState -StateResources $stateResources
 
-$stateResources = @(& terraform state list)
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$stateResources = @(Get-StateResources)
 $phaseTerraformArguments = @($fullTerraformArguments)
 if ("aws_acm_certificate.legacy[0]" -in $stateResources) {
     $phaseTerraformArguments += "-var=retain_legacy_certificate=true"
@@ -256,7 +363,12 @@ Invoke-TerraformApplyPhase -Name "Fase 7 de 8: crear ALB con HTTPS" -Arguments $
 
 Show-ManualDnsRecords -OutputName "manual_application_dns_records" -Heading "CNAMEs publicos hacia el ALB"
 Write-Host "En Cloudns cree todos los CNAME mostrados, incluidos *, app, api y tracking. Copie Host y Valor exactamente como se muestran y use TTL 3600 (1 Hour)."
-Confirm-ManualCertificateRecords -Prompt "Cree todos los CNAME anteriores en Cloudns y escriba CONTINUAR cuando haya guardado los registros"
+if ($SkipApplicationDnsConfirmation) {
+    Write-Host "Omitiendo la confirmacion manual de CNAME porque ya fue completada en una ejecucion anterior."
+}
+else {
+    Confirm-ManualCertificateRecords -Prompt "Cree todos los CNAME anteriores en Cloudns y escriba CONTINUAR cuando haya guardado los registros"
+}
 
 Invoke-TerraformApplyPhase -Name "Fase 8 de 8: instalar NGINX, RabbitMQ, Redis y worker" -Arguments $fullTerraformArguments
 
