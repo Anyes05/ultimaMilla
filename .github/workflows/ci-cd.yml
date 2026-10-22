@@ -74,6 +74,10 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          if aws ecr describe-images --repository-name tallernet/backend --image-ids imageTag="$IMAGE_TAG" > /dev/null 2>&1; then
+            echo "La imagen tallernet/backend:$IMAGE_TAG ya existe; se reutilizara."
+            exit 0
+          fi
           docker build --file src/Plataforma.Backoffice/Dockerfile --tag tallernet-backoffice:$IMAGE_TAG .
           docker tag tallernet-backoffice:$IMAGE_TAG $ECR_REGISTRY/tallernet/backend:$IMAGE_TAG
           docker push $ECR_REGISTRY/tallernet/backend:$IMAGE_TAG
@@ -84,6 +88,10 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          if aws ecr describe-images --repository-name tallernet/frontend --image-ids imageTag="$IMAGE_TAG" > /dev/null 2>&1; then
+            echo "La imagen tallernet/frontend:$IMAGE_TAG ya existe; se reutilizara."
+            exit 0
+          fi
           docker build --file src/Plataforma.PortalComercio/Dockerfile --tag tallernet-portal:$IMAGE_TAG .
           docker tag tallernet-portal:$IMAGE_TAG $ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG
           docker push $ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG
