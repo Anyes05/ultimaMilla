@@ -3,7 +3,7 @@
 @using Plataforma.Application
 @using Plataforma.Domain
 @inject IHttpContextAccessor HttpContextAccessor
-@inject IEnvioRepositorio Repositorio
+@inject AdmitirEnvio AdmitirEnvio
 @inject ListarEnvios ListarEnvios
 @inject NavigationManager Navegacion
 
@@ -38,11 +38,41 @@
                         <InputText id="destinatario" @bind-Value="Formulario!.Destinatario" class="form-control form-control-lg" placeholder="Nombre y apellido" />
                         <ValidationMessage For="() => Formulario!.Destinatario" />
                     </div>
-                    <div class="mb-4">
+                    <div class="mb-3">
                         <label class="form-label fw-semibold" for="direccion">Dirección de entrega</label>
                         <InputText id="direccion" @bind-Value="Formulario!.Direccion" class="form-control form-control-lg" placeholder="Calle, número y localidad" />
                         <ValidationMessage For="() => Formulario!.Direccion" />
                     </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" for="email">Email del destinatario <span class="text-muted fw-normal">(opcional)</span></label>
+                        <InputText id="email" type="email" @bind-Value="Formulario!.Email" class="form-control" placeholder="Para enviarle el enlace de seguimiento" />
+                        <ValidationMessage For="() => Formulario!.Email" />
+                    </div>
+
+                    <h3 class="h6 mb-3">Datos para la tarifa</h3>
+                    <div class="row g-3 mb-3">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold" for="peso">Peso (kg)</label>
+                            <InputNumber id="peso" @bind-Value="Formulario!.PesoKg" class="form-control" step="0.1" min="0" />
+                            <ValidationMessage For="() => Formulario!.PesoKg" />
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold" for="distancia">Distancia (km)</label>
+                            <InputNumber id="distancia" @bind-Value="Formulario!.DistanciaKm" class="form-control" step="0.1" min="0" />
+                            <ValidationMessage For="() => Formulario!.DistanciaKm" />
+                        </div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-4 mb-4">
+                        <div class="form-check">
+                            <InputCheckbox id="urgente" @bind-Value="Formulario!.Urgente" class="form-check-input" />
+                            <label class="form-check-label" for="urgente">Envío urgente</label>
+                        </div>
+                        <div class="form-check">
+                            <InputCheckbox id="fragil" @bind-Value="Formulario!.Fragil" class="form-check-input" />
+                            <label class="form-check-label" for="fragil">Contenido frágil</label>
+                        </div>
+                    </div>
+                    <p class="small text-muted">La tarifa se calcula al crear el envío con el cuadro tarifario vigente de tu operador.</p>
                     <button type="submit" class="btn btn-primary btn-lg w-100">Crear envío</button>
                 </EditForm>
             </div>
@@ -98,7 +128,10 @@
                             </div>
                             <h3 class="h6 mb-1">@envio.Destinatario</h3>
                             <p class="text-muted mb-0">@envio.DireccionEntrega</p>
-                            <p class="small text-muted mt-3 mb-0">Creado @envio.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</p>
+                            <div class="d-flex justify-content-between small text-muted mt-3">
+                                <span>Creado @envio.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                <span>Tarifa <strong class="text-body">@Importe(envio.TarifaCalculada)</strong></span>
+                            </div>
                         </div>
                     </article>
                 </div>
@@ -112,6 +145,7 @@
     <div class="alert alert-success shadow-sm mt-4">
         <strong>Envío creado.</strong>
         <span class="d-block">Envío creado con éxito. Tracking: @TrackingCreado</span>
+        <span class="d-block">Tarifa calculada: @Importe(EnvioCreado!.TarifaCalculada)</span>
     </div>
 }
 
@@ -124,9 +158,11 @@
 
     private List<Envio> Envios { get; set; } = [];
     private string? mensajeError;
-    private bool MostrarConfirmacion =>
-        !string.IsNullOrWhiteSpace(TrackingCreado)
-        && Envios.Any(envio => envio.NumeroSeguimiento == TrackingCreado);
+    private Envio? EnvioCreado =>
+        string.IsNullOrWhiteSpace(TrackingCreado)
+            ? null
+            : Envios.FirstOrDefault(envio => envio.NumeroSeguimiento == TrackingCreado);
+    private bool MostrarConfirmacion => EnvioCreado is not null;
 
     protected override void OnInitialized()
     {
@@ -148,13 +184,28 @@
             return;
         }
 
-        var envio = Envio.Admitir(
-            acceso.OperadorId,
-            comercioId,
-            Formulario.Destinatario,
-            Formulario.Direccion);
+        Envio envio;
+        try
+        {
+            // El caso de uso calcula la tarifa con la regla vigente del operador (RF 9) y persiste el envío.
+            envio = await AdmitirEnvio.EjecutarAsync(
+                acceso.OperadorId,
+                comercioId,
+                Formulario.Destinatario,
+                Formulario.Direccion,
+                Formulario.Email?.Trim() ?? string.Empty,
+                Formulario.PesoKg,
+                Formulario.DistanciaKm,
+                Formulario.Fragil,
+                Formulario.Urgente);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            mensajeError = ex.Message;
+            await ActualizarEnviosAsync();
+            return;
+        }
 
-        await Repositorio.AgregarAsync(envio);
         mensajeError = null;
         Navegacion.NavigateTo(
             $"/?tracking={Uri.EscapeDataString(envio.NumeroSeguimiento)}#mis-envios",
@@ -179,6 +230,9 @@
             && acceso.Rol == Roles.Comercio
             && acceso.ComercioId.HasValue;
     }
+
+    private static string Importe(decimal valor) =>
+        valor.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("es-UY"));
 
     private static string EstadoClase(EstadoEnvio estado) => estado switch
     {
@@ -207,5 +261,18 @@
 
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La dirección es requerida.")]
         public string Direccion { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "El email no es válido.")]
+        public string? Email { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "1000", ErrorMessage = "El peso debe estar entre 0 y 1000 kg.")]
+        public decimal PesoKg { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "500", ErrorMessage = "La distancia debe estar entre 0 y 500 km.")]
+        public decimal DistanciaKm { get; set; }
+
+        public bool Urgente { get; set; }
+
+        public bool Fragil { get; set; }
     }
 }

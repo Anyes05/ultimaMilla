@@ -61,6 +61,10 @@
                         <a class="@ClaseNav("/Index")" asp-area="" asp-page="/Index">Monitoreo</a>
                         <a class="@ClaseNav("/Despacho")" asp-area="" asp-page="/Despacho">Despacho</a>
                         <a class="@ClaseNav("/Cache")" asp-area="" asp-page="/Cache">Caché</a>
+                        @if (usuario.IsInRole(Roles.Administrador))
+                        {
+                            <a class="@ClaseNav("/Tarifas")" asp-area="" asp-page="/Tarifas">Tarifas</a>
+                        }
                     </nav>
                 </div>
                 <div class="app-sidebar__user">

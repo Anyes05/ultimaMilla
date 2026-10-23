@@ -1,0 +1,158 @@
+@page
+@model TarifasModel
+@{
+    ViewData["Title"] = "Tarifas";
+    var vigente = Model.Vigente;
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @Model.ColorMarcaCss">Administración</p>
+        <h1 class="display-6 fw-bold mb-1">Cuadro tarifario</h1>
+        <p class="text-muted mb-0">Tarifa que se aplica al dar de alta un envío de <strong>@Model.Operador?.Nombre</strong>.</p>
+    </div>
+    <form method="post" action="/logout">
+        <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+    </form>
+</div>
+
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Tarifa vigente</h2>
+        @if (vigente is not null)
+        {
+            <span class="status-badge status-en-transito">Vigente</span>
+        }
+    </div>
+    <div class="card-body p-4">
+        @if (vigente is null)
+        {
+            <p class="text-muted mb-0">El operador no tiene una tarifa vigente: el alta de envíos va a fallar hasta que se publique una.</p>
+        }
+        else
+        {
+            <div class="row g-3 text-center">
+                <div class="col-6 col-md"><span class="small text-muted d-block">Precio base</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioBase)</strong></div>
+                <div class="col-6 col-md"><span class="small text-muted d-block">Por kg</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioPorKg)</strong></div>
+                <div class="col-6 col-md"><span class="small text-muted d-block">Por km</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioPorKm)</strong></div>
+                <div class="col-6 col-md"><span class="small text-muted d-block">Recargo frágil</span><strong class="fs-5">+@TarifasModel.Importe(vigente.RecargoFragil)</strong></div>
+                <div class="col-6 col-md"><span class="small text-muted d-block">Recargo urgente</span><strong class="fs-5">+@TarifasModel.Importe(vigente.RecargoUrgente)</strong></div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Probar tarifa</h2>
+    </div>
+    <div class="card-body p-4">
+        <form method="post" asp-page-handler="Simular">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="row g-3 align-items-end">
+                <div class="col-sm-3">
+                    <label class="form-label fw-semibold" asp-for="Simulacion.PesoKg">Peso (kg)</label>
+                    <input class="form-control" asp-for="Simulacion.PesoKg" type="number" step="0.1" min="0" />
+                    <span class="text-danger small" asp-validation-for="Simulacion.PesoKg"></span>
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label fw-semibold" asp-for="Simulacion.DistanciaKm">Distancia (km)</label>
+                    <input class="form-control" asp-for="Simulacion.DistanciaKm" type="number" step="0.1" min="0" />
+                    <span class="text-danger small" asp-validation-for="Simulacion.DistanciaKm"></span>
+                </div>
+                <div class="col-sm-3 d-flex flex-column gap-1">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" asp-for="Simulacion.Urgente" />
+                        <label class="form-check-label" asp-for="Simulacion.Urgente">Urgente</label>
+                    </div>
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" asp-for="Simulacion.Fragil" />
+                        <label class="form-check-label" asp-for="Simulacion.Fragil">Frágil</label>
+                    </div>
+                </div>
+                <div class="col-sm-3 text-sm-end">
+                    <button type="submit" class="btn btn-primary w-100" disabled="@(vigente is null)">Calcular</button>
+                </div>
+            </div>
+        </form>
+        @if (Model.ImporteSimulado is decimal importe)
+        {
+            <div class="alert alert-info mt-3 mb-0" role="status">
+                Un envío con estos datos se cobraría <strong>@TarifasModel.Importe(importe)</strong> con la tarifa vigente.
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Nueva versión</h2>
+        @if (!Model.VersionadoDisponible)
+        {
+            <span class="badge text-bg-warning">Pendiente</span>
+        }
+    </div>
+    <div class="card-body p-4">
+        @if (!Model.VersionadoDisponible)
+        {
+            <p class="small text-muted">
+                Disponible cuando esté el caso de uso de versionado. Publicar no modifica la tarifa actual:
+                crea una versión nueva y los envíos ya dados de alta conservan su tarifa.
+            </p>
+        }
+        <fieldset disabled="@(!Model.VersionadoDisponible)">
+            <div class="row g-3">
+                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-base">Precio base</label><input id="nv-base" class="form-control" type="number" step="0.01" min="0" value="@vigente?.PrecioBase" /></div>
+                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-kg">Por kg</label><input id="nv-kg" class="form-control" type="number" step="0.01" min="0" value="@vigente?.PrecioPorKg" /></div>
+                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-km">Por km</label><input id="nv-km" class="form-control" type="number" step="0.01" min="0" value="@vigente?.PrecioPorKm" /></div>
+                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-fragil">Recargo frágil</label><input id="nv-fragil" class="form-control" type="number" step="0.01" min="0" value="@vigente?.RecargoFragil" /></div>
+                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-urgente">Recargo urgente</label><input id="nv-urgente" class="form-control" type="number" step="0.01" min="0" value="@vigente?.RecargoUrgente" /></div>
+            </div>
+            <div class="d-flex justify-content-between align-items-end gap-3 mt-3 flex-wrap">
+                <div>
+                    <label class="form-label fw-semibold" for="nv-desde">Vigente desde</label>
+                    <input id="nv-desde" class="form-control" type="datetime-local" />
+                </div>
+                <button type="button" class="btn btn-primary">Publicar nueva versión</button>
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Historial de versiones</h2>
+        @if (!Model.VersionadoDisponible)
+        {
+            <span class="badge text-bg-warning">Pendiente</span>
+        }
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Desde</th>
+                        <th>Hasta</th>
+                        <th>Base</th>
+                        <th>Por kg</th>
+                        <th>Por km</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            El historial se mostrará cuando esté disponible el listado de versiones.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

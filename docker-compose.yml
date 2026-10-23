@@ -88,6 +88,19 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  worker:
+    build:
+      context: .
+      dockerfile: src/Plataforma.Worker/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: ${RABBITMQ_USERNAME:-tallernet_worker}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD:-tallernet_dev}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
 volumes:
   postgres-data:
   portal-keys:
