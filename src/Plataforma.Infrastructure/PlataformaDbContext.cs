@@ -44,6 +44,9 @@ public class PlataformaDbContext : DbContext
     public DbSet<Parada> Paradas => Set<Parada>();
     public DbSet<Vehiculo> Vehiculos => Set<Vehiculo>();
     public DbSet<PruebaDeEntrega> PruebasDeEntrega => Set<PruebaDeEntrega>();
+    public DbSet<MensajeOutbox> MensajesOutbox => Set<MensajeOutbox>();
+    public DbSet<DispositivoRepartidor> DispositivosRepartidor => Set<DispositivoRepartidor>();
+    public DbSet<EventoSincronizacionProcesado> EventosSincronizacionProcesados => Set<EventoSincronizacionProcesado>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -71,6 +74,9 @@ public class PlataformaDbContext : DbContext
         AplicarFiltroOperador<Parada>(modelBuilder);
         AplicarFiltroOperador<Vehiculo>(modelBuilder);
         AplicarFiltroOperador<PruebaDeEntrega>(modelBuilder);
+        AplicarFiltroOperador<MensajeOutbox>(modelBuilder);
+        AplicarFiltroOperador<DispositivoRepartidor>(modelBuilder);
+        AplicarFiltroOperador<EventoSincronizacionProcesado>(modelBuilder);
 
         modelBuilder.Entity<Envio>()
             .HasIndex(envio => envio.NumeroSeguimiento)
@@ -84,6 +90,28 @@ public class PlataformaDbContext : DbContext
             .Property(operador => operador.ZonaHoraria)
             .HasMaxLength(64)
             .HasDefaultValue(Operador.ZonaHorariaUruguay);
+
+        modelBuilder.Entity<MensajeOutbox>(entidad =>
+        {
+            entidad.HasKey(mensaje => mensaje.EventId);
+            entidad.Property(mensaje => mensaje.Tipo).HasMaxLength(100);
+            entidad.Property(mensaje => mensaje.Version).HasMaxLength(16);
+            entidad.HasIndex(mensaje => new { mensaje.OperadorId, mensaje.PublicadoEn });
+        });
+
+        modelBuilder.Entity<DispositivoRepartidor>(entidad =>
+        {
+            entidad.HasKey(dispositivo => dispositivo.Id);
+            entidad.Property(dispositivo => dispositivo.Token).HasMaxLength(512);
+            entidad.Property(dispositivo => dispositivo.Plataforma).HasMaxLength(16);
+            entidad.HasIndex(dispositivo => new { dispositivo.OperadorId, dispositivo.Token }).IsUnique();
+        });
+
+        modelBuilder.Entity<EventoSincronizacionProcesado>(entidad =>
+        {
+            entidad.HasKey(evento => evento.EventoId);
+            entidad.HasIndex(evento => new { evento.OperadorId, evento.EnvioId });
+        });
     }
 
     private void AplicarFiltroOperador<TEntidad>(ModelBuilder modelBuilder)

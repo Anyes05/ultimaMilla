@@ -11,6 +11,8 @@ deben respetarlos.
 | `POST /api/repartidor/login` | [login.request.json](login.request.json) | [login.response.json](login.response.json) |
 | `GET /api/repartidor/rutas/hoy` | Sin cuerpo (Bearer) | [rutas-hoy.response.json](rutas-hoy.response.json) |
 | `POST /api/repartidor/sincronizacion` | [sincronizacion.request.json](sincronizacion.request.json) | [sincronizacion.response.json](sincronizacion.response.json) |
+| `POST /api/repartidor/dispositivos` | [dispositivos.request.json](dispositivos.request.json) | [dispositivos.response.json](dispositivos.response.json) |
+| `DELETE /api/repartidor/dispositivos/{token}` | Token en la ruta (Bearer) | `204` sin cuerpo |
 
 ## Convenciones
 
@@ -43,9 +45,10 @@ deben respetarlos.
 - Respuesta parcial: `aplicados` / `rechazados`.
 - **`estadoActual`** en rechazos cuando el envío existe en servidor (conflicto o
   transición inválida). Si el envío no está en la ruta, puede omitirse (`null`).
-- Si el envío ya cambió en servidor (p. ej. otro canal), el reintento con el
-  mismo `eventoId` se **rechaza** con `estadoActual` (no se sobrescribe).
-  La idempotencia durable por `eventoId` queda para una iteración posterior.
+- Si el envío ya cambió en servidor por **otro** canal (transición inválida), el
+  reintento se **rechaza** con `estadoActual` (no se sobrescribe).
+- Si el mismo `eventoId` ya fue **aplicado** (OK perdido / reintento offline),
+  el servidor responde de nuevo en `aplicados` sin volver a mutar (idempotencia durable).
 - Errores de lote inválido (duplicados, fecha ajena): `400`.
 
 ## Errores HTTP mínimos
@@ -58,7 +61,13 @@ deben respetarlos.
 
 Cuerpo de error sugerido: `{ "mensaje": "texto legible" }`.
 
+### Dispositivos (FCM / push)
+- `POST` registra o reutiliza el token del dispositivo del repartidor autenticado.
+- `plataforma`: `android` | `ios` | `web`.
+- `DELETE /dispositivos/{token}` elimina el registro (`204` si existía, `404` si no).
+- Requiere Bearer de repartidor.
+
 ## Alcance fuera de este contrato
 
 Seguimiento público Redis y webhooks no viven aquí; los define Ana en Application
-(`SeguimientoVisible`, claves de cache).
+(`SeguimientoVisible`, claves de cache). Mensajes de dominio: `contracts/mensajes/v1/`.

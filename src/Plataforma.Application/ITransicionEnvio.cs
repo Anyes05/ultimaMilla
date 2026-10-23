@@ -8,7 +8,7 @@ namespace Plataforma.Application;
 /// </summary>
 public interface ITransicionEnvio
 {
-    Task EjecutarAsync(
+    Task<ResultadoTransicionEnvio> EjecutarAsync(
         Guid envioId,
         Guid operadorId,
         EstadoEnvio nuevoEstado,
@@ -18,3 +18,9 @@ public interface ITransicionEnvio
 
     IReadOnlyList<EstadoEnvio> DestinosDesde(EstadoEnvio estadoActual);
 }
+
+public sealed record ResultadoTransicionEnvio(
+    Guid EnvioId,
+    EstadoEnvio EstadoAnterior,
+    EstadoEnvio EstadoNuevo,
+    Guid? EventId);

@@ -63,7 +63,12 @@ public class RepartidoresYSeguimientoTests
         }
 
         await using var contexto = CrearContexto(db, DatosSemilla.OperadorNorteId);
-        var casoUso = new CambiarEstadoEnvio(new EnvioRepositorio(contexto), cache);
+        var outbox = new OutboxRepositorio(contexto);
+        var casoUso = new CambiarEstadoEnvio(
+            new EnvioRepositorio(contexto),
+            new RegistrarOutboxEstado(outbox, new HistorialEstadoRepositorio(contexto)),
+            new PublicarOutboxPendientes(outbox, new PublicadorMensajesPrueba { Disponible = false }),
+            cache);
 
         await casoUso.EjecutarAsync(envioId, DatosSemilla.OperadorNorteId, EstadoEnvio.EnDeposito);
 

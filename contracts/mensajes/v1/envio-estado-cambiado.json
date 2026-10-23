@@ -1,0 +1,8 @@
+{
+  "eventId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+  "fecha": "2026-10-22T21:00:00-03:00",
+  "operadorId": "11111111-1111-1111-1111-111111111111",
+  "envioId": "40000000-0000-0000-0000-000000000001",
+  "estadoAnterior": "EnTransito",
+  "estadoNuevo": "Entregado"
+}

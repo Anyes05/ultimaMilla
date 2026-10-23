@@ -20,6 +20,7 @@ public class IndexModel : PageModel
     public EstadoEnvio? FiltroEstado { get; private set; }
     public Operador? Operador { get; private set; }
     public string? Error { get; private set; }
+    public string? Mensaje { get; private set; }
     public string ColorMarcaCss => Operador?.ColorMarca switch
     {
         "verde" => "#198754",
@@ -37,6 +38,7 @@ public class IndexModel : PageModel
     public async Task OnGetAsync(EstadoEnvio? estado = null, int pagina = 1)
     {
         Error = TempData["Error"] as string;
+        Mensaje = TempData["Mensaje"] as string;
         FiltroEstado = estado;
         Pagina = pagina < 1 ? 1 : pagina;
         await CargarAsync();
@@ -49,7 +51,12 @@ public class IndexModel : PageModel
 
         try
         {
-            await _transicion.EjecutarAsync(envioId, acceso.OperadorId, nuevoEstado, User.Identity?.Name);
+            var resultado = await _transicion.EjecutarAsync(
+                envioId, acceso.OperadorId, nuevoEstado, User.Identity?.Name);
+
+            TempData["Mensaje"] = resultado.EventId is Guid eventId
+                ? $"Estado {resultado.EstadoAnterior} → {resultado.EstadoNuevo}. EventId outbox: {eventId}"
+                : $"Estado actualizado a {resultado.EstadoNuevo}.";
         }
         catch (InvalidOperationException ex)
         {

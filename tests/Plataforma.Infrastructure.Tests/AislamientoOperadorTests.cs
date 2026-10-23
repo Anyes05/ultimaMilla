@@ -88,7 +88,12 @@ public class AislamientoOperadorTests
         }
 
         await using var contextoNorte = CrearContexto(db, DatosSemilla.OperadorNorteId);
-        var casoUso = new CambiarEstadoEnvio(new EnvioRepositorio(contextoNorte), new CacheLecturaMemoria());
+        var outbox = new OutboxRepositorio(contextoNorte);
+        var casoUso = new CambiarEstadoEnvio(
+            new EnvioRepositorio(contextoNorte),
+            new RegistrarOutboxEstado(outbox, new HistorialEstadoRepositorio(contextoNorte)),
+            new PublicarOutboxPendientes(outbox, new PublicadorMensajesPrueba { Disponible = false }),
+            new CacheLecturaMemoria());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             casoUso.EjecutarAsync(envioSurId, DatosSemilla.OperadorNorteId, EstadoEnvio.EnDeposito));
@@ -113,7 +118,12 @@ public class AislamientoOperadorTests
         }
 
         await using var contextoNorte = CrearContexto(db, DatosSemilla.OperadorNorteId);
-        var casoUso = new CambiarEstadoEnvio(new EnvioRepositorio(contextoNorte), new CacheLecturaMemoria());
+        var outbox = new OutboxRepositorio(contextoNorte);
+        var casoUso = new CambiarEstadoEnvio(
+            new EnvioRepositorio(contextoNorte),
+            new RegistrarOutboxEstado(outbox, new HistorialEstadoRepositorio(contextoNorte)),
+            new PublicarOutboxPendientes(outbox, new PublicadorMensajesPrueba { Disponible = false }),
+            new CacheLecturaMemoria());
 
         await casoUso.EjecutarAsync(envioNorteId, DatosSemilla.OperadorNorteId, EstadoEnvio.EnDeposito);
 

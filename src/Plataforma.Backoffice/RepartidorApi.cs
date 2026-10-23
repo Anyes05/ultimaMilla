@@ -99,6 +99,56 @@ public static class RepartidorApi
             }
         }).RequireAuthorization();
 
+        repartidor.MapPost("/dispositivos", async (
+            ClaimsPrincipal principal,
+            DispositivoSolicitud solicitud,
+            RegistrarDispositivoRepartidor registrar,
+            CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol != Roles.Repartidor ||
+                acceso.RepartidorId is not Guid repartidorId)
+                return Results.Unauthorized();
+
+            try
+            {
+                var dispositivo = await registrar.EjecutarAsync(
+                    acceso.OperadorId,
+                    repartidorId,
+                    solicitud.Token,
+                    solicitud.Plataforma,
+                    cancellationToken);
+                return Results.Json(
+                    new
+                    {
+                        dispositivo.Id,
+                        dispositivo.Token,
+                        dispositivo.Plataforma,
+                        dispositivo.RegistradoEn
+                    },
+                    ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (ArgumentException ex)
+            {
+                return Results.Json(new { mensaje = ex.Message }, statusCode: StatusCodes.Status400BadRequest);
+            }
+        }).RequireAuthorization();
+
+        repartidor.MapDelete("/dispositivos/{token}", async (
+            ClaimsPrincipal principal,
+            string token,
+            QuitarDispositivoRepartidor quitar,
+            CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol != Roles.Repartidor ||
+                acceso.RepartidorId is not Guid repartidorId)
+                return Results.Unauthorized();
+
+            var ok = await quitar.EjecutarAsync(acceso.OperadorId, repartidorId, token, cancellationToken);
+            return ok ? Results.NoContent() : Results.NotFound(new { mensaje = "Dispositivo no registrado." });
+        }).RequireAuthorization();
+
         app.MapPost("/api/despacho", async (
             ClaimsPrincipal principal,
             DespachoSolicitud solicitud,
@@ -136,6 +186,45 @@ public static class RepartidorApi
                 : Results.Json(visible, ObtenerRutasDeHoy.OpcionesJson);
         });
 
+        /// <summary>
+        /// Caso real Backoffice/API: cambiar estado genera outbox + intenta publicar.
+        /// Respuesta incluye eventId para verificar en RabbitMQ / MensajesOutbox.
+        /// </summary>
+        app.MapPost("/api/envios/{envioId:guid}/estado", async (
+            Guid envioId,
+            CambioEstadoSolicitud solicitud,
+            ClaimsPrincipal principal,
+            ITransicionEnvio transicion,
+            CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.Despachador or Roles.Administrador or Roles.OperarioDeposito))
+                return Results.Unauthorized();
+
+            try
+            {
+                var resultado = await transicion.EjecutarAsync(
+                    envioId,
+                    acceso.OperadorId,
+                    solicitud.NuevoEstado,
+                    principal.Identity?.Name,
+                    solicitud.Motivo,
+                    cancellationToken);
+
+                return Results.Json(new
+                {
+                    resultado.EnvioId,
+                    estadoAnterior = resultado.EstadoAnterior,
+                    estadoNuevo = resultado.EstadoNuevo,
+                    eventId = resultado.EventId
+                }, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.Json(new { mensaje = ex.Message }, statusCode: StatusCodes.Status400BadRequest);
+            }
+        }).RequireAuthorization();
+
         app.MapGet("/tecnico/cache", (ICacheLectura cache) =>
         {
             var stats = cache.Estadisticas();
@@ -156,3 +245,7 @@ public sealed record LoginRepartidorSolicitud(string Usuario, string Clave);
 public sealed record SincronizacionSolicitudApi(DateOnly Fecha, IReadOnlyList<ComprobanteEntrega> Eventos);
 
 public sealed record DespachoSolicitud(Guid RepartidorId, DateOnly Fecha, IReadOnlyList<Guid> EnvioIds);
+
+public sealed record DispositivoSolicitud(string Token, string Plataforma);
+
+public sealed record CambioEstadoSolicitud(EstadoEnvio NuevoEstado, string? Motivo = null);

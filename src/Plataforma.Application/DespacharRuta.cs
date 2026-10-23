@@ -10,17 +10,23 @@ public sealed class DespacharRuta
     private readonly IRutaRepositorio _rutas;
     private readonly IEnvioRepositorio _envios;
     private readonly IRepartidorRepositorio _repartidores;
+    private readonly RegistrarOutboxEstado _outbox;
+    private readonly PublicarOutboxPendientes _publicar;
     private readonly ICacheLectura _cache;
 
     public DespacharRuta(
         IRutaRepositorio rutas,
         IEnvioRepositorio envios,
         IRepartidorRepositorio repartidores,
+        RegistrarOutboxEstado outbox,
+        PublicarOutboxPendientes publicar,
         ICacheLectura cache)
     {
         _rutas = rutas;
         _envios = envios;
         _repartidores = repartidores;
+        _outbox = outbox;
+        _publicar = publicar;
         _cache = cache;
     }
 
@@ -48,6 +54,7 @@ public sealed class DespacharRuta
 
         var ruta = Ruta.Programar(operadorId, repartidorId, fecha);
         var paradas = new List<Parada>(envioIds.Count);
+        var eventIds = new List<Guid>();
         var orden = 1;
 
         foreach (var envioId in envioIds)
@@ -58,13 +65,19 @@ public sealed class DespacharRuta
             if (envio.RutaId is not null)
                 throw new InvalidOperationException($"El envío {envio.NumeroSeguimiento} ya está en una ruta.");
 
+            var anterior = envio.Estado;
             envio.AsignarARuta(ruta.Id);
+            var eventId = await _outbox.EjecutarAsync(operadorId, envio.Id, anterior, envio.Estado, cancellationToken);
+            if (eventId is Guid id)
+                eventIds.Add(id);
             paradas.Add(Parada.Programar(Guid.NewGuid(), operadorId, ruta.Id, envioId, orden++));
             await CacheSeguimiento.PublicarAsync(_cache, envio, cancellationToken);
         }
 
         await _rutas.GuardarDespachoAsync(ruta, paradas, cancellationToken);
         await _envios.GuardarAsync(cancellationToken);
+        foreach (var eventId in eventIds)
+            await _publicar.EjecutarUnoAsync(eventId, cancellationToken);
         await _cache.QuitarAsync(ObtenerRutasDeHoy.Clave(operadorId, repartidorId, fecha), cancellationToken);
 
         return ruta;

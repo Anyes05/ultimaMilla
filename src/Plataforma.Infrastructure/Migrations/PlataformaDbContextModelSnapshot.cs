@@ -150,6 +150,67 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("Direcciones");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.DispositivoRepartidor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Plataforma")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("RegistradoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RepartidorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "Token")
+                        .IsUnique();
+
+                    b.ToTable("DispositivosRepartidor");
+                });
+
+            modelBuilder.Entity("Plataforma.Domain.EventoSincronizacionProcesado", b =>
+                {
+                    b.Property<Guid>("EventoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EnvioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IntentosRealizados")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ProcesadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("EventoId");
+
+                    b.HasIndex("OperadorId", "EnvioId");
+
+                    b.ToTable("EventosSincronizacionProcesados");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.Envio", b =>
                 {
                     b.Property<Guid>("Id")
@@ -316,6 +377,45 @@ namespace Plataforma.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Liquidaciones");
+                });
+
+            modelBuilder.Entity("Plataforma.Domain.MensajeOutbox", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EnvioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("PublicadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("EventId");
+
+                    b.HasIndex("OperadorId", "PublicadoEn");
+
+                    b.ToTable("MensajesOutbox");
                 });
 
             modelBuilder.Entity("Plataforma.Domain.Novedad", b =>

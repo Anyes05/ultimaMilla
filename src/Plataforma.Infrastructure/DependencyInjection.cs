@@ -23,6 +23,18 @@ public static class DependencyInjection
         });
 
         services.AddCacheRedis(configuration);
+        services.Configure<OpcionesRabbitMq>(configuration.GetSection(OpcionesRabbitMq.Seccion));
+
+        var rabbitHost = configuration[$"{OpcionesRabbitMq.Seccion}:Host"];
+        if (!string.IsNullOrWhiteSpace(rabbitHost))
+        {
+            services.AddSingleton<IPublicadorMensajes, PublicadorMensajesRabbitMq>();
+            services.AddHostedService<OutboxPublicadorBackground>();
+        }
+        else
+        {
+            services.AddSingleton<IPublicadorMensajes, PublicadorMensajesNulo>();
+        }
 
         services.AddScoped<IEnvioRepositorio, EnvioRepositorio>();
         services.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
@@ -31,12 +43,18 @@ public static class DependencyInjection
         services.AddScoped<IRepartidorRepositorio, RepartidorRepositorio>();
         services.AddScoped<ITarifaRepositorio, TarifaRepositorio>();
         services.AddScoped<IPruebaDeEntregaRepositorio, PruebaDeEntregaRepositorio>();
+        services.AddScoped<IOutboxRepositorio, OutboxRepositorio>();
+        services.AddScoped<IDispositivoRepositorio, DispositivoRepositorio>();
+        services.AddScoped<IEventoSincronizacionRepositorio, EventoSincronizacionRepositorio>();
+        services.AddScoped<IHistorialEstadoRepositorio, HistorialEstadoRepositorio>();
         services.AddScoped<IVerificadorClave, HashClave>();
         services.AddScoped<IEmisorToken, EmisorTokenJwt>();
         services.AddSingleton<ProtectorLoginRepartidor>();
         services.AddScoped<ConfiguracionOperador>();
         services.AddScoped<CalcularTarifa>();
         services.AddScoped<AdmitirEnvio>();
+        services.AddScoped<RegistrarOutboxEstado>();
+        services.AddScoped<PublicarOutboxPendientes>();
         services.AddScoped<CambiarEstadoEnvio>();
         services.AddScoped<ITransicionEnvio>(proveedor => proveedor.GetRequiredService<CambiarEstadoEnvio>());
         services.AddScoped<IniciarSesion>();
@@ -49,6 +67,8 @@ public static class DependencyInjection
         services.AddScoped<ObtenerRutasDeHoy>();
         services.AddScoped<SincronizarEntregas>();
         services.AddScoped<ObtenerSeguimientoEnvio>();
+        services.AddScoped<RegistrarDispositivoRepartidor>();
+        services.AddScoped<QuitarDispositivoRepartidor>();
 
         return services;
     }

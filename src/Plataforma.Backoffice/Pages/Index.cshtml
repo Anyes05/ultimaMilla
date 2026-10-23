@@ -15,6 +15,10 @@
     </form>
 </div>
 
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
 @if (Model.Error is not null)
 {
     <div class="alert alert-danger">@Model.Error</div>

@@ -71,6 +71,9 @@ Cuando el endpoint devuelve cuerpo de error, usa:
 | 5 | `POST /api/despacho` | `despachador`, `administrador`, `operario_deposito` | Crear ruta + paradas y asignar envíos |
 | 6 | `GET /api/seguimiento/{token}` | Público (token de seguimiento) | Seguimiento visible de un envío |
 | 7 | `GET /tecnico/cache` | Técnico | Métrica de aciertos/fallos del caché |
+| 8 | `POST /api/repartidor/dispositivos` | `repartidor` | Registrar token FCM del dispositivo |
+| 9 | `DELETE /api/repartidor/dispositivos/{token}` | `repartidor` | Quitar token del dispositivo |
+| 10 | `POST /api/envios/{envioId}/estado` | `despachador`, `administrador`, `operario_deposito` | Cambiar estado (genera outbox + `eventId`) |
 
 ---
 
@@ -257,7 +260,7 @@ Archivo completo: `contracts/repartidor/sincronizacion.response.json`
 | `401` | Sin token válido de repartidor |
 | `200` con rechazos | Conflictos individuales (no es error del lote) |
 
-**Nota de idempotencia:** en v1 el `eventoId` viaja y se valida en el lote, pero la deduplicación durable servidor (mismo `eventoId` entre requests distintos) queda para la iteración de outbox/worker. El móvil debe conservar el comprobante rechazado.
+**Idempotencia durable:** el mismo `eventoId` entre requests distintos, si ya fue aplicado, vuelve en `aplicados` con el estado guardado (sin reaplicar). Los conflictos de transición siguen yendo a `rechazados` con `estadoActual`.
 
 ---
 
@@ -448,4 +451,7 @@ Usuario demo de repartidor Norte: `alvaro@demo.test` / `Demo123!` (solo ambiente
 - **v1** es la versión vigente. Los ejemplos en `contracts/repartidor/` forman parte del contrato.
 - Cambiar nombres de campos, sacar campos o cambiar tipos = cambio *breaking*: requiere acordar con móvil y web, y bumpear versión.
 - Agregar campos opcionales nuevos = cambio compatible, avisar igualmente.
-- Fuera de v1 (iteraciones siguientes): dispositivos FCM (`POST/DELETE /api/repartidor/dispositivos`), outbox con `EventId` e idempotencia durable, webhooks.
+- Mensajes de dominio (cola / outbox): ver [`contracts/mensajes/v1/`](../contracts/mensajes/v1/README.md). El primero es `EnvioEstadoCambiado`.
+- Dispositivos: [`contracts/repartidor/dispositivos.request.json`](../contracts/repartidor/dispositivos.request.json).
+- **Caso real Backoffice:** en Monitoreo, al cambiar un estado se muestra el `EventId` de outbox. Equivalente API: `POST /api/envios/{id}/estado` con `{ "nuevoEstado": "EnDeposito" }` → responde `eventId`.
+- Fuera del backend Ana (Nadia/Joel): worker de avisos a comercios, SignalR, DLQ avanzada, webhooks.
