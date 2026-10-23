@@ -45,4 +45,6 @@ public class ReglaTarifaria
             Activa = true
         };
     }
+
+    public void Desactivar() => Activa = false;
 }

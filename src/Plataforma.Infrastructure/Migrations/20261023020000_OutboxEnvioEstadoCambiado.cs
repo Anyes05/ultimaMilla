@@ -1,4 +1,5 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Plataforma.Infrastructure.Migrations;
 
 /// <inheritdoc />
+[DbContext(typeof(PlataformaDbContext))]
+[Migration("20261023020000_OutboxEnvioEstadoCambiado")]
 public partial class OutboxEnvioEstadoCambiado : Migration
 {
     /// <inheritdoc />

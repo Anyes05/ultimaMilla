@@ -52,6 +52,7 @@ public static class DependencyInjection
         services.AddSingleton<ProtectorLoginRepartidor>();
         services.AddScoped<ConfiguracionOperador>();
         services.AddScoped<CalcularTarifa>();
+        services.AddScoped<GestionTarifas>();
         services.AddScoped<AdmitirEnvio>();
         services.AddScoped<RegistrarOutboxEstado>();
         services.AddScoped<PublicarOutboxPendientes>();

@@ -1,4 +1,5 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Plataforma.Infrastructure.Migrations;
 
 /// <inheritdoc />
+[DbContext(typeof(PlataformaDbContext))]
+[Migration("20261023010000_SeguimientoUnicoComprobanteYZona")]
 public partial class SeguimientoUnicoComprobanteYZona : Migration
 {
     /// <inheritdoc />

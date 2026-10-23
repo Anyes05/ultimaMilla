@@ -40,4 +40,15 @@ public class VigenciaTarifa
             VigenciaHasta = vigenciaHasta
         };
     }
+
+    /// <summary>Cierra la vigencia abierta (sin superponer con la siguiente).</summary>
+    public void Cerrar(DateTime vigenciaHasta)
+    {
+        if (vigenciaHasta < VigenciaDesde)
+            throw new ArgumentException("La vigencia hasta no puede ser anterior al desde.");
+
+        VigenciaHasta = vigenciaHasta.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(vigenciaHasta, DateTimeKind.Utc)
+            : vigenciaHasta.ToUniversalTime();
+    }
 }

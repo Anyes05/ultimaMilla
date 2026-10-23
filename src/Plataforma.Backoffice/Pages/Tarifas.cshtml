@@ -16,6 +16,10 @@
     </form>
 </div>
 
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
 @if (Model.Error is not null)
 {
     <div class="alert alert-danger" role="alert">@Model.Error</div>
@@ -90,47 +94,51 @@
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <div class="card-header bg-white">
         <h2 class="h5 mb-0">Nueva versión</h2>
-        @if (!Model.VersionadoDisponible)
-        {
-            <span class="badge text-bg-warning">Pendiente</span>
-        }
     </div>
     <div class="card-body p-4">
-        @if (!Model.VersionadoDisponible)
-        {
-            <p class="small text-muted">
-                Disponible cuando esté el caso de uso de versionado. Publicar no modifica la tarifa actual:
-                crea una versión nueva y los envíos ya dados de alta conservan su tarifa.
-            </p>
-        }
-        <fieldset disabled="@(!Model.VersionadoDisponible)">
+        <p class="small text-muted">
+            Publicar no modifica la tarifa de envíos ya dados de alta: crea una versión nueva
+            y cierra la vigencia anterior.
+        </p>
+        <form method="post" asp-page-handler="Publicar">
             <div class="row g-3">
-                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-base">Precio base</label><input id="nv-base" class="form-control" type="number" step="0.01" min="0" value="@vigente?.PrecioBase" /></div>
-                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-kg">Por kg</label><input id="nv-kg" class="form-control" type="number" step="0.01" min="0" value="@vigente?.PrecioPorKg" /></div>
-                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-km">Por km</label><input id="nv-km" class="form-control" type="number" step="0.01" min="0" value="@vigente?.PrecioPorKm" /></div>
-                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-fragil">Recargo frágil</label><input id="nv-fragil" class="form-control" type="number" step="0.01" min="0" value="@vigente?.RecargoFragil" /></div>
-                <div class="col-6 col-md"><label class="form-label fw-semibold" for="nv-urgente">Recargo urgente</label><input id="nv-urgente" class="form-control" type="number" step="0.01" min="0" value="@vigente?.RecargoUrgente" /></div>
+                <div class="col-6 col-md">
+                    <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioBase">Precio base</label>
+                    <input class="form-control" asp-for="NuevaVersion.PrecioBase" type="number" step="0.01" min="0" />
+                </div>
+                <div class="col-6 col-md">
+                    <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioPorKg">Por kg</label>
+                    <input class="form-control" asp-for="NuevaVersion.PrecioPorKg" type="number" step="0.01" min="0" />
+                </div>
+                <div class="col-6 col-md">
+                    <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioPorKm">Por km</label>
+                    <input class="form-control" asp-for="NuevaVersion.PrecioPorKm" type="number" step="0.01" min="0" />
+                </div>
+                <div class="col-6 col-md">
+                    <label class="form-label fw-semibold" asp-for="NuevaVersion.RecargoFragil">Recargo frágil</label>
+                    <input class="form-control" asp-for="NuevaVersion.RecargoFragil" type="number" step="0.01" min="0" />
+                </div>
+                <div class="col-6 col-md">
+                    <label class="form-label fw-semibold" asp-for="NuevaVersion.RecargoUrgente">Recargo urgente</label>
+                    <input class="form-control" asp-for="NuevaVersion.RecargoUrgente" type="number" step="0.01" min="0" />
+                </div>
             </div>
             <div class="d-flex justify-content-between align-items-end gap-3 mt-3 flex-wrap">
                 <div>
-                    <label class="form-label fw-semibold" for="nv-desde">Vigente desde</label>
-                    <input id="nv-desde" class="form-control" type="datetime-local" />
+                    <label class="form-label fw-semibold" asp-for="NuevaVersion.VigenteDesdeLocal">Vigente desde</label>
+                    <input class="form-control" asp-for="NuevaVersion.VigenteDesdeLocal" type="datetime-local" />
                 </div>
-                <button type="button" class="btn btn-primary">Publicar nueva versión</button>
+                <button type="submit" class="btn btn-primary">Publicar nueva versión</button>
             </div>
-        </fieldset>
+        </form>
     </div>
 </div>
 
 <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+    <div class="card-header bg-white">
         <h2 class="h5 mb-0">Historial de versiones</h2>
-        @if (!Model.VersionadoDisponible)
-        {
-            <span class="badge text-bg-warning">Pendiente</span>
-        }
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -146,11 +154,35 @@
                     </tr>
                 </thead>
                 <tbody>
+                @if (Model.Versiones.Count == 0)
+                {
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-5">
-                            El historial se mostrará cuando esté disponible el listado de versiones.
-                        </td>
+                        <td colspan="6" class="text-center text-muted py-5">Todavía no hay versiones publicadas.</td>
                     </tr>
+                }
+                else
+                {
+                    @foreach (var version in Model.Versiones)
+                    {
+                        <tr>
+                            <td>@version.Desde.ToLocalTime().ToString("g")</td>
+                            <td>@(version.Hasta.Year >= 9999 ? "—" : version.Hasta.ToLocalTime().ToString("g"))</td>
+                            <td>@TarifasModel.Importe(version.Valores.PrecioBase)</td>
+                            <td>@TarifasModel.Importe(version.Valores.PrecioPorKg)</td>
+                            <td>@TarifasModel.Importe(version.Valores.PrecioPorKm)</td>
+                            <td>
+                                @if (version.Vigente)
+                                {
+                                    <span class="status-badge status-en-transito">Vigente</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Histórica</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
                 </tbody>
             </table>
         </div>

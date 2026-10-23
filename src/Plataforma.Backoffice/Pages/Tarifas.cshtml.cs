@@ -8,31 +8,36 @@ using Plataforma.Domain;
 namespace Plataforma.Backoffice.Pages;
 
 /// <summary>
-/// Cuadro tarifario del operador (RF 3, RNF 6.6).
-/// Hoy: tarifa vigente + simulador con CalcularTarifa.
-/// Pendiente de Ana: listar versiones y publicar una nueva versión (formulario e historial deshabilitados).
+/// Cuadro tarifario del operador: vigente, simulador, publicar versión e historial.
 /// </summary>
 [Authorize(Roles = Roles.Administrador)]
 public class TarifasModel : PageModel
 {
     private readonly ITarifaRepositorio _tarifas;
     private readonly CalcularTarifa _calcular;
+    private readonly GestionTarifas _gestion;
     private readonly IOperadorRepositorio _operadores;
 
-    public TarifasModel(ITarifaRepositorio tarifas, CalcularTarifa calcular, IOperadorRepositorio operadores)
+    public TarifasModel(
+        ITarifaRepositorio tarifas,
+        CalcularTarifa calcular,
+        GestionTarifas gestion,
+        IOperadorRepositorio operadores)
     {
         _tarifas = tarifas;
         _calcular = calcular;
+        _gestion = gestion;
         _operadores = operadores;
     }
 
     public Operador? Operador { get; private set; }
     public ReglaTarifaria? Vigente { get; private set; }
+    public IReadOnlyList<TarifaVersionVista> Versiones { get; private set; } = [];
     public decimal? ImporteSimulado { get; private set; }
     public string? Error { get; private set; }
+    public string? Mensaje { get; private set; }
 
-    /// <summary>Se habilita cuando exista el caso de uso de versionado (PublicarVersionAsync / ListarVersionesAsync).</summary>
-    public bool VersionadoDisponible => false;
+    public bool VersionadoDisponible => true;
 
     public string ColorMarcaCss => Operador?.ColorMarca switch
     {
@@ -44,7 +49,15 @@ public class TarifasModel : PageModel
     [BindProperty]
     public SimulacionForm Simulacion { get; set; } = new();
 
-    public async Task OnGetAsync() => await CargarAsync();
+    [BindProperty]
+    public NuevaVersionForm NuevaVersion { get; set; } = new();
+
+    public async Task OnGetAsync()
+    {
+        Mensaje = TempData["Mensaje"] as string;
+        Error = TempData["Error"] as string;
+        await CargarAsync();
+    }
 
     public async Task<IActionResult> OnPostSimularAsync()
     {
@@ -57,7 +70,6 @@ public class TarifasModel : PageModel
 
         try
         {
-            // Mismo cálculo que el alta del Portal: lo que se ve acá es lo que cobra un envío nuevo.
             ImporteSimulado = await _calcular.EjecutarAsync(
                 acceso.OperadorId,
                 Simulacion.PesoKg,
@@ -74,6 +86,45 @@ public class TarifasModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostPublicarAsync()
+    {
+        if (!AccesoActual.Intentar(User, out var acceso))
+            return Challenge();
+
+        if (!ModelState.IsValid)
+        {
+            await CargarAsync();
+            return Page();
+        }
+
+        try
+        {
+            var desde = NuevaVersion.VigenteDesdeLocal == default
+                ? DateTime.UtcNow
+                : DateTime.SpecifyKind(NuevaVersion.VigenteDesdeLocal, DateTimeKind.Local).ToUniversalTime();
+
+            await _gestion.PublicarVersionAsync(
+                acceso.OperadorId,
+                new NuevaVersionTarifa(
+                    NuevaVersion.PrecioBase,
+                    NuevaVersion.PrecioPorKg,
+                    NuevaVersion.PrecioPorKm,
+                    NuevaVersion.RecargoFragil,
+                    NuevaVersion.RecargoUrgente),
+                desde,
+                User.Identity?.Name ?? acceso.UsuarioId.ToString(),
+                HttpContext.RequestAborted);
+
+            TempData["Mensaje"] = "Nueva versión de tarifa publicada.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or ArgumentOutOfRangeException)
+        {
+            TempData["Error"] = ex.Message;
+        }
+
+        return RedirectToPage();
+    }
+
     public static string Importe(decimal valor) =>
         valor.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("es-UY"));
 
@@ -85,6 +136,16 @@ public class TarifasModel : PageModel
         var ct = HttpContext.RequestAborted;
         Operador = await _operadores.ObtenerAsync(acceso.OperadorId, ct);
         Vigente = await _tarifas.ObtenerActivaAsync(acceso.OperadorId, DateTime.UtcNow, ct);
+        Versiones = await _gestion.ListarVersionesAsync(acceso.OperadorId, ct);
+
+        if (NuevaVersion.PrecioBase == 0 && Vigente is not null)
+        {
+            NuevaVersion.PrecioBase = Vigente.PrecioBase;
+            NuevaVersion.PrecioPorKg = Vigente.PrecioPorKg;
+            NuevaVersion.PrecioPorKm = Vigente.PrecioPorKm;
+            NuevaVersion.RecargoFragil = Vigente.RecargoFragil;
+            NuevaVersion.RecargoUrgente = Vigente.RecargoUrgente;
+        }
     }
 
     public sealed class SimulacionForm
@@ -98,5 +159,25 @@ public class TarifasModel : PageModel
         public bool Urgente { get; set; }
 
         public bool Fragil { get; set; }
+    }
+
+    public sealed class NuevaVersionForm
+    {
+        [Range(typeof(decimal), "0", "1000000")]
+        public decimal PrecioBase { get; set; }
+
+        [Range(typeof(decimal), "0", "1000000")]
+        public decimal PrecioPorKg { get; set; }
+
+        [Range(typeof(decimal), "0", "1000000")]
+        public decimal PrecioPorKm { get; set; }
+
+        [Range(typeof(decimal), "0", "1000000")]
+        public decimal RecargoFragil { get; set; }
+
+        [Range(typeof(decimal), "0", "1000000")]
+        public decimal RecargoUrgente { get; set; }
+
+        public DateTime VigenteDesdeLocal { get; set; } = DateTime.Now;
     }
 }
