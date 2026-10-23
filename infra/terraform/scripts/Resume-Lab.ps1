@@ -39,14 +39,19 @@ function Get-HealthyTargetCount {
 }
 
 function Wait-HealthyTargets {
+    $waitStartedAt = Get-Date
     $deadline = (Get-Date).AddSeconds($TargetWaitTimeoutSeconds)
+
+    Write-Host "Esperando targets del ALB cada $TargetPollIntervalSeconds segundos (limite: $TargetWaitTimeoutSeconds segundos)."
+    Write-Host "El ALB requiere $healthyThresholdCount respuestas correctas cada $healthCheckIntervalSeconds segundos: minimo estimado $minimumHealthySeconds segundos desde que NGINX responda."
 
     while ((Get-Date) -lt $deadline) {
         $targetHealth = Get-TargetHealth
         $healthyTargetCount = @($targetHealth | Where-Object { $_.TargetHealth.State -eq "healthy" }).Count
+        $elapsedSeconds = [math]::Floor(((Get-Date) - $waitStartedAt).TotalSeconds)
 
         if ($healthyTargetCount -ge $DesiredSize) {
-            Write-Host "El ALB tiene $healthyTargetCount targets saludables."
+            Write-Host "Targets ALB READY: $healthyTargetCount/$DesiredSize saludables tras $elapsedSeconds segundos."
             return
         }
 
@@ -61,7 +66,8 @@ function Wait-HealthyTargets {
             }) -join "; "
         }
 
-        Write-Host "Esperando targets del ALB: $healthyTargetCount/$DesiredSize saludables; $targetStates"
+        $remainingSeconds = [math]::Max(0, $TargetWaitTimeoutSeconds - $elapsedSeconds)
+        Write-Host "Esperando targets del ALB: $healthyTargetCount/$DesiredSize saludables; transcurrido: $elapsedSeconds segundos; limite restante: $remainingSeconds segundos; $targetStates"
         Start-Sleep -Seconds $TargetPollIntervalSeconds
     }
 
@@ -81,8 +87,12 @@ $autoScalingGroupName = $nodeGroup.resources.autoScalingGroups[0].name
 $autoScalingGroup = (& aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $autoScalingGroupName --output json | ConvertFrom-Json).AutoScalingGroups[0]
 $inServiceCount = @($autoScalingGroup.Instances | Where-Object { $_.LifecycleState -eq "InService" }).Count
 
-$targetGroupArn = & aws elbv2 describe-target-groups --region $Region --names $TargetGroupName --query "TargetGroups[0].TargetGroupArn" --output text
-if ($LASTEXITCODE -ne 0) { throw "No se encontro el target group $TargetGroupName." }
+$targetGroup = (& aws elbv2 describe-target-groups --region $Region --names $TargetGroupName --output json | ConvertFrom-Json).TargetGroups[0]
+if ($null -eq $targetGroup) { throw "No se encontro el target group $TargetGroupName." }
+$targetGroupArn = $targetGroup.TargetGroupArn
+$healthCheckIntervalSeconds = $targetGroup.HealthCheckIntervalSeconds
+$healthyThresholdCount = $targetGroup.HealthyThresholdCount
+$minimumHealthySeconds = $healthCheckIntervalSeconds * $healthyThresholdCount
 $healthyTargetCount = Get-HealthyTargetCount
 
 if (-not $Force -and $inServiceCount -ge $DesiredSize -and $healthyTargetCount -ge $DesiredSize) {

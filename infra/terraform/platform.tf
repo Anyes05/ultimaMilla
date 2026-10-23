@@ -318,10 +318,18 @@ resource "kubernetes_deployment_v1" "queue_worker" {
       }
 
       spec {
+        automount_service_account_token = false
+
         container {
           name              = "queue-worker"
           image             = local.worker_image
           image_pull_policy = "Always"
+
+          env_from {
+            secret_ref {
+              name = "${var.project_name}-application-secrets"
+            }
+          }
 
           env {
             name  = "RabbitMq__Host"
@@ -349,6 +357,11 @@ resource "kubernetes_deployment_v1" "queue_worker" {
             }
           }
 
+          env {
+            name  = "Avisos__ReceptorUrl"
+            value = "http://backoffice.${var.application_namespace}.svc.cluster.local/api/receptor-prueba/avisos"
+          }
+
           resources {
             requests = {
               cpu    = "100m"
@@ -366,4 +379,12 @@ resource "kubernetes_deployment_v1" "queue_worker" {
   }
 
   depends_on = [helm_release.rabbitmq]
+
+  # Terraform crea el deployment bootstrap. CI/CD es dueño de la imagen SHA y sus réplicas.
+  lifecycle {
+    ignore_changes = [
+      spec[0].replicas,
+      spec[0].template[0].spec[0].container[0].image
+    ]
+  }
 }

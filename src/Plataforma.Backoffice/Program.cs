@@ -29,6 +29,9 @@ builder.Services.ConfigureHttpJsonOptions(opciones =>
     foreach (var converter in ObtenerRutasDeHoy.OpcionesJson.Converters)
         opciones.SerializerOptions.Converters.Add(converter);
 });
+var signalR = builder.Services.AddSignalR();
+if (opcionesRedis is not null)
+    signalR.AddStackExchangeRedis(opcionesRedis.ToString());
 
 var app = builder.Build();
 
@@ -86,6 +89,8 @@ app.MapPost("/logout", (HttpContext httpContext) =>
 });
 
 app.MapApisRepartidor();
+app.MapAvisosTecnicos();
+app.MapHub<HubAvisosOperador>("/hubs/avisos").RequireAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorPages()

@@ -1,0 +1,48 @@
+@page
+@model AvisosModel
+@{
+    ViewData["Title"] = "Avisos fallidos";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-semibold small mb-1">Operación técnica</p>
+        <h1 class="display-6 fw-bold mb-1">Avisos fallidos</h1>
+        <p class="text-muted mb-0">Mensajes que agotaron reintentos de entrega al comercio.</p>
+    </div>
+    <form method="post" asp-page-handler="CambiarReceptor">
+        <input type="hidden" name="forzarFallo" value="@(!Model.ReceptorFalla)" />
+        <button class="btn @(Model.ReceptorFalla ? "btn-warning" : "btn-outline-secondary")" type="submit">
+            @(Model.ReceptorFalla ? "Receptor: fallando" : "Receptor: disponible")
+        </button>
+    </form>
+</div>
+
+@if (TempData["Mensaje"] is string mensaje)
+{
+    <div class="alert alert-success" role="status">@mensaje</div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light"><tr><th>EventId</th><th>Envío</th><th>Intentos</th><th>Error</th><th>Actualizado</th><th></th></tr></thead>
+                <tbody>
+                @if (Model.Fallidos.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-5">No hay avisos fallidos para este operador.</td></tr>
+                }
+                @foreach (var aviso in Model.Fallidos)
+                {
+                    <tr>
+                        <td><code>@aviso.EventId</code></td><td><code>@aviso.EnvioId</code></td><td>@aviso.Intentos</td>
+                        <td class="text-danger">@aviso.Error</td><td>@aviso.ActualizadoEn.LocalDateTime.ToString("g")</td>
+                        <td class="text-end"><form method="post" asp-page-handler="Reintentar"><input type="hidden" name="id" value="@aviso.Id" /><button class="btn btn-sm btn-primary" type="submit">Reintentar</button></form></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

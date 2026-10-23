@@ -49,6 +49,52 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("AvisosComercio");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.AvisoFallido", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ActualizadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EnvioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Error")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("ResueltoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("OperadorId", "ResueltoEn");
+
+                    b.ToTable("AvisosFallidos");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.Comercio", b =>
                 {
                     b.Property<Guid>("Id")
@@ -183,34 +229,6 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("DispositivosRepartidor");
                 });
 
-            modelBuilder.Entity("Plataforma.Domain.EventoSincronizacionProcesado", b =>
-                {
-                    b.Property<Guid>("EventoId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("EnvioId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Estado")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("IntentosRealizados")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("OperadorId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("ProcesadoEn")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("EventoId");
-
-                    b.HasIndex("OperadorId", "EnvioId");
-
-                    b.ToTable("EventosSincronizacionProcesados");
-                });
-
             modelBuilder.Entity("Plataforma.Domain.Envio", b =>
                 {
                     b.Property<Guid>("Id")
@@ -267,6 +285,56 @@ namespace Plataforma.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Envios");
+                });
+
+            modelBuilder.Entity("Plataforma.Domain.EventoAvisoProcesado", b =>
+                {
+                    b.Property<Guid>("EventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EnvioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ProcesadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("EventId");
+
+                    b.HasIndex("OperadorId", "EnvioId");
+
+                    b.ToTable("EventosAvisoProcesados");
+                });
+
+            modelBuilder.Entity("Plataforma.Domain.EventoSincronizacionProcesado", b =>
+                {
+                    b.Property<Guid>("EventoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EnvioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IntentosRealizados")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ProcesadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("EventoId");
+
+                    b.HasIndex("OperadorId", "EnvioId");
+
+                    b.ToTable("EventosSincronizacionProcesados");
                 });
 
             modelBuilder.Entity("Plataforma.Domain.HistorialEstado", b =>
@@ -544,6 +612,23 @@ namespace Plataforma.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("PruebasDeEntrega");
+                });
+
+            modelBuilder.Entity("Plataforma.Domain.ReceptorPruebaConfiguracion", b =>
+                {
+                    b.Property<Guid>("OperadorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ActualizadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("ForzarFallo")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("OperadorId");
+
+                    b.ToTable("ReceptoresPruebaConfiguracion");
                 });
 
             modelBuilder.Entity("Plataforma.Domain.ReglaOperativa", b =>

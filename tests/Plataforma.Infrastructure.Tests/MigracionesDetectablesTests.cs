@@ -34,5 +34,8 @@ public class MigracionesDetectablesTests
         Assert.Contains(migraciones, m =>
             m.Id == "20261023040000_EventosSincronizacionProcesados" &&
             m.Contexto == typeof(PlataformaDbContext));
+        Assert.Contains(migraciones, m =>
+            m.Id == "20261023234302_WorkerAvisosYFallidos" &&
+            m.Contexto == typeof(PlataformaDbContext));
     }
 }

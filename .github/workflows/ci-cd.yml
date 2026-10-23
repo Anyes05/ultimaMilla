@@ -14,6 +14,7 @@ env:
   DOTNET_VERSION: 10.0.x
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_PUBLISH_ENABLED: ${{ secrets.AWS_PUBLISH_ENABLED }}
+  WORKER_DEPLOY_ENABLED: ${{ secrets.WORKER_DEPLOY_ENABLED }}
 
 jobs:
   test:
@@ -96,6 +97,20 @@ jobs:
           docker tag tallernet-portal:$IMAGE_TAG $ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG
           docker push $ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG
 
+      - name: Build, tag and push Worker
+        if: env.AWS_PUBLISH_ENABLED == 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          if aws ecr describe-images --repository-name tallernet/worker --image-ids imageTag="$IMAGE_TAG" > /dev/null 2>&1; then
+            echo "La imagen tallernet/worker:$IMAGE_TAG ya existe; se reutilizara."
+            exit 0
+          fi
+          docker build --file src/Plataforma.Worker/Dockerfile --tag tallernet-worker:$IMAGE_TAG .
+          docker tag tallernet-worker:$IMAGE_TAG $ECR_REGISTRY/tallernet/worker:$IMAGE_TAG
+          docker push $ECR_REGISTRY/tallernet/worker:$IMAGE_TAG
+
       - name: Configure kubectl
         if: env.AWS_PUBLISH_ENABLED == 'true'
         uses: azure/setup-kubectl@v4
@@ -127,3 +142,11 @@ jobs:
           }
           rollout backoffice
           rollout portal
+          if [ "$WORKER_DEPLOY_ENABLED" = "true" ]; then
+            kubectl -n tallernet set image deployment/queue-worker queue-worker=$ECR_REGISTRY/tallernet/worker:$IMAGE_TAG
+            kubectl -n tallernet scale deployment/queue-worker --replicas=1
+            rollout queue-worker
+          else
+            kubectl -n tallernet scale deployment/queue-worker --replicas=0
+            echo "Worker publicado en ECR, pero mantenido en cero replicas hasta habilitar WORKER_DEPLOY_ENABLED."
+          fi

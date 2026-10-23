@@ -83,6 +83,15 @@
     </div>
 </div>
 
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js" referrerpolicy="no-referrer"></script>
+    <script>
+        const avisos = new signalR.HubConnectionBuilder().withUrl('/hubs/avisos').withAutomaticReconnect().build();
+        avisos.on('estadoEnvioCambiado', () => window.location.reload());
+        avisos.start().catch(() => {});
+    </script>
+}
+
 @functions {
     private static string EstadoTexto(EstadoEnvio estado) => estado switch
     {

@@ -13,7 +13,7 @@ namespace Plataforma.Infrastructure.Tests;
 public class MigracionesDescubrimientoTests
 {
     [Fact]
-    public void GetMigrations_IncluyeLasCincoMigracionesConAtributos()
+    public void GetMigrations_IncluyeLasSeisMigracionesConAtributos()
     {
         // Proveedor relacional requerido por GetMigrations; no abre conexión real.
         var options = new DbContextOptionsBuilder<PlataformaDbContext>()
@@ -23,12 +23,13 @@ public class MigracionesDescubrimientoTests
         using var contexto = new PlataformaDbContext(options);
         var ids = contexto.Database.GetMigrations().ToArray();
 
-        Assert.Equal(5, ids.Length);
+        Assert.Equal(6, ids.Length);
         Assert.Contains("20261013023329_InitialCreate", ids);
         Assert.Contains("20261023010000_SeguimientoUnicoComprobanteYZona", ids);
         Assert.Contains("20261023020000_OutboxEnvioEstadoCambiado", ids);
         Assert.Contains("20261023030000_DispositivosRepartidor", ids);
         Assert.Contains("20261023040000_EventosSincronizacionProcesados", ids);
+        Assert.Contains("20261023234302_WorkerAvisosYFallidos", ids);
     }
 
     [Fact]
@@ -40,7 +41,8 @@ public class MigracionesDescubrimientoTests
             "20261023010000_SeguimientoUnicoComprobanteYZona",
             "20261023020000_OutboxEnvioEstadoCambiado",
             "20261023030000_DispositivosRepartidor",
-            "20261023040000_EventosSincronizacionProcesados"
+            "20261023040000_EventosSincronizacionProcesados",
+            "20261023234302_WorkerAvisosYFallidos"
         };
 
         foreach (var id in esperadas)

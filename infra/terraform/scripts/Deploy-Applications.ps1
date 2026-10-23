@@ -76,6 +76,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $rdsPassword = ConvertTo-PlainText (Read-Host -Prompt "Contrasena maestra de PostgreSQL" -AsSecureString)
 $jwtKey = ConvertTo-PlainText (Read-Host -Prompt "Clave JWT de produccion" -AsSecureString)
+$avisoSigningKey = ConvertTo-PlainText (Read-Host -Prompt "Clave de firma HMAC para avisos" -AsSecureString)
 
 try {
     $connectionString = "Host=$rdsEndpoint;Port=5432;Database=tallernet;Username=tallernet_admin;Password=$rdsPassword"
@@ -91,12 +92,14 @@ data:
   Jwt__Clave: $(ConvertTo-Base64 $jwtKey)
   Jwt__Emisor: $(ConvertTo-Base64 $JwtIssuer)
   Jwt__Audiencia: $(ConvertTo-Base64 $JwtAudience)
+    Avisos__ClaveFirma: $(ConvertTo-Base64 $avisoSigningKey)
 "@
     Invoke-KubectlApply -Manifest $secretManifest
 }
 finally {
     $rdsPassword = $null
     $jwtKey = $null
+    $avisoSigningKey = $null
     $connectionString = $null
 }
 

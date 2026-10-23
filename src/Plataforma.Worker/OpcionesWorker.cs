@@ -29,4 +29,8 @@ public sealed class OpcionesAvisos
 
     /// <summary>Mensajes sin confirmar que RabbitMQ entrega a la vez a este consumidor.</summary>
     public ushort Prefetch { get; set; } = 10;
+
+    public string ReceptorUrl { get; set; } = string.Empty;
+    public string ClaveFirma { get; set; } = string.Empty;
+    public int MaximoIntentos { get; set; } = 4;
 }

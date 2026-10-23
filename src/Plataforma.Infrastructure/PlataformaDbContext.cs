@@ -47,6 +47,9 @@ public class PlataformaDbContext : DbContext
     public DbSet<MensajeOutbox> MensajesOutbox => Set<MensajeOutbox>();
     public DbSet<DispositivoRepartidor> DispositivosRepartidor => Set<DispositivoRepartidor>();
     public DbSet<EventoSincronizacionProcesado> EventosSincronizacionProcesados => Set<EventoSincronizacionProcesado>();
+    public DbSet<EventoAvisoProcesado> EventosAvisoProcesados => Set<EventoAvisoProcesado>();
+    public DbSet<AvisoFallido> AvisosFallidos => Set<AvisoFallido>();
+    public DbSet<ReceptorPruebaConfiguracion> ReceptoresPruebaConfiguracion => Set<ReceptorPruebaConfiguracion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -77,6 +80,9 @@ public class PlataformaDbContext : DbContext
         AplicarFiltroOperador<MensajeOutbox>(modelBuilder);
         AplicarFiltroOperador<DispositivoRepartidor>(modelBuilder);
         AplicarFiltroOperador<EventoSincronizacionProcesado>(modelBuilder);
+        AplicarFiltroOperador<EventoAvisoProcesado>(modelBuilder);
+        AplicarFiltroOperador<AvisoFallido>(modelBuilder);
+        AplicarFiltroOperador<ReceptorPruebaConfiguracion>(modelBuilder);
 
         modelBuilder.Entity<Envio>()
             .HasIndex(envio => envio.NumeroSeguimiento)
@@ -111,6 +117,26 @@ public class PlataformaDbContext : DbContext
         {
             entidad.HasKey(evento => evento.EventoId);
             entidad.HasIndex(evento => new { evento.OperadorId, evento.EnvioId });
+        });
+
+        modelBuilder.Entity<EventoAvisoProcesado>(entidad =>
+        {
+            entidad.HasKey(evento => evento.EventId);
+            entidad.HasIndex(evento => new { evento.OperadorId, evento.EnvioId });
+        });
+
+        modelBuilder.Entity<AvisoFallido>(entidad =>
+        {
+            entidad.HasKey(aviso => aviso.Id);
+            entidad.Property(aviso => aviso.Payload).IsRequired();
+            entidad.Property(aviso => aviso.Error).HasMaxLength(2048);
+            entidad.HasIndex(aviso => aviso.EventId).IsUnique();
+            entidad.HasIndex(aviso => new { aviso.OperadorId, aviso.ResueltoEn });
+        });
+
+        modelBuilder.Entity<ReceptorPruebaConfiguracion>(entidad =>
+        {
+            entidad.HasKey(configuracion => configuracion.OperadorId);
         });
     }
 

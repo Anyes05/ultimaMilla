@@ -83,14 +83,11 @@ La segunda fase instala y configura automaticamente:
 
 RabbitMQ usa almacenamiento efimero porque el rol preexistente de nodos AWS Academy no posee permisos para el driver EBS CSI. La API y el worker deben declarar topologia durable de exchanges, colas y DLQ al iniciar; cuando se habilite almacenamiento persistente, se cambia `persistence.enabled` sin cambiar la aplicacion.
 
-El worker comienza con cero replicas para no intentar descargar la imagen `bootstrap`. Cuando el pipeline publique la primera imagen inmutable en ECR, actualice en `.env`:
+El worker comienza con cero réplicas para no intentar descargar la imagen `bootstrap`. Una vez creado por Terraform, GitHub Actions es el único responsable de publicar `tallernet/worker:<SHA>`, actualizar la imagen de `queue-worker` y escalarlo a una réplica. Terraform ignora posteriormente esos dos campos para que un `terraform apply` no revierta un despliegue válido. El manifiesto `k8s/base/worker.yaml` es solo referencia y no se incluye en Kustomize.
 
-```text
-TF_VAR_worker_image_tag=<tag-publicado-por-ci>
-TF_VAR_worker_replicas=1
-```
+El pipeline siempre publica la imagen del worker, pero solo lo activa si existe el secreto de repositorio `WORKER_DEPLOY_ENABLED` con valor `true`. Mantenerlo ausente hasta que el consumidor implemente y pruebe de punta a punta idempotencia, aviso HTTP, retry y DLQ.
 
-Luego ejecute `terraform plan` y `terraform apply`. El worker recibe `RabbitMq__Host`, `RabbitMq__Port`, `RabbitMq__Username` y `RabbitMq__Password` por variables de entorno y Secret de Kubernetes.
+El worker recibe `RabbitMq__Host`, `RabbitMq__Port`, `RabbitMq__Username` y `RabbitMq__Password` por variables de entorno y Secret de Kubernetes.
 
 Las APIs deben usar el endpoint `redis_endpoint`, obtener la clave `redis-password` desde el Secret `${project_name}-redis-credentials`, y publicar métricas de aciertos, fallos e invalidaciones con OpenTelemetry. Terraform instala la dependencia, pero esas políticas de caché e instrumentos son responsabilidades de la aplicación.
 
