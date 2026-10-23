@@ -22,6 +22,15 @@ public sealed class RutaRepositorio : IRutaRepositorio
             .Where(ruta => ruta.OperadorId == operadorId && ruta.RepartidorId == repartidorId && ruta.Fecha == fecha)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Ruta>> ObtenerDelDiaAsync(
+        Guid operadorId,
+        DateOnly fecha,
+        CancellationToken cancellationToken = default) =>
+        await _context.Rutas.AsNoTracking()
+            .Where(ruta => ruta.OperadorId == operadorId && ruta.Fecha == fecha)
+            .OrderBy(ruta => ruta.RepartidorId)
+            .ToListAsync(cancellationToken);
+
     public async Task GuardarDespachoAsync(
         Ruta ruta,
         IReadOnlyList<Parada> paradas,

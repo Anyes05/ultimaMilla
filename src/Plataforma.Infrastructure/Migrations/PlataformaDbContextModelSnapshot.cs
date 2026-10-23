@@ -199,6 +199,12 @@ namespace Plataforma.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("NumeroSeguimiento")
+                        .IsUnique();
+
+                    b.HasIndex("TokenSeguimientoPublico")
+                        .IsUnique();
+
                     b.ToTable("Envios");
                 });
 
@@ -353,6 +359,13 @@ namespace Plataforma.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ZonaHoraria")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("America/Montevideo");
+
                     b.HasKey("Id");
 
                     b.ToTable("Operadores");
@@ -396,6 +409,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTimeOffset>("FechaDispositivo")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Firma")
                         .IsRequired()
                         .HasColumnType("text");
@@ -410,8 +426,20 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<decimal?>("Longitud")
                         .HasColumnType("numeric");
 
+                    b.Property<string>("NombreReceptor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Observaciones")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Usuario")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 

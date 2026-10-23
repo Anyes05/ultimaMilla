@@ -6,17 +6,20 @@ public sealed class SincronizarEntregas
 {
     private readonly IRutaRepositorio _rutas;
     private readonly IEnvioRepositorio _envios;
+    private readonly IPruebaDeEntregaRepositorio _pruebas;
     private readonly ConfiguracionOperador _operadores;
     private readonly ICacheLectura _cache;
 
     public SincronizarEntregas(
         IRutaRepositorio rutas,
         IEnvioRepositorio envios,
+        IPruebaDeEntregaRepositorio pruebas,
         ConfiguracionOperador operadores,
         ICacheLectura cache)
     {
         _rutas = rutas;
         _envios = envios;
+        _pruebas = pruebas;
         _operadores = operadores;
         _cache = cache;
     }
@@ -26,8 +29,12 @@ public sealed class SincronizarEntregas
         Guid repartidorId,
         DateOnly fecha,
         IReadOnlyList<ComprobanteEntrega> eventos,
+        string usuario,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(usuario))
+            throw new ArgumentException("El usuario del sincronizado es requerido.", nameof(usuario));
+
         if (eventos.Select(evento => evento.EventoId).Distinct().Count() != eventos.Count)
             throw new ArgumentException("Hay eventoId duplicados en el lote.", nameof(eventos));
 
@@ -99,6 +106,17 @@ public sealed class SincronizarEntregas
                 envio.RegistrarIntentoFallido(operador.MaximoIntentos);
 
             envio.CambiarEstado(evento.Estado, evento.NombreReceptor, evento.Observaciones);
+            await _pruebas.AgregarAsync(
+                PruebaDeEntrega.DesdeSincronizacion(
+                    Guid.NewGuid(),
+                    operadorId,
+                    envio.Id,
+                    evento.NombreReceptor,
+                    evento.Observaciones,
+                    usuario,
+                    evento.FechaDispositivo),
+                cancellationToken);
+
             aplicados.Add(new EventoAplicado(envio.Id, envio.Estado, envio.IntentosRealizados));
             enviosAplicados.Add(envio);
         }

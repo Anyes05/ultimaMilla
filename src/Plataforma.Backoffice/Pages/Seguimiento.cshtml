@@ -1,0 +1,47 @@
+@page
+@model SeguimientoModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Seguimiento";
+}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] — Última Milla</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+</head>
+<body class="bg-light">
+<main class="container py-5" style="max-width: 32rem">
+    <h1 class="h3 mb-4">Seguimiento de envío</h1>
+
+    <form method="get" class="mb-4">
+        <label class="form-label" for="numero">Número de seguimiento</label>
+        <div class="input-group">
+            <input id="numero" name="Numero" value="@Model.Numero" class="form-control" placeholder="ENV-…" autocomplete="off" />
+            <button type="submit" class="btn btn-primary">Consultar</button>
+        </div>
+    </form>
+
+    @if (Model.Error is not null)
+    {
+        <div class="alert alert-warning">@Model.Error</div>
+    }
+
+    @if (Model.Visible is not null)
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <p class="text-muted small mb-1">Número</p>
+                <p class="fs-5 fw-semibold mb-3">@Model.Visible.NumeroSeguimiento</p>
+                <p class="text-muted small mb-1">Estado</p>
+                <p class="fs-5 mb-3">@Model.Visible.Estado</p>
+                <p class="text-muted small mb-1">Intentos</p>
+                <p class="mb-0">@Model.Visible.IntentosRealizados</p>
+            </div>
+        </div>
+    }
+</main>
+</body>
+</html>

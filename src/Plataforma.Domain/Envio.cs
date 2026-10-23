@@ -27,8 +27,10 @@ public class Envio
         Estado = EstadoEnvio.Admitido;
     }
 
-    // Constructor directo para compatibilidad con tests de dominio
-    public Envio(string destinatario, string direccionEntrega) : this()
+    /// <summary>
+    /// Solo para tests de dominio. Producción debe usar <see cref="Admitir"/>.
+    /// </summary>
+    internal Envio(string destinatario, string direccionEntrega) : this()
     {
         if (string.IsNullOrWhiteSpace(destinatario))
             throw new ArgumentException("El destinatario es requerido.");
@@ -39,12 +41,16 @@ public class Envio
         Id = Guid.NewGuid();
         OperadorId = Guid.Parse("11111111-1111-1111-1111-111111111111");
         ComercioId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-        NumeroSeguimiento = $"ENV-{Random.Shared.Next(100000, 999999)}";
+        NumeroSeguimiento = GenerarNumeroSeguimiento();
         TokenSeguimientoPublico = Guid.NewGuid().ToString("N");
         Destinatario = destinatario;
         DireccionEntrega = direccionEntrega;
         FechaCreacion = DateTime.UtcNow;
     }
+
+    /// <summary>Número opaco y único (no secuencial, no adivinable).</summary>
+    internal static string GenerarNumeroSeguimiento() =>
+        $"ENV-{Guid.NewGuid():N}".ToUpperInvariant();
 
     // Método de fábrica para altas explícitas
     public static Envio Admitir(
@@ -75,11 +81,17 @@ public class Envio
         }
 
         Estado = nuevoEstado;
+
+        // Vuelve a depósito o se reprograma: debe poder despacharse de nuevo.
+        if (nuevoEstado is EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado)
+            RutaId = null;
     }
 
-    // Sobrecarga con auditoría
+    // Sobrecarga con auditoría (usuario/motivo los persiste la capa de aplicación).
     public void CambiarEstado(EstadoEnvio nuevoEstado, string usuario, string motivo)
     {
+        _ = usuario;
+        _ = motivo;
         CambiarEstado(nuevoEstado);
     }
 

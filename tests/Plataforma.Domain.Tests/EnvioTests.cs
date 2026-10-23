@@ -44,4 +44,31 @@ public class EnvioTests
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() => envio.CambiarEstado(EstadoEnvio.Entregado));
     }
+
+    [Fact]
+    public void CambiarEstado_VuelveADeposito_LimpiaRutaId()
+    {
+        var envio = Envio.Admitir(_operadorId, _comercioId, "Ana", "Calle 1");
+        envio.CambiarEstado(EstadoEnvio.EnDeposito);
+        var rutaId = Guid.NewGuid();
+        envio.AsignarARuta(rutaId);
+
+        Assert.Equal(rutaId, envio.RutaId);
+
+        envio.CambiarEstado(EstadoEnvio.EnDeposito);
+
+        Assert.Equal(EstadoEnvio.EnDeposito, envio.Estado);
+        Assert.Null(envio.RutaId);
+    }
+
+    [Fact]
+    public void Admitir_NumeroSeguimientoEsOpacoYUnico()
+    {
+        var a = Envio.Admitir(_operadorId, _comercioId, "A", "Calle A");
+        var b = Envio.Admitir(_operadorId, _comercioId, "B", "Calle B");
+
+        Assert.StartsWith("ENV-", a.NumeroSeguimiento);
+        Assert.True(a.NumeroSeguimiento.Length > 10);
+        Assert.NotEqual(a.NumeroSeguimiento, b.NumeroSeguimiento);
+    }
 }

@@ -38,6 +38,9 @@ public static class RepartidorApi
                     new { mensaje = "El usuario no tiene rol de repartidor." }, statusCode: StatusCodes.Status403Forbidden),
                 ResultadoInicioRepartidor.SinPerfil => Results.Json(
                     new { mensaje = "No hay perfil de repartidor activo." }, statusCode: StatusCodes.Status403Forbidden),
+                ResultadoInicioRepartidor.DemasiadosIntentos => Results.Json(
+                    new { mensaje = "Demasiados intentos. Probá de nuevo en unos minutos." },
+                    statusCode: StatusCodes.Status429TooManyRequests),
                 _ => Results.Json(new { mensaje = "No se pudo iniciar sesión." }, statusCode: StatusCodes.Status401Unauthorized)
             };
         });
@@ -45,6 +48,7 @@ public static class RepartidorApi
         repartidor.MapGet("/rutas/hoy", async (
             ClaimsPrincipal principal,
             ObtenerRutasDeHoy obtener,
+            IOperadorRepositorio operadores,
             DateOnly? fecha,
             CancellationToken cancellationToken) =>
         {
@@ -53,7 +57,15 @@ public static class RepartidorApi
                 acceso.RepartidorId is not Guid repartidorId)
                 return Results.Unauthorized();
 
-            var dia = fecha ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            DateOnly dia;
+            if (fecha is DateOnly indicada)
+                dia = indicada;
+            else
+            {
+                var operador = await operadores.ObtenerAsync(acceso.OperadorId, cancellationToken);
+                dia = operador?.DiaActual() ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            }
+
             var rutas = await obtener.Ejecutar(acceso.OperadorId, repartidorId, dia, cancellationToken);
             return Results.Json(rutas, ObtenerRutasDeHoy.OpcionesJson);
         }).RequireAuthorization();
@@ -71,11 +83,13 @@ public static class RepartidorApi
 
             try
             {
+                var usuario = principal.Identity?.Name ?? acceso.UsuarioId.ToString();
                 var resultado = await sincronizar.Ejecutar(
                     acceso.OperadorId,
                     repartidorId,
                     solicitud.Fecha,
                     solicitud.Eventos,
+                    usuario,
                     cancellationToken);
                 return Results.Json(resultado, ObtenerRutasDeHoy.OpcionesJson);
             }

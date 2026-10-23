@@ -23,4 +23,21 @@ public sealed class ListarEnvios
         Guid? comercioId = acceso.Rol == Roles.Comercio ? acceso.ComercioId : null;
         return Ejecutar(acceso.OperadorId, comercioId, cancellationToken);
     }
+
+    public Task<ResultadoPaginado<Envio>> EjecutarPaginadoAsync(
+        AccesoActual acceso,
+        EstadoEnvio? estado = null,
+        int pagina = 1,
+        int tamanoPagina = 50,
+        CancellationToken cancellationToken = default)
+    {
+        Guid? comercioId = acceso.Rol == Roles.Comercio ? acceso.ComercioId : null;
+        return _envios.ListarPaginadoAsync(
+            acceso.OperadorId,
+            comercioId,
+            estado,
+            pagina,
+            tamanoPagina,
+            cancellationToken);
+    }
 }

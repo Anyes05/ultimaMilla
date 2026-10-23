@@ -34,6 +34,11 @@ public class EnvioRepositorio : IEnvioRepositorio
             envio => envio.TokenSeguimientoPublico == tokenSeguimientoPublico,
             cancellationToken);
 
+    public Task<Envio?> ObtenerPorNumeroAsync(string numeroSeguimiento, CancellationToken cancellationToken = default) =>
+        _context.Envios.AsNoTracking().FirstOrDefaultAsync(
+            envio => envio.NumeroSeguimiento == numeroSeguimiento,
+            cancellationToken);
+
     public Task<List<Envio>> ListarAsync(Guid operadorId, Guid? comercioId, CancellationToken cancellationToken = default)
     {
         var consulta = _context.Envios.AsNoTracking().Where(envio => envio.OperadorId == operadorId);
@@ -43,8 +48,47 @@ public class EnvioRepositorio : IEnvioRepositorio
         return consulta.OrderByDescending(envio => envio.FechaCreacion).ToListAsync(cancellationToken);
     }
 
+    public async Task<ResultadoPaginado<Envio>> ListarPaginadoAsync(
+        Guid operadorId,
+        Guid? comercioId,
+        EstadoEnvio? estado,
+        int pagina,
+        int tamanoPagina,
+        CancellationToken cancellationToken = default)
+    {
+        if (pagina < 1)
+            pagina = 1;
+        if (tamanoPagina < 1)
+            tamanoPagina = 50;
+        if (tamanoPagina > 200)
+            tamanoPagina = 200;
+
+        var consulta = _context.Envios.AsNoTracking().Where(envio => envio.OperadorId == operadorId);
+        if (comercioId is Guid comercio)
+            consulta = consulta.Where(envio => envio.ComercioId == comercio);
+        if (estado is EstadoEnvio filtroEstado)
+            consulta = consulta.Where(envio => envio.Estado == filtroEstado);
+
+        var total = await consulta.CountAsync(cancellationToken);
+        var items = await consulta
+            .OrderByDescending(envio => envio.FechaCreacion)
+            .Skip((pagina - 1) * tamanoPagina)
+            .Take(tamanoPagina)
+            .ToListAsync(cancellationToken);
+
+        return new ResultadoPaginado<Envio>(items, total, pagina, tamanoPagina);
+    }
+
     public Task<List<Envio>> ObtenerPorRutaAsync(Guid operadorId, Guid rutaId, CancellationToken cancellationToken = default) =>
         _context.Envios.AsNoTracking()
+            .Where(envio => envio.OperadorId == operadorId && envio.RutaId == rutaId)
+            .ToListAsync(cancellationToken);
+
+    public Task<List<Envio>> ObtenerPorRutaParaEditarAsync(
+        Guid operadorId,
+        Guid rutaId,
+        CancellationToken cancellationToken = default) =>
+        _context.Envios
             .Where(envio => envio.OperadorId == operadorId && envio.RutaId == rutaId)
             .ToListAsync(cancellationToken);
 

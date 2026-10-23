@@ -10,6 +10,11 @@ public interface IRutaRepositorio
         DateOnly fecha,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Ruta>> ObtenerDelDiaAsync(
+        Guid operadorId,
+        DateOnly fecha,
+        CancellationToken cancellationToken = default);
+
     Task GuardarDespachoAsync(
         Ruta ruta,
         IReadOnlyList<Parada> paradas,

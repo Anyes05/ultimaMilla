@@ -40,6 +40,16 @@ public static class SemillaDatos
 
             var clave = HashClave.Crear(DatosSemilla.ClaveDesarrollo);
 
+            var adminNorte = UsuarioPlataforma.Registrar(
+                DatosSemilla.UsuarioAdministradorNorteId,
+                DatosSemilla.OperadorNorteId,
+                "Administrador Norte",
+                "admin@norte.test",
+                DatosSemilla.UsuarioAdministradorNorte,
+                clave,
+                RolUsuario.Administrador,
+                null);
+
             var despachadorNorte = UsuarioPlataforma.Registrar(
                 DatosSemilla.UsuarioDespachadorNorteId,
                 DatosSemilla.OperadorNorteId,
@@ -82,11 +92,76 @@ public static class SemillaDatos
 
             context.Operadores.AddRange(norte, sur);
             context.Comercios.AddRange(comercioNorte, comercioSur);
-            context.Usuarios.AddRange(despachadorNorte, comercioUsuarioNorte, despachadorSur, comercioUsuarioSur);
+            context.Usuarios.AddRange(
+                adminNorte, despachadorNorte, comercioUsuarioNorte, despachadorSur, comercioUsuarioSur);
             await context.SaveChangesAsync(cancellationToken);
         }
 
+        await AsegurarAdministradorAsync(context, cancellationToken);
+        await AsegurarTarifasAsync(context, cancellationToken);
         await AsegurarRepartidoresAsync(context, cancellationToken);
+    }
+
+    private static async Task AsegurarAdministradorAsync(PlataformaDbContext context, CancellationToken cancellationToken)
+    {
+        if (await context.Usuarios.AnyAsync(
+                usuario => usuario.Id == DatosSemilla.UsuarioAdministradorNorteId, cancellationToken))
+            return;
+
+        context.Usuarios.Add(UsuarioPlataforma.Registrar(
+            DatosSemilla.UsuarioAdministradorNorteId,
+            DatosSemilla.OperadorNorteId,
+            "Administrador Norte",
+            "admin@norte.test",
+            DatosSemilla.UsuarioAdministradorNorte,
+            HashClave.Crear(DatosSemilla.ClaveDesarrollo),
+            RolUsuario.Administrador,
+            null));
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task AsegurarTarifasAsync(PlataformaDbContext context, CancellationToken cancellationToken)
+    {
+        if (await context.ReglasTarifarias.AnyAsync(cancellationToken))
+            return;
+
+        var desde = DateTime.UtcNow.AddYears(-1);
+        var hasta = DateTime.UtcNow.AddYears(10);
+
+        var norte = ReglaTarifaria.Crear(
+            DatosSemilla.ReglaTarifaNorteId,
+            DatosSemilla.OperadorNorteId,
+            precioBase: 100,
+            precioPorKg: 10,
+            precioPorKm: 5,
+            recargoFragil: 20,
+            recargoUrgente: 30);
+
+        var sur = ReglaTarifaria.Crear(
+            DatosSemilla.ReglaTarifaSurId,
+            DatosSemilla.OperadorSurId,
+            precioBase: 80,
+            precioPorKg: 8,
+            precioPorKm: 4,
+            recargoFragil: 15,
+            recargoUrgente: 25);
+
+        context.ReglasTarifarias.AddRange(norte, sur);
+        context.VigenciasTarifa.AddRange(
+            VigenciaTarifa.Crear(
+                DatosSemilla.VigenciaTarifaNorteId,
+                DatosSemilla.OperadorNorteId,
+                norte.Id,
+                desde,
+                hasta),
+            VigenciaTarifa.Crear(
+                DatosSemilla.VigenciaTarifaSurId,
+                DatosSemilla.OperadorSurId,
+                sur.Id,
+                desde,
+                hasta));
+
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     private static async Task AsegurarRepartidoresAsync(PlataformaDbContext context, CancellationToken cancellationToken)

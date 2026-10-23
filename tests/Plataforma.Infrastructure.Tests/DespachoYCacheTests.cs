@@ -173,6 +173,7 @@ public class DespachoYCacheTests
         var sync = new SincronizarEntregas(
             rutas,
             envios,
+            new PruebaDeEntregaRepositorio(contexto),
             new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
             cache);
 
@@ -188,9 +189,11 @@ public class DespachoYCacheTests
                     "Receptor",
                     "",
                     DateTimeOffset.UtcNow)
-            ]);
+            ],
+            "repartidor.norte");
 
         Assert.Single(ok.Aplicados);
+        Assert.Equal(1, await contexto.PruebasDeEntrega.CountAsync(p => p.EnvioId == envioId));
         Assert.Equal(EstadoEnvio.Entregado,
             (await new ObtenerSeguimientoEnvio(envios, cache).PorTokenAsync(token))!.Estado);
 
@@ -206,7 +209,8 @@ public class DespachoYCacheTests
                     "Otro",
                     "",
                     DateTimeOffset.UtcNow)
-            ]);
+            ],
+            "repartidor.norte");
 
         var rechazo = Assert.Single(conflicto.Rechazados);
         Assert.Equal(EstadoEnvio.Entregado, rechazo.EstadoActual);

@@ -37,11 +37,12 @@ public sealed class EmisorTokenJwt : IEmisorToken
         if (sesion.RepartidorId is Guid repartidorId)
             claims.Add(new Claim(ClaimsPlataforma.RepartidorId, repartidorId.ToString()));
 
+        var horas = AutenticacionJwt.HorasVigencia(_configuration);
         var token = new JwtSecurityToken(
             issuer: AutenticacionJwt.Emisor(_configuration),
             audience: AutenticacionJwt.Audiencia(_configuration),
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(12),
+            expires: DateTime.UtcNow.AddHours(horas),
             signingCredentials: credenciales);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

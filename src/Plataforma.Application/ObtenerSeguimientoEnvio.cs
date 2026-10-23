@@ -25,17 +25,27 @@ public sealed class ObtenerSeguimientoEnvio
             return JsonSerializer.Deserialize<SeguimientoVisible>(cacheado, ObtenerRutasDeHoy.OpcionesJson);
 
         var envio = await _envios.ObtenerPorTokenAsync(token.Trim(), cancellationToken);
-        if (envio is null)
+        return envio is null ? null : await PublicarYDevolverAsync(envio, cancellationToken);
+    }
+
+    public async Task<SeguimientoVisible?> PorNumeroAsync(string numero, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(numero))
             return null;
 
+        var clave = ClavesCache.SeguimientoPorNumero(numero.Trim());
+        var cacheado = await _cache.LeerAsync(clave, cancellationToken);
+        if (cacheado is not null)
+            return JsonSerializer.Deserialize<SeguimientoVisible>(cacheado, ObtenerRutasDeHoy.OpcionesJson);
+
+        var envio = await _envios.ObtenerPorNumeroAsync(numero.Trim(), cancellationToken);
+        return envio is null ? null : await PublicarYDevolverAsync(envio, cancellationToken);
+    }
+
+    private async Task<SeguimientoVisible> PublicarYDevolverAsync(Envio envio, CancellationToken cancellationToken)
+    {
         var visible = SeguimientoVisible.Desde(envio);
-        var json = JsonSerializer.Serialize(visible, ObtenerRutasDeHoy.OpcionesJson);
-        await _cache.GuardarAsync(clave, json, TimeSpan.FromHours(48), cancellationToken);
-        await _cache.GuardarAsync(
-            ClavesCache.SeguimientoPorNumero(envio.NumeroSeguimiento),
-            json,
-            TimeSpan.FromHours(48),
-            cancellationToken);
+        await CacheSeguimiento.PublicarAsync(_cache, envio, cancellationToken);
         return visible;
     }
 }

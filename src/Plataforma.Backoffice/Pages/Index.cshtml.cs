@@ -14,6 +14,10 @@ public class IndexModel : PageModel
     private readonly IOperadorRepositorio _operadores;
 
     public List<Envio> Envios { get; set; } = new();
+    public int TotalEnvios { get; private set; }
+    public int Pagina { get; private set; } = 1;
+    public int TamanoPagina { get; private set; } = 50;
+    public EstadoEnvio? FiltroEstado { get; private set; }
     public Operador? Operador { get; private set; }
     public string? Error { get; private set; }
     public string ColorMarcaCss => Operador?.ColorMarca switch
@@ -30,9 +34,11 @@ public class IndexModel : PageModel
         _operadores = operadores;
     }
 
-    public async Task OnGetAsync()
+    public async Task OnGetAsync(EstadoEnvio? estado = null, int pagina = 1)
     {
         Error = TempData["Error"] as string;
+        FiltroEstado = estado;
+        Pagina = pagina < 1 ? 1 : pagina;
         await CargarAsync();
     }
 
@@ -62,7 +68,15 @@ public class IndexModel : PageModel
         if (!AccesoActual.Intentar(User, out var acceso))
             return;
 
-        Envios = await _listarEnvios.Ejecutar(acceso, HttpContext.RequestAborted);
+        var pagina = await _listarEnvios.EjecutarPaginadoAsync(
+            acceso,
+            FiltroEstado,
+            Pagina,
+            TamanoPagina,
+            HttpContext.RequestAborted);
+        Envios = pagina.Items.ToList();
+        TotalEnvios = pagina.Total;
+        Pagina = pagina.Pagina;
         Operador = await _operadores.ObtenerAsync(acceso.OperadorId);
     }
 }

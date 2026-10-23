@@ -71,6 +71,15 @@ public static class AutenticacionJwt
 
     public static string Audiencia(IConfiguration configuration) =>
         configuration["Jwt:Audiencia"] ?? "ultima-milla";
+
+    /// <summary>Vigencia del JWT en horas (por defecto 8; antes era 12 fijas).</summary>
+    public static int HorasVigencia(IConfiguration configuration)
+    {
+        var valor = configuration["Jwt:HorasVigencia"];
+        if (int.TryParse(valor, out var horas) && horas is >= 1 and <= 24)
+            return horas;
+        return 8;
+    }
 }
 
 public static class CookieAcceso

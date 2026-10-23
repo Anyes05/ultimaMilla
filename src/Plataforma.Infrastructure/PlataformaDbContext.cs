@@ -71,6 +71,19 @@ public class PlataformaDbContext : DbContext
         AplicarFiltroOperador<Parada>(modelBuilder);
         AplicarFiltroOperador<Vehiculo>(modelBuilder);
         AplicarFiltroOperador<PruebaDeEntrega>(modelBuilder);
+
+        modelBuilder.Entity<Envio>()
+            .HasIndex(envio => envio.NumeroSeguimiento)
+            .IsUnique();
+
+        modelBuilder.Entity<Envio>()
+            .HasIndex(envio => envio.TokenSeguimientoPublico)
+            .IsUnique();
+
+        modelBuilder.Entity<Operador>()
+            .Property(operador => operador.ZonaHoraria)
+            .HasMaxLength(64)
+            .HasDefaultValue(Operador.ZonaHorariaUruguay);
     }
 
     private void AplicarFiltroOperador<TEntidad>(ModelBuilder modelBuilder)

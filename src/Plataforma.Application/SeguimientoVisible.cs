@@ -2,20 +2,12 @@ using Plataforma.Domain;
 
 namespace Plataforma.Application;
 
+/// <summary>Vista pública mínima: sin nombre, dirección ni token.</summary>
 public sealed record SeguimientoVisible(
     string NumeroSeguimiento,
-    string TokenSeguimientoPublico,
-    string Destinatario,
-    string DireccionEntrega,
     EstadoEnvio Estado,
     int IntentosRealizados)
 {
     public static SeguimientoVisible Desde(Envio envio) =>
-        new(
-            envio.NumeroSeguimiento,
-            envio.TokenSeguimientoPublico,
-            envio.Destinatario,
-            envio.DireccionEntrega,
-            envio.Estado,
-            envio.IntentosRealizados);
+        new(envio.NumeroSeguimiento, envio.Estado, envio.IntentosRealizados);
 }
