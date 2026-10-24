@@ -37,8 +37,8 @@
 }
 
 <div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card border-0 shadow-sm h-100">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
                 <h2 class="h5 mb-3">Mi suscripción</h2>
                 <EditForm method="post" Model="Formulario" OnValidSubmit="GuardarAsync" FormName="SuscripcionForm">
@@ -69,7 +69,7 @@
 
                     <fieldset class="mb-3">
                         <legend class="form-label fw-semibold fs-6">Eventos que querés recibir</legend>
-                        <div class="row row-cols-2 g-1">
+                        <div class="row row-cols-2 row-cols-md-3 g-1">
                             @for (var i = 0; i < Formulario!.Tipos.Count; i++)
                             {
                                 var indice = i;
@@ -90,23 +90,8 @@
                         <label class="form-check-label" for="activa">Suscripción activa</label>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100">Guardar suscripción</button>
+                    <button type="submit" class="btn btn-primary">Guardar suscripción</button>
                 </EditForm>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-lg-6">
-        <div class="card border-0 bg-primary-subtle h-100">
-            <div class="card-body p-4">
-                <h2 class="h5">Cómo verificar un aviso</h2>
-                <ol class="text-muted ps-3 mb-0 small">
-                    <li class="mb-2">Leé los encabezados <code>@FirmaAviso.HeaderTimestamp</code> y <code>@FirmaAviso.HeaderFirma</code>.</li>
-                    <li class="mb-2">Calculá <code>HMAC-SHA256(secreto, timestamp + "." + cuerpo)</code> en hexadecimal.</li>
-                    <li class="mb-2">Compará con la firma recibida (<code>sha256=…</code>) y rechazá avisos de más de 5 minutos.</li>
-                    <li>Usá <code>@FirmaAviso.HeaderEvento</code> para descartar duplicados: un reenvío trae el mismo identificador.</li>
-                </ol>
-                <p class="small text-muted mt-3 mb-0">Si tu sistema no responde 2xx, reintentamos con espera creciente. Si se agotan los intentos, el aviso queda abajo como fallido y lo podés reenviar.</p>
             </div>
         </div>
     </div>
