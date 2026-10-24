@@ -1,11 +1,13 @@
 using Plataforma.Worker;
 using Microsoft.EntityFrameworkCore;
+using Plataforma.Application;
 using Plataforma.Infrastructure;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Services.Configure<OpcionesRabbitMqWorker>(builder.Configuration.GetSection(OpcionesRabbitMqWorker.Seccion));
 builder.Services.Configure<OpcionesAvisos>(builder.Configuration.GetSection(OpcionesAvisos.Seccion));
+builder.Services.AddScoped<IOperadorActual>(_ => new OperadorActualFijo(null));
 builder.Services.AddDbContextFactory<PlataformaDbContext>(opciones =>
 	opciones.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 builder.Services.AddHttpClient("receptor-avisos", cliente =>
