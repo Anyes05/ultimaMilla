@@ -80,20 +80,22 @@ $avisoSigningKey = ConvertTo-PlainText (Read-Host -Prompt "Clave de firma HMAC p
 
 try {
     $connectionString = "Host=$rdsEndpoint;Port=5432;Database=tallernet;Username=tallernet_admin;Password=$rdsPassword"
-    $secretManifest = @"
-apiVersion: v1
-kind: Secret
-metadata:
-  name: tallernet-application-secrets
-  namespace: $Namespace
-type: Opaque
-data:
-  ConnectionStrings__Default: $(ConvertTo-Base64 $connectionString)
-  Jwt__Clave: $(ConvertTo-Base64 $jwtKey)
-  Jwt__Emisor: $(ConvertTo-Base64 $JwtIssuer)
-  Jwt__Audiencia: $(ConvertTo-Base64 $JwtAudience)
-    Avisos__ClaveFirma: $(ConvertTo-Base64 $avisoSigningKey)
-"@
+    $secretManifest = [ordered]@{
+        apiVersion = "v1"
+        kind       = "Secret"
+        metadata   = [ordered]@{
+            name      = "tallernet-application-secrets"
+            namespace = $Namespace
+        }
+        type       = "Opaque"
+        data       = [ordered]@{
+            ConnectionStrings__Default = ConvertTo-Base64 $connectionString
+            Jwt__Clave                 = ConvertTo-Base64 $jwtKey
+            Jwt__Emisor                = ConvertTo-Base64 $JwtIssuer
+            Jwt__Audiencia             = ConvertTo-Base64 $JwtAudience
+            Avisos__ClaveFirma         = ConvertTo-Base64 $avisoSigningKey
+        }
+    } | ConvertTo-Json -Depth 4
     Invoke-KubectlApply -Manifest $secretManifest
 }
 finally {
