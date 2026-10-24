@@ -8,6 +8,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <ProjectReference Include="..\Plataforma.Application\Plataforma.Application.csproj" />
+    <ProjectReference Include="..\Plataforma.Avisos\Plataforma.Avisos.csproj" />
     <ProjectReference Include="..\Plataforma.Infrastructure\Plataforma.Infrastructure.csproj" />
   </ItemGroup>
 

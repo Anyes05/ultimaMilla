@@ -1,0 +1,307 @@
+@page "/avisos"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = Plataforma.Domain.Roles.Comercio)]
+@using System.Security.Cryptography
+@using Plataforma.Application
+@using Plataforma.Avisos
+@using Plataforma.Domain
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ServicioAvisos ServicioAvisos
+@inject ListarEnvios ListarEnvios
+@inject NavigationManager Navegacion
+@inject ILogger<Avisos> Logger
+
+<PageTitle>Avisos automáticos</PageTitle>
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-primary fw-semibold small mb-1">Portal de comercio</p>
+        <h1 class="display-6 fw-bold mb-1">Avisos automáticos</h1>
+        <p class="text-muted mb-0">Recibí en tu sistema cada cambio de estado de tus envíos, firmado para que verifiques que viene de nosotros.</p>
+    </div>
+    <form method="post" action="/logout">
+        <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+    </form>
+</div>
+
+@if (Ok == "guardado")
+{
+    <div class="alert alert-success" role="status">Suscripción guardada.</div>
+}
+@if (Ok == "reenviado")
+{
+    <div class="alert alert-success" role="status">Aviso reenviado: se vuelve a mandar con el mismo identificador de evento.</div>
+}
+@if (!string.IsNullOrWhiteSpace(ErrorQuery ?? mensajeError))
+{
+    <div class="alert alert-danger" role="alert">@(mensajeError ?? ErrorQuery)</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Mi suscripción</h2>
+                <EditForm method="post" Model="Formulario" OnValidSubmit="GuardarAsync" FormName="SuscripcionForm">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="alert alert-danger py-2" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="url">URL de tu sistema</label>
+                        <InputText id="url" @bind-Value="Formulario!.Url" class="form-control" placeholder="https://mi-tienda.com/avisos" />
+                        <div class="form-text">Debe ser https. Ahí enviamos un POST con el aviso en JSON.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="secreto">Secreto de firma</label>
+                        <InputText id="secreto" @bind-Value="Formulario!.Secreto" class="form-control font-monospace"
+                                   placeholder="@(TieneSuscripcion ? "Dejalo vacío para conservar el actual" : "Mínimo 16 caracteres")" />
+                        <div class="form-text">
+                            @if (TieneSuscripcion)
+                            {
+                                <span>Hay un secreto configurado (termina en <code>@SecretoVisible</code>).</span>
+                            }
+                            else
+                            {
+                                <span>Te sugerimos uno al azar. Guardalo en tu sistema para verificar la firma HMAC-SHA256.</span>
+                            }
+                        </div>
+                    </div>
+
+                    <fieldset class="mb-3">
+                        <legend class="form-label fw-semibold fs-6">Eventos que querés recibir</legend>
+                        <div class="row row-cols-2 g-1">
+                            @for (var i = 0; i < Formulario!.Tipos.Count; i++)
+                            {
+                                var indice = i;
+                                <div class="col">
+                                    <div class="form-check">
+                                        <InputCheckbox id="@($"tipo-{indice}")" @bind-Value="Formulario.Tipos[indice].Seleccionado" class="form-check-input" />
+                                        <input type="hidden" name="Formulario.Tipos[@indice].Tipo" value="@Formulario.Tipos[indice].Tipo" />
+                                        <label class="form-check-label" for="@($"tipo-{indice}")">@TiposDeEvento.Nombre(Formulario.Tipos[indice].Tipo)</label>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        <div class="form-text">Si no marcás ninguno, recibís todos.</div>
+                    </fieldset>
+
+                    <div class="form-check form-switch mb-4">
+                        <InputCheckbox id="activa" @bind-Value="Formulario!.Activa" class="form-check-input" />
+                        <label class="form-check-label" for="activa">Suscripción activa</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100">Guardar suscripción</button>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 bg-primary-subtle h-100">
+            <div class="card-body p-4">
+                <h2 class="h5">Cómo verificar un aviso</h2>
+                <ol class="text-muted ps-3 mb-0 small">
+                    <li class="mb-2">Leé los encabezados <code>@FirmaAviso.HeaderTimestamp</code> y <code>@FirmaAviso.HeaderFirma</code>.</li>
+                    <li class="mb-2">Calculá <code>HMAC-SHA256(secreto, timestamp + "." + cuerpo)</code> en hexadecimal.</li>
+                    <li class="mb-2">Compará con la firma recibida (<code>sha256=…</code>) y rechazá avisos de más de 5 minutos.</li>
+                    <li>Usá <code>@FirmaAviso.HeaderEvento</code> para descartar duplicados: un reenvío trae el mismo identificador.</li>
+                </ol>
+                <p class="small text-muted mt-3 mb-0">Si tu sistema no responde 2xx, reintentamos con espera creciente. Si se agotan los intentos, el aviso queda abajo como fallido y lo podés reenviar.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="mt-5" aria-labelledby="historial-titulo">
+    <div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+        <div>
+            <h2 id="historial-titulo" class="h3 fw-bold mb-1">Historial de entregas</h2>
+            <p class="text-muted mb-0">Últimos avisos enviados a tu sistema.</p>
+        </div>
+        <a class="btn btn-outline-primary btn-sm" href="/avisos">Actualizar</a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Fecha (UTC)</th><th>Envío</th><th>Evento</th><th>Estado</th><th>Intentos</th><th>Detalle</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entrega in Entregas)
+                        {
+                            <tr @key="entrega.Id">
+                                <td class="small">@entrega.ActualizadaEn.ToString("dd/MM HH:mm:ss")</td>
+                                <td><span class="tracking-number">@(Tracking.TryGetValue(entrega.EnvioId, out var numero) ? numero : entrega.EnvioId.ToString()[..8])</span></td>
+                                <td>@TiposDeEvento.Nombre(entrega.TipoEvento)</td>
+                                <td><span class="status-badge @ClaseEstado(entrega.Estado)">@NombreEstado(entrega.Estado)</span></td>
+                                <td>@entrega.Intentos</td>
+                                <td class="small text-muted">@(entrega.UltimoError ?? (entrega.UltimoCodigoHttp is int codigo ? $"HTTP {codigo}" : "—"))</td>
+                                <td class="text-end">
+                                    @if (entrega.Estado == EstadoEntrega.Fallido)
+                                    {
+                                        <form method="post" action="/avisos/reenviar">
+                                            <AntiforgeryToken />
+                                            <input type="hidden" name="entregaId" value="@entrega.Id" />
+                                            <button class="btn btn-sm btn-outline-primary" type="submit">Reenviar</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (Entregas.Count == 0)
+                        {
+                            <tr><td colspan="7" class="text-center text-muted py-5">Todavía no se enviaron avisos.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromForm(FormName = "SuscripcionForm")]
+    private SuscripcionForm? Formulario { get; set; }
+
+    [SupplyParameterFromQuery(Name = "ok")]
+    private string? Ok { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? ErrorQuery { get; set; }
+
+    private string? mensajeError;
+    private bool TieneSuscripcion;
+    private string SecretoVisible = string.Empty;
+    private List<EntregaVista> Entregas = [];
+    private Dictionary<Guid, string> Tracking = [];
+
+    // true si el formulario vino del POST: no se pisa con lo guardado.
+    private bool vinoDelPost;
+
+    protected override void OnInitialized()
+    {
+        // El primer render ocurre antes de que termine la carga asíncrona: EditForm necesita un modelo ya.
+        vinoDelPost = Formulario is not null;
+        Formulario ??= SuscripcionForm.Vacio();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!IntentarObtenerAcceso(out var acceso, out var comercioId))
+        {
+            mensajeError = "No se pudo identificar el comercio autenticado. Volvé a iniciar sesión.";
+            return;
+        }
+
+        try
+        {
+            var suscripcion = await ServicioAvisos.ObtenerSuscripcionAsync(acceso.OperadorId, comercioId);
+            TieneSuscripcion = suscripcion is not null;
+            SecretoVisible = suscripcion is null ? string.Empty : "…" + suscripcion.Secreto[^4..];
+
+            // Si no vino del POST, se precarga con lo guardado (o con un secreto sugerido si es nueva).
+            if (!vinoDelPost)
+                Formulario = suscripcion is null ? SuscripcionForm.Nuevo() : SuscripcionForm.Desde(suscripcion);
+
+            Entregas = await ServicioAvisos.ListarEntregasComercioAsync(acceso.OperadorId, comercioId, 50);
+            Tracking = (await ListarEnvios.Ejecutar(acceso))
+                .ToDictionary(envio => envio.Id, envio => envio.NumeroSeguimiento);
+        }
+        catch (Npgsql.PostgresException ex)
+        {
+            Logger.LogError(ex, "No se pudo leer el módulo de avisos.");
+            mensajeError = "Los avisos no están disponibles en este momento.";
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (Formulario is null || !IntentarObtenerAcceso(out var acceso, out var comercioId))
+            return;
+
+        try
+        {
+            await ServicioAvisos.GuardarSuscripcionAsync(
+                acceso.OperadorId,
+                comercioId,
+                Formulario.Url,
+                Formulario.Secreto,
+                Formulario.Tipos.Where(t => t.Seleccionado).Select(t => t.Tipo),
+                Formulario.Activa);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            mensajeError = ex.Message;
+            return;
+        }
+
+        Navegacion.NavigateTo("/avisos?ok=guardado", forceLoad: true);
+    }
+
+    private bool IntentarObtenerAcceso(out AccesoActual acceso, out Guid comercioId)
+    {
+        comercioId = Guid.Empty;
+        var principal = HttpContextAccessor.HttpContext?.User ?? new System.Security.Claims.ClaimsPrincipal();
+        if (!AccesoActual.Intentar(principal, out acceso) || acceso.Rol != Roles.Comercio || acceso.ComercioId is not Guid comercio)
+            return false;
+
+        comercioId = comercio;
+        return true;
+    }
+
+    private static string ClaseEstado(EstadoEntrega estado) => estado switch
+    {
+        EstadoEntrega.Entregado => "status-entregado",
+        EstadoEntrega.Fallido => "status-no-entregado",
+        _ => "status-en-transito"
+    };
+
+    private static string NombreEstado(EstadoEntrega estado) => estado switch
+    {
+        EstadoEntrega.Entregado => "Entregado",
+        EstadoEntrega.Fallido => "Fallido",
+        _ => "Pendiente"
+    };
+
+    public sealed class SuscripcionForm
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La URL es requerida.")]
+        [System.ComponentModel.DataAnnotations.Url(ErrorMessage = "La URL no es válida.")]
+        public string Url { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(200, ErrorMessage = "El secreto puede tener hasta 200 caracteres.")]
+        public string? Secreto { get; set; }
+
+        public bool Activa { get; set; } = true;
+
+        public List<TipoSeleccion> Tipos { get; set; } = [];
+
+        public static SuscripcionForm Vacio() =>
+            new() { Tipos = TiposDeEvento.Todos.Select(t => new TipoSeleccion { Tipo = t }).ToList() };
+
+        public static SuscripcionForm Nuevo()
+        {
+            var formulario = Vacio();
+            formulario.Secreto = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24));
+            return formulario;
+        }
+
+        public static SuscripcionForm Desde(SuscripcionAviso suscripcion) =>
+            new()
+            {
+                Url = suscripcion.Url,
+                Activa = suscripcion.Activa,
+                Tipos = TiposDeEvento.Todos
+                    .Select(t => new TipoSeleccion { Tipo = t, Seleccionado = suscripcion.Tipos.Contains(t, StringComparer.OrdinalIgnoreCase) })
+                    .ToList()
+            };
+    }
+
+    public sealed class TipoSeleccion
+    {
+        public string Tipo { get; set; } = string.Empty;
+        public bool Seleccionado { get; set; }
+    }
+}

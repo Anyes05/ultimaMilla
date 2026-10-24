@@ -165,8 +165,8 @@
                     @foreach (var version in Model.Versiones)
                     {
                         <tr>
-                            <td>@version.Desde.ToLocalTime().ToString("g")</td>
-                            <td>@(version.Hasta.Year >= 9999 ? "—" : version.Hasta.ToLocalTime().ToString("g"))</td>
+                            <td>@Model.HoraOperador(version.Desde)</td>
+                            <td>@(version.Hasta.Year >= 9999 ? "—" : Model.HoraOperador(version.Hasta))</td>
                             <td>@TarifasModel.Importe(version.Valores.PrecioBase)</td>
                             <td>@TarifasModel.Importe(version.Valores.PrecioPorKg)</td>
                             <td>@TarifasModel.Importe(version.Valores.PrecioPorKm)</td>

@@ -99,9 +99,12 @@ public class TarifasModel : PageModel
 
         try
         {
+            // La fecha del formulario está en la hora del operador (no la del servidor, que en el contenedor es UTC).
+            Operador = await _operadores.ObtenerAsync(acceso.OperadorId, HttpContext.RequestAborted);
             var desde = NuevaVersion.VigenteDesdeLocal == default
                 ? DateTime.UtcNow
-                : DateTime.SpecifyKind(NuevaVersion.VigenteDesdeLocal, DateTimeKind.Local).ToUniversalTime();
+                : TimeZoneInfo.ConvertTimeToUtc(
+                    DateTime.SpecifyKind(NuevaVersion.VigenteDesdeLocal, DateTimeKind.Unspecified), ZonaOperador);
 
             await _gestion.PublicarVersionAsync(
                 acceso.OperadorId,
@@ -128,6 +131,26 @@ public class TarifasModel : PageModel
     public static string Importe(decimal valor) =>
         valor.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("es-UY"));
 
+    /// <summary>Zona del operador (Operador.ZonaHoraria); si no se encuentra en el sistema, UTC-3 de Uruguay.</summary>
+    public TimeZoneInfo ZonaOperador
+    {
+        get
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(Operador?.ZonaHoraria ?? Operador.ZonaHorariaUruguay);
+            }
+            catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+            {
+                return TimeZoneInfo.CreateCustomTimeZone("UY", TimeSpan.FromHours(-3), "Uruguay", "Uruguay");
+            }
+        }
+    }
+
+    public string HoraOperador(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), ZonaOperador)
+            .ToString("dd/MM/yyyy HH:mm");
+
     private async Task CargarAsync()
     {
         if (!AccesoActual.Intentar(User, out var acceso))
@@ -137,6 +160,9 @@ public class TarifasModel : PageModel
         Operador = await _operadores.ObtenerAsync(acceso.OperadorId, ct);
         Vigente = await _tarifas.ObtenerActivaAsync(acceso.OperadorId, DateTime.UtcNow, ct);
         Versiones = await _gestion.ListarVersionesAsync(acceso.OperadorId, ct);
+
+        if (NuevaVersion.VigenteDesdeLocal == default)
+            NuevaVersion.VigenteDesdeLocal = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ZonaOperador);
 
         if (NuevaVersion.PrecioBase == 0 && Vigente is not null)
         {
@@ -178,6 +204,7 @@ public class TarifasModel : PageModel
         [Range(typeof(decimal), "0", "1000000")]
         public decimal RecargoUrgente { get; set; }
 
-        public DateTime VigenteDesdeLocal { get; set; } = DateTime.Now;
+        /// <summary>Hora del operador; vacía = ahora. Se completa al cargar la página.</summary>
+        public DateTime VigenteDesdeLocal { get; set; }
     }
 }

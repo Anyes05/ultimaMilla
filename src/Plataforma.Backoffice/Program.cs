@@ -4,6 +4,8 @@ using Plataforma.Domain;
 using Plataforma.Backoffice;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
+using Plataforma.Avisos;
+using Plataforma.Backoffice.Tablero;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +26,10 @@ if (opcionesRedis is not null)
         ConnectionMultiplexer.Connect(opcionesRedis),
         "plataforma:backoffice:data-protection");
 }
+// Módulo de avisos (fallidos y reintentos) y tablero en tiempo real alimentado desde la cola.
+builder.Services.AddAvisos(builder.Configuration);
+builder.Services.AddHostedService<TableroConsumidor>();
+
 builder.Services.ConfigureHttpJsonOptions(opciones =>
 {
     foreach (var converter in ObtenerRutasDeHoy.OpcionesJson.Converters)
@@ -38,6 +44,8 @@ var app = builder.Build();
 if (string.Equals(builder.Configuration["Database:MigrateOnStartup"], "true", StringComparison.OrdinalIgnoreCase))
 {
     await app.Services.MigrarBaseDeDatosAsync();
+    // Esquema "avisos" con su propia tabla de migraciones; lo aplica el mismo job de migración.
+    await app.Services.MigrarAvisosAsync();
 }
 
 if (string.Equals(builder.Configuration["Database:MigrateOnly"], "true", StringComparison.OrdinalIgnoreCase))
@@ -90,7 +98,7 @@ app.MapPost("/logout", (HttpContext httpContext) =>
 
 app.MapApisRepartidor();
 app.MapAvisosTecnicos();
-app.MapHub<HubAvisosOperador>("/hubs/avisos").RequireAuthorization();
+app.MapHub<HubAvisosOperador>(HubAvisosOperador.Ruta).RequireAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorPages()

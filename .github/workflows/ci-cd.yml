@@ -45,6 +45,9 @@ jobs:
       - name: Run architecture tests
         run: dotnet test tests/Plataforma.Architecture.Tests/Plataforma.Architecture.Tests.csproj --configuration Release --no-build --no-restore
 
+      - name: Run notification tests
+        run: dotnet test tests/Plataforma.Avisos.Tests/Plataforma.Avisos.Tests.csproj --configuration Release --no-build --no-restore
+
   publish-images:
     name: Build and publish images
     needs: test

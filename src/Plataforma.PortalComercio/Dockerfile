@@ -5,6 +5,7 @@ COPY ["src/Plataforma.PortalComercio/Plataforma.PortalComercio.csproj", "src/Pla
 COPY ["src/Plataforma.Application/Plataforma.Application.csproj", "src/Plataforma.Application/"]
 COPY ["src/Plataforma.Infrastructure/Plataforma.Infrastructure.csproj", "src/Plataforma.Infrastructure/"]
 COPY ["src/Plataforma.Domain/Plataforma.Domain.csproj", "src/Plataforma.Domain/"]
+COPY ["src/Plataforma.Avisos/Plataforma.Avisos.csproj", "src/Plataforma.Avisos/"]
 RUN dotnet restore "src/Plataforma.PortalComercio/Plataforma.PortalComercio.csproj"
 
 COPY src/ ./src/

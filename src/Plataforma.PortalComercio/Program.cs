@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Plataforma.Avisos;
 using Plataforma.Application;
 using Plataforma.Domain;
 using Plataforma.Infrastructure;
@@ -13,6 +15,8 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Portal);
+// Suscripción a avisos e historial de entregas del comercio (letra 6.9).
+builder.Services.AddAvisos(builder.Configuration);
 
 var keysPath = Path.Combine(builder.Environment.ContentRootPath, "keys");
 var dataProtection = builder.Services.AddDataProtection()
@@ -85,6 +89,38 @@ app.MapPost("/logout", (HttpContext httpContext) =>
     httpContext.Response.Cookies.Delete(CookieAcceso.Portal);
     return Results.Redirect("/login");
 });
+
+// Reenvío de un aviso fallido desde el panel del comercio. El comercio sale del usuario autenticado:
+// solo puede reenviar sus propios avisos.
+app.MapPost("/avisos/reenviar", async (HttpContext contexto, IAntiforgery antiforgery, ServicioAvisos avisos, ILogger<Program> logger) =>
+{
+    await antiforgery.ValidateRequestAsync(contexto);
+
+    if (!AccesoActual.Intentar(contexto.User, out var acceso) ||
+        acceso.Rol != Roles.Comercio ||
+        acceso.ComercioId is not Guid comercioId)
+        return Results.Redirect("/login");
+
+    var formulario = await contexto.Request.ReadFormAsync(contexto.RequestAborted);
+    if (!Guid.TryParse(formulario["entregaId"], out var entregaId))
+        return Results.Redirect("/avisos?error=" + Uri.EscapeDataString("Aviso inválido."));
+
+    try
+    {
+        await avisos.ReintentarAsync(entregaId, acceso.OperadorId, comercioId, contexto.RequestAborted);
+        return Results.Redirect("/avisos?ok=reenviado");
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Redirect("/avisos?error=" + Uri.EscapeDataString(ex.Message));
+    }
+    catch (Exception ex) when (ex is not OperationCanceledException)
+    {
+        // Quedó Pendiente: el barrido del worker lo envía aunque la cola no haya respondido ahora.
+        logger.LogWarning(ex, "Reenvío {EntregaId} guardado pero no publicado.", entregaId);
+        return Results.Redirect("/avisos?ok=reenviado");
+    }
+}).RequireAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
