@@ -5,13 +5,22 @@
 @inject IServiceScopeFactory ScopeFactory
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu NombreOperador="@NombreOperador" ColorMarcaCss="@ColorMarcaCss" />
-    </div>
+    @if (MostrarBarraLateral)
+    {
+        <div class="sidebar">
+            <NavMenu NombreOperador="@NombreOperador" ColorMarcaCss="@ColorMarcaCss" />
+        </div>
+    }
 
     @code {
         private string? NombreOperador { get; set; }
         private string ColorMarcaCss { get; set; } = "#4f46e5";
+
+        // Igual que el Backoffice: sin sesión de comercio (login, errores) no se muestra el menú.
+        private bool MostrarBarraLateral =>
+            HttpContextAccessor.HttpContext?.User is { } usuario
+            && usuario.Identity?.IsAuthenticated == true
+            && usuario.IsInRole(Roles.Comercio);
 
         protected override async Task OnInitializedAsync()
         {
