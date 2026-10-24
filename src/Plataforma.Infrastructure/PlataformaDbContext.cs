@@ -6,15 +6,12 @@ namespace Plataforma.Infrastructure;
 
 public class PlataformaDbContext : DbContext
 {
-    public PlataformaDbContext(DbContextOptions<PlataformaDbContext> options)
-        : this(options, new OperadorActualFijo(null))
-    {
-    }
-
-    public PlataformaDbContext(DbContextOptions<PlataformaDbContext> options, IOperadorActual operadorActual)
+    public PlataformaDbContext(
+        DbContextOptions<PlataformaDbContext> options,
+        IOperadorActual? operadorActual = null)
         : base(options)
     {
-        OperadorIdFiltro = operadorActual.OperadorId;
+        OperadorIdFiltro = operadorActual?.OperadorId;
     }
 
     /// <summary>
