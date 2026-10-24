@@ -4,6 +4,7 @@ WORKDIR /src
 COPY ["src/Plataforma.Worker/Plataforma.Worker.csproj", "src/Plataforma.Worker/"]
 COPY ["src/Plataforma.Application/Plataforma.Application.csproj", "src/Plataforma.Application/"]
 COPY ["src/Plataforma.Domain/Plataforma.Domain.csproj", "src/Plataforma.Domain/"]
+COPY ["src/Plataforma.Infrastructure/Plataforma.Infrastructure.csproj", "src/Plataforma.Infrastructure/"]
 RUN dotnet restore "src/Plataforma.Worker/Plataforma.Worker.csproj"
 
 COPY src/ ./src/
