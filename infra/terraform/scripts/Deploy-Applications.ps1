@@ -3,7 +3,8 @@ param(
     [string]$ImageTag,
     [string]$Namespace = "tallernet",
     [string]$JwtIssuer = "ultima-milla",
-    [string]$JwtAudience = "ultima-milla"
+    [string]$JwtAudience = "ultima-milla",
+    [switch]$EnableWorker
 )
 
 $ErrorActionPreference = "Stop"
@@ -129,6 +130,22 @@ Invoke-KubectlApply -Manifest $applicationManifest
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & kubectl -n $Namespace rollout status deployment/portal --timeout=5m
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+if ($EnableWorker) {
+    & kubectl -n $Namespace set image deployment/queue-worker "queue-worker=$($repositories.worker):$ImageTag"
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    & kubectl -n $Namespace scale deployment/queue-worker --replicas=1
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    & kubectl -n $Namespace rollout status deployment/queue-worker --timeout=5m
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+foreach ($serviceName in @("backoffice", "portal", "tallernet-rabbitmq", "tallernet-redis")) {
+    & kubectl -n $Namespace get service $serviceName | Out-Null
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
 
 & kubectl -n $Namespace get ingress tallernet
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

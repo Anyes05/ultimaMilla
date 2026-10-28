@@ -4,7 +4,8 @@ param(
     [switch]$ValidateManualDns,
     [switch]$SkipApplicationDnsConfirmation,
     [ValidatePattern("^[0-9a-f]{40}$")]
-    [string]$ApplicationImageTag
+    [string]$ApplicationImageTag,
+    [switch]$EnableWorker
 )
 
 $ErrorActionPreference = "Stop"
@@ -373,10 +374,19 @@ else {
 Invoke-TerraformApplyPhase -Name "Fase 8 de 8: instalar NGINX, RabbitMQ, Redis y worker" -Arguments $fullTerraformArguments
 
 if ([string]::IsNullOrWhiteSpace($ApplicationImageTag)) {
+    if ($EnableWorker) {
+        throw "-EnableWorker requiere -ApplicationImageTag con una imagen SHA ya publicada en ECR."
+    }
+
     Write-Host "La plataforma esta lista. Despues de publicar imagenes en ECR, ejecute .\scripts\Deploy-Applications.ps1 -ImageTag <SHA-de-40-caracteres>."
 }
 else {
-    & (Join-Path $PSScriptRoot "Deploy-Applications.ps1") -ImageTag $ApplicationImageTag
+    $deployApplicationArguments = @{ ImageTag = $ApplicationImageTag }
+    if ($EnableWorker) {
+        $deployApplicationArguments.EnableWorker = $true
+    }
+
+    & (Join-Path $PSScriptRoot "Deploy-Applications.ps1") @deployApplicationArguments
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

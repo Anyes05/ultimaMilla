@@ -87,6 +87,14 @@ El worker comienza con cero réplicas para no intentar descargar la imagen `boot
 
 El pipeline siempre publica la imagen del worker, pero solo lo activa si existe el secreto de repositorio `WORKER_DEPLOY_ENABLED` con valor `true`. Mantenerlo ausente hasta que el consumidor implemente y pruebe de punta a punta idempotencia, aviso HTTP, retry y DLQ.
 
+Para reconstruir el estado operativo actual desde una cuenta AWS Academy nueva, publique primero las tres imágenes con CI/CD y use el SHA inmutable publicado al ejecutar:
+
+```powershell
+.\scripts\Deploy-Lab.ps1 -Action Apply -ApplicationImageTag <SHA-de-40-caracteres> -EnableWorker
+```
+
+El script solicita en terminal la contraseña RDS, la clave JWT y la clave HMAC; no las guarda. Tras aplicar la migración, despliega Backoffice y Portal, configura el Worker con la misma imagen SHA, lo escala a una réplica y espera los rollouts. También comprueba que los servicios Backoffice, Portal, RabbitMQ y Redis existan. Sin `-EnableWorker`, el Worker permanece bajo control exclusivo del gate `WORKER_DEPLOY_ENABLED` de CI/CD.
+
 El worker recibe `RabbitMq__Host`, `RabbitMq__Port`, `RabbitMq__Username` y `RabbitMq__Password` por variables de entorno y Secret de Kubernetes.
 
 Las APIs deben usar el endpoint `redis_endpoint`, obtener la clave `redis-password` desde el Secret `${project_name}-redis-credentials`, y publicar métricas de aciertos, fallos e invalidaciones con OpenTelemetry. Terraform instala la dependencia, pero esas políticas de caché e instrumentos son responsabilidades de la aplicación.
