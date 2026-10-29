@@ -3,6 +3,7 @@ WORKDIR /src
 
 COPY ["src/Plataforma.Worker/Plataforma.Worker.csproj", "src/Plataforma.Worker/"]
 COPY ["src/Plataforma.Avisos/Plataforma.Avisos.csproj", "src/Plataforma.Avisos/"]
+COPY ["src/Plataforma.Observabilidad/Plataforma.Observabilidad.csproj", "src/Plataforma.Observabilidad/"]
 RUN dotnet restore "src/Plataforma.Worker/Plataforma.Worker.csproj"
 
 COPY src/ ./src/

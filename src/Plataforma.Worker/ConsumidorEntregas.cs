@@ -100,6 +100,9 @@ public sealed class ConsumidorEntregas : ConsumidorRabbitBase
         }
 
         await db.SaveChangesAsync(stoppingToken);
+        MetricasAvisos.RegistrarIntento(exito ? "entregado"
+            : colaDestino == TopologiaAvisos.ColaFallidos ? "fallido"
+            : "reintento");
 
         if (colaDestino is not null)
         {
@@ -146,10 +149,13 @@ public sealed class ConsumidorEntregas : ConsumidorRabbitBase
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Avisos.TimeoutHttpSegundos));
+        var inicio = System.Diagnostics.Stopwatch.GetTimestamp();
+        int? codigoHttp = null;
         try
         {
             using var respuesta = await _http.CreateClient(ClienteHttp).SendAsync(pedido, timeout.Token);
             var codigo = (int)respuesta.StatusCode;
+            codigoHttp = codigo;
             return respuesta.IsSuccessStatusCode
                 ? (true, codigo, null)
                 : (false, codigo, $"El receptor respondió HTTP {codigo}.");
@@ -161,6 +167,10 @@ public sealed class ConsumidorEntregas : ConsumidorRabbitBase
         catch (HttpRequestException ex)
         {
             return (false, null, $"No se pudo conectar con el receptor: {ex.Message}");
+        }
+        finally
+        {
+            MetricasAvisos.RegistrarDuracionHttp(System.Diagnostics.Stopwatch.GetElapsedTime(inicio), codigoHttp);
         }
     }
 

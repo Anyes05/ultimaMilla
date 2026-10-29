@@ -1,0 +1,9 @@
+# Grafana carga al arrancar los tableros JSON de esta carpeta (montada en el contenedor lgtm).
+apiVersion: 1
+providers:
+  - name: plataforma
+    folder: Plataforma
+    type: file
+    disableDeletion: true
+    options:
+      path: /otel-lgtm/tableros-plataforma

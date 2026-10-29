@@ -8,8 +8,20 @@ using Plataforma.Infrastructure;
 using Plataforma.PortalComercio;
 using Plataforma.PortalComercio.Components;
 using StackExchange.Redis;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using Plataforma.Observabilidad;
+using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logs estructurados, métricas y trazas (letra 6.12). Las sondas /live y /ready no se trazan: son ruido.
+builder.AddObservabilidad(
+    "plataforma-portal",
+    trazas: traza => traza.AddAspNetCoreInstrumentation(opciones =>
+        opciones.Filter = contexto => !EsSonda(contexto.Request.Path)),
+    metricas: medidor => medidor.AddAspNetCoreInstrumentation());
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -42,6 +54,14 @@ builder.Services.AddAntiforgery(options =>
 
 var app = builder.Build();
 
+// Aciertos y fallos del caché de esta réplica; el tablero suma las réplicas.
+var cache = app.Services.GetRequiredService<ICacheLectura>();
+MetricasWeb.RegistrarCache(() =>
+{
+    var estadisticas = cache.Estadisticas();
+    return (estadisticas.Hits, estadisticas.Misses);
+});
+
 if (string.Equals(builder.Configuration["Database:MigrateOnStartup"], "true", StringComparison.OrdinalIgnoreCase))
 {
     await app.Services.MigrarBaseDeDatosAsync();
@@ -54,6 +74,11 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+// Una línea por request con ruta, código y duración; las sondas de Kubernetes van a nivel Verbose.
+app.UseSerilogRequestLogging(opciones => opciones.GetLevel = (contexto, _, ex) =>
+    ex is not null || contexto.Response.StatusCode >= 500 ? LogEventLevel.Error
+    : EsSonda(contexto.Request.Path) ? LogEventLevel.Verbose
+    : LogEventLevel.Information);
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseAuthentication();
 app.UseAuthorization();
@@ -128,3 +153,5 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+static bool EsSonda(PathString ruta) => ruta.StartsWithSegments("/live") || ruta.StartsWithSegments("/ready");

@@ -3,6 +3,7 @@
   <ItemGroup>
     <!-- Módulo de avisos: modelo, persistencia (esquema avisos), firma y colas. El worker no usa el núcleo. -->
     <ProjectReference Include="..\Plataforma.Avisos\Plataforma.Avisos.csproj" />
+    <ProjectReference Include="..\Plataforma.Observabilidad\Plataforma.Observabilidad.csproj" />
   </ItemGroup>
 
   <ItemGroup>

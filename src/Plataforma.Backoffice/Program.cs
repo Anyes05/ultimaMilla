@@ -9,8 +9,20 @@ using Plataforma.Backoffice.Tablero;
 using StackExchange.Redis;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using Plataforma.Observabilidad;
+using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logs estructurados, métricas y trazas (letra 6.12). Las sondas /live y /ready no se trazan: son ruido.
+builder.AddObservabilidad(
+    "plataforma-backoffice",
+    trazas: traza => traza.AddAspNetCoreInstrumentation(opciones =>
+        opciones.Filter = contexto => !EsSonda(contexto.Request.Path)),
+    metricas: medidor => medidor.AddAspNetCoreInstrumentation());
 
 builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
@@ -43,6 +55,14 @@ if (opcionesRedis is not null)
     signalR.AddStackExchangeRedis(opcionesRedis.ToString());
 
 var app = builder.Build();
+
+// Aciertos y fallos del caché de esta réplica; el tablero suma las réplicas.
+var cache = app.Services.GetRequiredService<ICacheLectura>();
+MetricasWeb.RegistrarCache(() =>
+{
+    var estadisticas = cache.Estadisticas();
+    return (estadisticas.Hits, estadisticas.Misses);
+});
 
 if (string.Equals(builder.Configuration["Database:MigrateOnStartup"], "true", StringComparison.OrdinalIgnoreCase))
 {
@@ -88,6 +108,11 @@ app.Use(async (contexto, siguiente) =>
     await siguiente();
 });
 
+// Una línea por request con ruta, código y duración; las sondas de Kubernetes van a nivel Verbose.
+app.UseSerilogRequestLogging(opciones => opciones.GetLevel = (contexto, _, ex) =>
+    ex is not null || contexto.Response.StatusCode >= 500 ? LogEventLevel.Error
+    : EsSonda(contexto.Request.Path) ? LogEventLevel.Verbose
+    : LogEventLevel.Information);
 app.UseRouting();
 app.UseWhen(
     contexto => string.Equals(
@@ -160,5 +185,7 @@ app.MapRazorPages()
    .WithStaticAssets();
 
 app.Run();
+
+static bool EsSonda(PathString ruta) => ruta.StartsWithSegments("/live") || ruta.StartsWithSegments("/ready");
 
 public partial class Program;

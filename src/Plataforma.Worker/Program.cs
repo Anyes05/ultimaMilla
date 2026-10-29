@@ -1,13 +1,17 @@
 using Plataforma.Avisos;
+using Plataforma.Observabilidad;
 using Plataforma.Worker;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// Logs estructurados, métricas y trazas (letra 6.12). La traza que llega en los headers del mensaje continúa acá.
+builder.AddObservabilidad("plataforma-worker");
 builder.Services.AddAvisos(builder.Configuration);
 builder.Services.AddHttpClient(ConsumidorEntregas.ClienteHttp);
 builder.Services.AddHostedService<ConsumidorEnvioEstadoCambiado>();
 builder.Services.AddHostedService<ConsumidorEntregas>();
 builder.Services.AddHostedService<BarridoEntregasPendientes>();
+builder.Services.AddHostedService<MonitorColas>();
 
 // Apagado controlado: da tiempo a terminar el mensaje en curso antes de cortar (SIGTERM de Kubernetes).
 builder.Services.Configure<HostOptions>(opciones => opciones.ShutdownTimeout = TimeSpan.FromSeconds(20));

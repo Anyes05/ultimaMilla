@@ -1,0 +1,27 @@
+# Observabilidad en compose (letra 6.1 y 6.12). Se suma al compose principal sin modificarlo:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.observabilidad.yml up -d --build
+#
+# grafana/otel-lgtm trae en un solo contenedor el colector OpenTelemetry, Prometheus (métricas),
+# Tempo (trazas), Loki (logs) y Grafana: http://localhost:3000 (admin / admin).
+# Las apps le envían todo por OTLP; el "Tablero técnico" se carga solo desde infra/observabilidad/dashboards.
+services:
+  lgtm:
+    image: grafana/otel-lgtm:0.11.10
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./infra/observabilidad/proveedor-tableros.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/plataforma.yaml:ro
+      - ./infra/observabilidad/dashboards:/otel-lgtm/tableros-plataforma:ro
+
+  backoffice:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4317
+
+  portal:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4317
+
+  worker:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lgtm:4317

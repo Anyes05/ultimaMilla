@@ -7,9 +7,15 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <ProjectReference Include="..\Plataforma.Application\Plataforma.Application.csproj" />
     <ProjectReference Include="..\Plataforma.Avisos\Plataforma.Avisos.csproj" />
     <ProjectReference Include="..\Plataforma.Infrastructure\Plataforma.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Plataforma.Observabilidad\Plataforma.Observabilidad.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
