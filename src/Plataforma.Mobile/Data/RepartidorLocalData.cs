@@ -9,9 +9,10 @@ public sealed record EstadoLocalDemo(
     bool HaySesion,
     IReadOnlyDictionary<Guid, EstadoEnvio> EstadosServidor,
     Guid? RepartidorId = null,
-    Guid? OperadorId = null);
+    Guid? OperadorId = null,
+    IReadOnlyList<EntregaPendiente>? ComprobantesConfirmados = null);
 
-public sealed class RepartidorLocalData(string databasePath)
+public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? cipher = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { IgnoreReadOnlyProperties = true };
 
@@ -26,6 +27,9 @@ public sealed class RepartidorLocalData(string databasePath)
             if (json is null)
                 return new EstadoLocalDemo(null, false, new Dictionary<Guid, EstadoEnvio>());
 
+            var cifrado = json.StartsWith("aesgcm1:", StringComparison.Ordinal);
+            if (cifrado)
+                json = (cipher ?? throw new InvalidOperationException("Falta la clave segura; no se modifico la base.")).Descifrar(json);
             var estado = JsonSerializer.Deserialize<EstadoLocalDemo>(json, JsonOptions)
                 ?? throw new InvalidOperationException("La base local contiene datos vacios.");
             if (estado.EstadosServidor is null
@@ -33,6 +37,13 @@ public sealed class RepartidorLocalData(string databasePath)
                 || (estado.Ruta is not null && (estado.Ruta.Envios is null
                     || estado.Ruta.Envios.Any(envio => !estado.EstadosServidor.ContainsKey(envio.Id)))))
                 throw new InvalidOperationException("La ruta local esta incompleta. No se reemplazaron los datos.");
+            if (!cifrado && cipher is not null)
+            {
+                Guardar(estado);
+                using var limpiar = connection.CreateCommand();
+                limpiar.CommandText = "VACUUM";
+                limpiar.ExecuteNonQuery();
+            }
             return estado;
         }
         catch (SqliteException ex)
@@ -42,6 +53,10 @@ public sealed class RepartidorLocalData(string databasePath)
         catch (JsonException ex)
         {
             throw new InvalidOperationException("La ruta guardada no tiene un formato valido. No se descartaron los datos.", ex);
+        }
+        catch (System.Security.Cryptography.CryptographicException ex)
+        {
+            throw new InvalidOperationException("No se pudo descifrar la base. No se reiniciaron ni borraron los datos.", ex);
         }
     }
 
@@ -58,13 +73,21 @@ public sealed class RepartidorLocalData(string databasePath)
                 INSERT INTO EstadoDemo (Id, Datos) VALUES (1, $datos)
                 ON CONFLICT(Id) DO UPDATE SET Datos = excluded.Datos
                 """;
-            command.Parameters.AddWithValue("$datos", JsonSerializer.Serialize(estado, JsonOptions));
+            var json = JsonSerializer.Serialize(estado, JsonOptions);
+            var payload = cipher?.Cifrar(json) ?? json;
+            if (cipher is not null && cipher.Descifrar(payload) != json)
+                throw new InvalidOperationException("No se valido el cifrado; snapshot anterior conservado.");
+            command.Parameters.AddWithValue("$datos", payload);
             command.ExecuteNonQuery();
             transaction.Commit();
         }
         catch (SqliteException ex)
         {
             throw new InvalidOperationException("No se pudo guardar en SQLite. La operacion no se confirmo.", ex);
+        }
+        catch (System.Security.Cryptography.CryptographicException ex)
+        {
+            throw new InvalidOperationException("No se pudo cifrar el snapshot. La operacion no se confirmo.", ex);
         }
     }
 
@@ -82,6 +105,7 @@ public sealed class RepartidorLocalData(string databasePath)
             using var command = connection.CreateCommand();
             command.CommandText = """
                 PRAGMA synchronous = FULL;
+                PRAGMA secure_delete = ON;
                 CREATE TABLE IF NOT EXISTS EstadoDemo (
                     Id INTEGER PRIMARY KEY CHECK (Id = 1),
                     Datos TEXT NOT NULL

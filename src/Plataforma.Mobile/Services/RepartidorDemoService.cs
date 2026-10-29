@@ -36,6 +36,67 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         return ExigirSesion().Ruta!;
     }
 
+    public void ReintentarRechazados()
+    {
+        var estado = ExigirSesion();
+        data.Guardar(estado with
+        {
+            Ruta = estado.Ruta! with
+            {
+                Envios = estado.Ruta.Envios.Select(e => e.Sincronizacion == EstadoSincronizacion.Rechazado
+                    ? e with { Sincronizacion = EstadoSincronizacion.Pendiente } : e).ToArray()
+            }
+        });
+    }
+
+    public void RegistrarEvento(EntregaPendiente evento)
+    {
+        var estado = ExigirSesion();
+        var envio = estado.Ruta!.Envios.Single(e => e.Id == evento.EnvioId);
+        if (envio.Entrega is not null)
+            throw new InvalidOperationException("Sincroniza primero el evento pendiente. No se sobrescribio el comprobante.");
+        if (evento.Estado == EstadoEnvio.EnTransito)
+        {
+            if (!envio.PuedeCargar || evento.CodigoEscaneado != envio.NumeroSeguimiento)
+                throw new InvalidOperationException("La carga exige un envio asignado y su codigo exacto.");
+        }
+        else if (!envio.PuedeEntregar || evento.Estado is not (EstadoEnvio.Entregado or EstadoEnvio.NoEntregado))
+            throw new InvalidOperationException("Primero confirma la carga con el servidor antes de registrar la entrega.");
+        if (evento.Estado == EstadoEnvio.NoEntregado && string.IsNullOrWhiteSpace(evento.Observaciones))
+            throw new InvalidOperationException("Ingresa el motivo del intento fallido.");
+        if (evento.Estado == EstadoEnvio.Entregado && string.IsNullOrWhiteSpace(evento.NombreReceptor))
+            throw new InvalidOperationException("Ingresa quien recibe.");
+        if (evento.NombreReceptor.Length > 100 || evento.Observaciones.Length > 500 ||
+            (evento.Latitud is null) != (evento.Longitud is null) ||
+            evento.Latitud is < -90 or > 90 || evento.Longitud is < -180 or > 180)
+            throw new InvalidOperationException("Datos de comprobante invalidos.");
+        try
+        {
+            if (evento.Foto is not null)
+            {
+                var foto = Convert.FromBase64String(evento.Foto);
+                if (foto.Length > 512 * 1024 || foto.Length < 4 || foto[0] != 255 || foto[1] != 216)
+                    throw new InvalidOperationException("Foto JPEG invalida o mayor de 512 KiB.");
+            }
+            if (evento.Firma is not null)
+            {
+                if (System.Text.Encoding.UTF8.GetByteCount(evento.Firma) > 64 * 1024)
+                    throw new InvalidOperationException("La firma supera 64 KiB.");
+                using var firma = System.Text.Json.JsonDocument.Parse(evento.Firma);
+                if (firma.RootElement.ValueKind != System.Text.Json.JsonValueKind.Array)
+                    throw new InvalidOperationException("La firma debe contener un arreglo de trazos.");
+            }
+        }
+        catch (Exception ex) when (ex is FormatException or System.Text.Json.JsonException)
+        {
+            throw new InvalidOperationException("La evidencia no tiene un formato valido.", ex);
+        }
+        data.Guardar(Reemplazar(estado, envio with
+        {
+            Entrega = evento, Sincronizacion = EstadoSincronizacion.Pendiente, MotivoRechazo = null
+        }));
+    }
+
     public void RegistrarEntrega(Guid envioId, string nombreReceptor, string observaciones)
     {
         var estado = ExigirSesion();
@@ -67,8 +128,9 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         {
             var entrega = envio.Entrega
                 ?? throw new InvalidOperationException("La cola contiene un envio sin comprobante local.");
-            return new EntregaContrato(entrega.Id, envio.Id, EstadoEnvio.Entregado,
-                entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha);
+            return new EntregaContrato(entrega.Id, envio.Id, entrega.Estado,
+                entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha,
+                entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado);
         }).ToArray();
         var estadosServidor = estado.EstadosServidor.ToDictionary();
         var solicitud = new SincronizacionSolicitud(estado.Ruta.Fecha, eventos);
@@ -82,7 +144,9 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
             {
                 Estado = aplicado.Estado,
                 Sincronizacion = EstadoSincronizacion.Sincronizado,
-                MotivoRechazo = null
+                MotivoRechazo = null,
+                Historial = (envio.Historial ?? []).Concat(new[] { envio.Entrega! }).ToArray(),
+                Entrega = aplicado.Estado == EstadoEnvio.EnTransito ? null : envio.Entrega
             });
         }
         foreach (var rechazado in respuesta.Rechazados)
@@ -96,7 +160,13 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
             });
         }
 
-        data.Guardar(estado with { EstadosServidor = estadosServidor });
+        data.Guardar(estado with
+        {
+            EstadosServidor = estadosServidor,
+            ComprobantesConfirmados = (estado.ComprobantesConfirmados ?? [])
+                .Concat(pendientes.Where(e => respuesta.Aplicados.Any(a => a.EnvioId == e.Id)).Select(e => e.Entrega!))
+                .DistinctBy(e => e.Id).ToArray()
+        });
         return new ResultadoSincronizacion(respuesta.Aplicados.Count, respuesta.Rechazados.Count,
             estado.Ruta!.Envios.Count(item => item.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado));
     }

@@ -22,24 +22,7 @@ public partial class LoginViewModel(
     [ObservableProperty]
     private bool ocupado;
 
-    public bool ModoDemo
-    {
-        get => repartidor.ModoDemo;
-        set
-        {
-            if (Ocupado || value == repartidor.ModoDemo) return;
-            repartidor.ModoDemo = value;
-            Usuario = value ? "alvaro@demo.test" : string.Empty;
-            Clave = string.Empty;
-            Mensaje = string.Empty;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(ModoTexto));
-        }
-    }
-
-    public string ModoTexto => ModoDemo
-        ? "DEMO EXPLICITA: servidor simulado; datos separados de la API."
-        : "API REAL: https://api.tallernet.cloud-ip.cc";
+    public string ModoTexto => "API: servidor configurado (HTTPS por defecto)";
 
     [RelayCommand]
     private async Task ContinuarSesionAsync()
@@ -52,14 +35,14 @@ public partial class LoginViewModel(
         {
             if (!repartidor.HaySesion)
             {
-                Mensaje = "No hay una sesion guardada en este modo. Inicia sesion primero.";
+                Mensaje = "No hay una sesion guardada. Inicia sesion primero.";
                 return;
             }
             await navigation.MostrarRutaAsync();
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "No se pudo recuperar la sesion demo local");
+            logger.LogWarning(ex, "No se pudo recuperar la sesion local");
             Mensaje = ex.Message;
         }
         finally
@@ -86,7 +69,7 @@ public partial class LoginViewModel(
         {
             if (!await repartidor.IniciarSesionAsync(Usuario, Clave))
             {
-                Mensaje = "Usuario o clave incorrectos para el modo seleccionado.";
+                Mensaje = "Usuario o clave incorrectos.";
                 return;
             }
 
@@ -95,7 +78,7 @@ public partial class LoginViewModel(
         }
         catch (InvalidOperationException ex)
         {
-            logger.LogWarning(ex, "No se pudo iniciar la sesion de demostracion");
+            logger.LogWarning(ex, "No se pudo iniciar la sesion");
             Mensaje = ex.Message;
         }
         finally

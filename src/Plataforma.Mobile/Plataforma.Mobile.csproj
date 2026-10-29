@@ -48,6 +48,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="ZXing.Net.Maui.Controls" Version="0.10.4" />
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
 

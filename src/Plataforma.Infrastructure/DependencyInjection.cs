@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IRepartidorRepositorio, RepartidorRepositorio>();
         services.AddScoped<ITarifaRepositorio, TarifaRepositorio>();
         services.AddScoped<IPruebaDeEntregaRepositorio, PruebaDeEntregaRepositorio>();
+        services.AddScoped<IIntentoEntregaRepositorio, IntentoEntregaRepositorio>();
         services.AddScoped<IOutboxRepositorio, OutboxRepositorio>();
         services.AddScoped<IDispositivoRepositorio, DispositivoRepositorio>();
         services.AddScoped<IEventoSincronizacionRepositorio, EventoSincronizacionRepositorio>();

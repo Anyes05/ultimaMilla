@@ -7,6 +7,7 @@ public class PruebaDeEntrega
     public Guid EnvioId { get; private set; }
     public string Foto { get; private set; } = string.Empty;
     public string Firma { get; private set; } = string.Empty;
+    public string? CodigoEscaneado { get; private set; }
     public decimal? Latitud { get; private set; }
     public decimal? Longitud { get; private set; }
     public DateTime Fecha { get; private set; }
@@ -60,7 +61,12 @@ public class PruebaDeEntrega
         string nombreReceptor,
         string observaciones,
         string usuario,
-        DateTimeOffset fechaDispositivo)
+        DateTimeOffset fechaDispositivo,
+        string? foto = null,
+        string? firma = null,
+        decimal? latitud = null,
+        decimal? longitud = null,
+        string? codigoEscaneado = null)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("La prueba de entrega necesita un identificador.");
@@ -82,6 +88,11 @@ public class PruebaDeEntrega
             NombreReceptor = (nombreReceptor ?? string.Empty).Trim(),
             Observaciones = (observaciones ?? string.Empty).Trim(),
             Usuario = usuario.Trim(),
+            Foto = foto ?? string.Empty,
+            Firma = firma ?? string.Empty,
+            Latitud = latitud,
+            Longitud = longitud,
+            CodigoEscaneado = codigoEscaneado,
             FechaDispositivo = fechaDispositivo,
             Fecha = fechaDispositivo.UtcDateTime
         };

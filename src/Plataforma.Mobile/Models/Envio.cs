@@ -30,7 +30,8 @@ public sealed record Envio(
     EstadoEnvio Estado,
     EntregaPendiente? Entrega,
     EstadoSincronizacion Sincronizacion,
-    string? MotivoRechazo)
+    string? MotivoRechazo,
+    IReadOnlyList<EntregaPendiente>? Historial = null)
 {
     public string EstadoServidorTexto => $"Estado conocido del servidor: {Estado}";
 
@@ -47,4 +48,5 @@ public sealed record Envio(
         : $"Recibio: {Entrega.NombreReceptor} | {Entrega.Fecha:dd/MM HH:mm} | {Entrega.Observaciones}";
 
     public bool PuedeEntregar => Estado == EstadoEnvio.EnTransito && Entrega is null;
+    public bool PuedeCargar => Estado == EstadoEnvio.AsignadoARuta && Entrega is null;
 }

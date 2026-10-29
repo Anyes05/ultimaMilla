@@ -15,7 +15,9 @@ public sealed record RutaContrato(
     Guid Id, DateOnly Fecha, OperadorContrato Operador, IReadOnlyList<EnvioContrato> Envios);
 public sealed record EntregaContrato(
     Guid EventoId, Guid EnvioId, EstadoEnvio Estado, string NombreReceptor,
-    string Observaciones, DateTimeOffset FechaDispositivo);
+    string Observaciones, DateTimeOffset FechaDispositivo,
+    string? Foto = null, string? Firma = null, double? Latitud = null,
+    double? Longitud = null, string? CodigoEscaneado = null);
 public sealed record SincronizacionSolicitud(DateOnly Fecha, IReadOnlyList<EntregaContrato> Eventos);
 public sealed record AplicadoContrato(Guid EnvioId, EstadoEnvio Estado, int IntentosRealizados);
 public sealed record RechazadoContrato(Guid EnvioId, string Motivo, EstadoEnvio? EstadoActual);

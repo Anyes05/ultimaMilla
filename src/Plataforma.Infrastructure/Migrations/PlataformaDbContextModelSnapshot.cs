@@ -571,6 +571,9 @@ namespace Plataforma.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CodigoEscaneado")
+                        .HasColumnType("text");
+
                     b.Property<Guid>("EnvioId")
                         .HasColumnType("uuid");
 

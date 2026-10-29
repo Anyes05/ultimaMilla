@@ -12,7 +12,7 @@ public sealed class RecorridoDemoTests : IDisposable
 
     private static string CrearDirectorio()
     {
-        var path = Path.Combine(Path.GetTempPath(), "Plataforma.Mobile.Tests", Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(AppContext.BaseDirectory, "Plataforma.Mobile.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
     }

@@ -1,0 +1,59 @@
+@baseUrl = https://localhost:7134
+@token = reemplazar-por-jwt-local
+@envioId = 40000000-0000-0000-0000-000000000001
+@numeroSeguimiento = reemplazar-por-numero-de-ruta-local
+
+### Carga desde AsignadoARuta (datos de prueba locales exclusivamente)
+POST {{baseUrl}}/api/repartidor/sincronizacion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fecha": "2026-10-29",
+  "eventos": [{
+    "eventoId": "50000000-0000-0000-0000-000000000010",
+    "envioId": "{{envioId}}",
+    "estado": "EnTransito",
+    "nombreReceptor": "",
+    "observaciones": "",
+    "fechaDispositivo": "2026-10-29T10:00:00-03:00",
+    "codigoEscaneado": "{{numeroSeguimiento}}"
+  }]
+}
+
+### Entrega desde EnTransito; foto opcional: JPEG base64 puro hasta 512 KiB
+POST {{baseUrl}}/api/repartidor/sincronizacion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fecha": "2026-10-29",
+  "eventos": [{
+    "eventoId": "50000000-0000-0000-0000-000000000011",
+    "envioId": "{{envioId}}",
+    "estado": "Entregado",
+    "nombreReceptor": "Receptor de prueba",
+    "observaciones": "",
+    "fechaDispositivo": "2026-10-29T10:30:00-03:00",
+    "firma": "[[{\"x\":0.1,\"y\":0.2},{\"x\":0.4,\"y\":0.5}]]",
+    "latitud": -34.9,
+    "longitud": -56.2
+  }]
+}
+
+### Intento fallido alternativo a entrega; no ejecutar ambos para el mismo envío
+POST {{baseUrl}}/api/repartidor/sincronizacion
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fecha": "2026-10-29",
+  "eventos": [{
+    "eventoId": "50000000-0000-0000-0000-000000000012",
+    "envioId": "{{envioId}}",
+    "estado": "NoEntregado",
+    "nombreReceptor": "",
+    "observaciones": "Destinatario ausente",
+    "fechaDispositivo": "2026-10-29T10:30:00-03:00"
+  }]
+}

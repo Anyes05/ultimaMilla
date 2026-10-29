@@ -17,6 +17,40 @@ public sealed class RepartidorHttpService(
     HttpClient http, RepartidorLocalData data, ITokenRepartidor tokens) : IRepartidorService
 {
     private readonly RepartidorDemoService local = new(data);
+    private readonly SemaphoreSlim operaciones = new(1, 1);
+    private Uri? endpoint;
+    public void ConfigurarEndpoint(string url)
+    {
+        using var operacion = ExigirOperacion();
+        if (data.Leer().Ruta is not null)
+            throw new InvalidOperationException("Cierra la sesion sin pendientes antes de cambiar de servidor.");
+        if (!Uri.TryCreate(url.TrimEnd('/') + "/", UriKind.Absolute, out var uri) ||
+            !(uri.Scheme == "https" || uri.Scheme == "http" &&
+                (uri.IsLoopback || uri.Host == "10.0.2.2")) ||
+            !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
+            throw new InvalidOperationException("Usa HTTPS; HTTP solo para localhost o emulador 10.0.2.2.");
+        endpoint = uri;
+    }
+    private IDisposable ExigirOperacion()
+    {
+        if (!operaciones.Wait(0))
+            throw new InvalidOperationException("Hay una operacion en curso. Espera antes de modificar la cola.");
+        return new Liberar(operaciones);
+    }
+    private sealed class Liberar(SemaphoreSlim semaphore) : IDisposable
+    {
+        public void Dispose() => semaphore.Release();
+    }
+    public void RegistrarEvento(EntregaPendiente evento)
+    {
+        using var operacion = ExigirOperacion();
+        local.RegistrarEvento(evento);
+    }
+    public void ReintentarRechazados()
+    {
+        using var operacion = ExigirOperacion();
+        local.ReintentarRechazados();
+    }
     public bool ModoDemo { get => false; set { if (value) throw new InvalidOperationException("Selecciona el servicio demo."); } }
     public bool HaySesion => local.HaySesion;
     public bool ConexionSimulada { get; set; } = true;
@@ -25,11 +59,15 @@ public sealed class RepartidorHttpService(
     public ResultadoSincronizacion Sincronizar() =>
         throw new InvalidOperationException("La sincronizacion HTTP requiere SincronizarAsync.");
     public Ruta ObtenerRuta() => local.ObtenerRuta();
-    public void RegistrarEntrega(Guid envioId, string nombreReceptor, string observaciones) =>
+    public void RegistrarEntrega(Guid envioId, string nombreReceptor, string observaciones)
+    {
+        using var operacion = ExigirOperacion();
         local.RegistrarEntrega(envioId, nombreReceptor, observaciones);
+    }
 
     public async Task DescargarRutaAsync()
     {
+        using var operacion = ExigirOperacion();
         ExigirConexion();
         _ = ObtenerRuta();
         var estado = data.Leer();
@@ -44,6 +82,14 @@ public sealed class RepartidorHttpService(
         using var response = await EnviarAsync(request);
         ExigirExito(response);
         var ruta = ConvertirRutas(ContratosRepartidor.Leer<RutaContrato[]>(await response.Content.ReadAsStringAsync()));
+        ruta = ruta with
+        {
+            Envios = ruta.Envios.Select(e => e with
+            {
+                Historial = estado.ComprobantesConfirmados?.Where(c => c.EnvioId == e.Id).ToArray()
+                    ?? estado.Ruta.Envios.SingleOrDefault(previo => previo.Id == e.Id)?.Historial
+            }).ToArray()
+        };
         data.Guardar(estado with
         {
             Ruta = ruta,
@@ -53,6 +99,7 @@ public sealed class RepartidorHttpService(
 
     public async Task<bool> IniciarSesionAsync(string usuario, string clave)
     {
+        using var operacion = ExigirOperacion();
         ExigirConexion();
         using var login = new HttpRequestMessage(HttpMethod.Post, "api/repartidor/login")
         {
@@ -91,20 +138,22 @@ public sealed class RepartidorHttpService(
 
     public async Task<ResultadoSincronizacion> SincronizarAsync()
     {
+        using var operacion = ExigirOperacion();
         ExigirConexion();
         var ruta = ObtenerRuta();
         var token = await tokens.LeerAsync();
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Inicia sesion con la API para sincronizar. La cola sigue guardada.");
         var pendientes = ruta.Envios.Where(envio =>
-            envio.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado).ToArray();
+            envio.Sincronizacion == EstadoSincronizacion.Pendiente).Take(100).ToArray();
         if (pendientes.Length == 0)
-            return new ResultadoSincronizacion(0, 0, 0);
+            return new ResultadoSincronizacion(0, 0, ruta.Envios.Count(e => e.Sincronizacion == EstadoSincronizacion.Rechazado));
         var eventos = pendientes.Select(envio =>
         {
             var entrega = envio.Entrega ?? throw new InvalidOperationException("Comprobante local incompleto.");
-            return new EntregaContrato(entrega.Id, envio.Id, EstadoEnvio.Entregado,
-                entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha);
+            return new EntregaContrato(entrega.Id, envio.Id, entrega.Estado,
+                entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha,
+                entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado);
         }).ToArray();
         using var request = new HttpRequestMessage(HttpMethod.Post, "api/repartidor/sincronizacion")
         {
@@ -121,7 +170,7 @@ public sealed class RepartidorHttpService(
             .Concat(resultado.Rechazados.Select(item => item.EnvioId)).ToArray();
         if (ids.Distinct().Count() != ids.Length ||
             !ids.ToHashSet().SetEquals(pendientes.Select(envio => envio.Id)) ||
-            resultado.Aplicados.Any(item => item.Estado != EstadoEnvio.Entregado) ||
+            resultado.Aplicados.Any(item => eventos.SingleOrDefault(e => e.EnvioId == item.EnvioId)?.Estado != item.Estado) ||
             resultado.Rechazados.Any(item => string.IsNullOrWhiteSpace(item.Motivo)))
             throw new InvalidOperationException("Respuesta de sincronizacion inconsistente. Cola conservada.");
         var estado = data.Leer();
@@ -129,7 +178,12 @@ public sealed class RepartidorHttpService(
         {
             var aplicado = resultado.Aplicados.SingleOrDefault(item => item.EnvioId == envio.Id);
             if (aplicado is not null)
-                return envio with { Estado = aplicado.Estado, Sincronizacion = EstadoSincronizacion.Sincronizado, MotivoRechazo = null };
+                return envio with
+                {
+                    Estado = aplicado.Estado, Sincronizacion = EstadoSincronizacion.Sincronizado, MotivoRechazo = null,
+                    Historial = (envio.Historial ?? []).Concat(envio.Entrega is null ? [] : new[] { envio.Entrega }).ToArray(),
+                    Entrega = aplicado.Estado == EstadoEnvio.EnTransito ? null : envio.Entrega
+                };
             var rechazo = resultado.Rechazados.SingleOrDefault(item => item.EnvioId == envio.Id);
             return rechazo is null ? envio : envio with
             {
@@ -138,16 +192,47 @@ public sealed class RepartidorHttpService(
                 MotivoRechazo = rechazo.Motivo
             };
         }).ToArray();
-        data.Guardar(estado with { Ruta = estado.Ruta with { Envios = envios } });
+        var confirmados = (estado.ComprobantesConfirmados ?? [])
+            .Concat(pendientes.Where(e => resultado.Aplicados.Any(a => a.EnvioId == e.Id)).Select(e => e.Entrega!))
+            .DistinctBy(e => e.Id).ToArray();
+        data.Guardar(estado with { Ruta = estado.Ruta with { Envios = envios }, ComprobantesConfirmados = confirmados });
         return new ResultadoSincronizacion(resultado.Aplicados.Count, resultado.Rechazados.Count,
             envios.Count(envio => envio.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado));
     }
 
     public void CerrarSesion()
     {
+        using var operacion = ExigirOperacion();
         local.CerrarSesion();
         tokens.Borrar();
         ConexionSimulada = true;
+    }
+
+    public Task RegistrarDispositivoAsync(string token, string plataforma)
+    {
+        if (plataforma is not ("android" or "ios" or "web"))
+            throw new InvalidOperationException("Plataforma de dispositivo invalida.");
+        return DispositivoAsync(HttpMethod.Post, token, plataforma);
+    }
+
+    public Task BorrarDispositivoAsync(string token) => DispositivoAsync(HttpMethod.Delete, token, null);
+
+    private async Task DispositivoAsync(HttpMethod method, string token, string? plataforma)
+    {
+        using var operacion = ExigirOperacion();
+        ExigirConexion();
+        if (string.IsNullOrWhiteSpace(token))
+            throw new InvalidOperationException("Ingresa el token del dispositivo.");
+        var jwt = await tokens.LeerAsync();
+        if (string.IsNullOrWhiteSpace(jwt))
+            throw new InvalidOperationException("Inicia sesion en la API.");
+        using var request = new HttpRequestMessage(method, method == HttpMethod.Post
+            ? "api/repartidor/dispositivos" : $"api/repartidor/dispositivos/{Uri.EscapeDataString(token)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
+        if (method == HttpMethod.Post) request.Content = Json(new { token, plataforma });
+        using var response = await EnviarAsync(request);
+        if (method == HttpMethod.Delete && response.StatusCode == HttpStatusCode.NotFound) return;
+        ExigirExito(response);
     }
 
     private static Ruta ConvertirRutas(RutaContrato[] rutas)
@@ -176,6 +261,8 @@ public sealed class RepartidorHttpService(
 
     private async Task<HttpResponseMessage> EnviarAsync(HttpRequestMessage request)
     {
+        if (endpoint is not null && request.RequestUri is { IsAbsoluteUri: false } relativa)
+            request.RequestUri = new Uri(endpoint, relativa);
         try { return await http.SendAsync(request); }
         catch (HttpRequestException ex)
         {

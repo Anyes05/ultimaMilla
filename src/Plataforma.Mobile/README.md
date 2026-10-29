@@ -49,12 +49,13 @@ dotnet restore '.\tests\Plataforma.Mobile.Tests\Plataforma.Mobile.Tests.csproj'
 dotnet test '.\tests\Plataforma.Mobile.Tests\Plataforma.Mobile.Tests.csproj' --no-restore --verbosity minimal
 ```
 
-Los comandos de restore son instrucciones para preparar un checkout; no se
-repitieron para este cambio de documentacion. Build Android y tests se
-verificaron durante el desarrollo: 0 errores/advertencias y 36 tests aprobados.
+Los comandos de restore son instrucciones para preparar un checkout. El 29/10
+se agrego ZXing.Net.Maui.Controls 0.10.4 para escaneo de camara y se restauro
+al compilar Android. Build Android: 0 errores/advertencias; 44 tests aprobados.
 Los tests usan xUnit/VSTest sobre `net10.0`, enlazan el codigo independiente de
 MAUI y **no requieren emulador, dispositivo ni workloads MAUI**. Usan SQLite
-temporal; no son pruebas de interfaz. No se ha certificado su ejecucion en CI.
+de prueba bajo el directorio de salida del proyecto y la eliminan al terminar;
+no son pruebas de interfaz. No se ha certificado su ejecucion en CI.
 
 Comando de compilacion e instalacion usado el 18/10 (serial y JDK locales,
 reemplazarlos en otros equipos):
@@ -72,7 +73,7 @@ depuracion MAUI activa.
 
 La app inicia en **API real**, usando HTTPS y los
 [contratos aceptados v1](../../contracts/repartidor/README.md).
-La URL base esta configurada en `MauiProgram.cs`:
+La URL base por defecto esta configurada en `MauiProgram.cs`:
 `https://api.tallernet.cloud-ip.cc/` (Backoffice, no Portal).
 No se deshabilita la validacion TLS.
 
@@ -81,6 +82,8 @@ No se deshabilita la validacion TLS.
 | POST `/api/repartidor/login` | Usuario/clave; recibe JWT |
 | GET `/api/repartidor/rutas/hoy` | Bearer; lista de rutas del dia UTC del servidor |
 | POST `/api/repartidor/sincronizacion` | Lote de comprobantes y resultado por envio |
+| POST `/api/repartidor/dispositivos` | Alta manual de token, plataforma android |
+| DELETE `/api/repartidor/dispositivos/{token}` | Baja manual de token (404 se trata como ausente) |
 
 El JWT se guarda con MAUI SecureStorage, no en SQLite; la clave no se guarda.
 401 requiere volver al acceso y autenticarse otra vez (sin borrar la cola).
@@ -88,14 +91,14 @@ No hay refresh token automatico. 403 y demas errores se muestran explicitamente;
 un fallo de red nunca se convierte en una sincronizacion exitosa ni activa el
 doble silenciosamente. No se usan credenciales AWS desde la app.
 
-El selector **Usar demo (sin API)** permite volver al doble de forma explicita.
-Las credenciales ficticias del doble son `alvaro@demo.test` / `Demo123!`.
-Su ruta de ejemplo tiene fecha fija 15/10/2026. El seed de API usa ese mismo
+La app solo admite API: no hay selector ni registro DI del modo demo.
+Los dobles se conservan como soporte de pruebas automatizadas y persistencia
+compartida, no como una alternativa de acceso. El seed de API usa
 usuario para Norte y `sur.repartidor` para Sur, con `Demo123!` en el laboratorio.
 No usar estos accesos de desarrollo en produccion.
 
-Se mantienen bases independientes: `repartidor-demo.db` (se conserva la demo
-anterior) y `repartidor-api.db`. No se migra la cola ficticia a la API.
+La app usa exclusivamente `repartidor-api.db`. Si existe una base demo anterior,
+no se abre, elimina ni migra a la API.
 Cada base API queda ligada al operador y repartidor del login; se rechaza
 reemplazarla con otro usuario mientras conserve su ruta. Cerrar sesion exige
 no tener pendientes ni rechazos.
@@ -106,8 +109,60 @@ ni rechazos. Si no hay rutas se muestra una lista vacia; tras despachar desde
 Backoffice hay que pulsar ese boton. Varias rutas del mismo dia/operador se
 presentan juntas sin descartar envios. No se mezclan dias diferentes.
 
-Para otro ambiente cambiar la URL HTTPS en `MauiProgram.cs` y recompilar.
-No incorporar secretos de backend a la app ni al repositorio.
+En acceso, **Configurar servidor HTTPS / Compose** persiste la URL en
+Preferences (`repartidor.api.url`). Requiere cerrar sesion sin pendientes para
+no enviar evidencia de un servidor a otro. HTTPS mantiene validacion TLS.
+Para Compose en emulador usar `http://10.0.2.2:PUERTO/` con el puerto publicado
+del Backoffice; para adb reverse, `http://localhost:PUERTO/`.
+Android solo permite HTTP a localhost, 127.0.0.1 y 10.0.2.2; en dispositivo fisico
+por LAN usar HTTPS con certificado confiable. No incorporar secretos backend.
+
+## Evidencia, carga y sincronizacion automatica (29/10)
+
+- **Escanear carga** abre ZXing con permiso de camara; valida el codigo exacto
+  del envio AsignadoARuta y guarda un evento durable hacia EnTransito. Incluye
+  entrada manual explicita si el lector no puede leer; no simula deteccion.
+- Un solo evento pendiente por envio. Hasta confirmar la carga con el servidor,
+  entregar esta bloqueado. Carga aceptada pasa al historial local; la entrega
+  siguiente tiene otro eventoId y no sobrescribe la evidencia anterior.
+  Los confirmados se archivan tambien en el snapshot cifrado y sobreviven a
+  Descargar ruta (incluso si desaparece el envio). Cerrar sesion sin pendientes
+  elimina la copia local; el servidor ya debe conservar esos comprobantes.
+- Formulario: foto MediaPicker Android, muestreo de imagen y compresion JPEG
+  hasta 512 KiB, firma dibujada GraphicsView (JSON de trazos <=64 KiB), GPS con
+  permisos/timeout y hora de guardado del dispositivo con offset. Cancelar foto
+  no inventa evidencia. Foto/GPS fallidos muestran mensaje y permiten reintentar.
+  Evidencias son opcionales conforme al contrato; no son firma legal ni GPS
+  certificado. La foto no normaliza orientacion EXIF; previsualizacion pendiente.
+- **Intento fallido** guarda NoEntregado y exige motivo en Observaciones.
+  El backend debe aceptar el evento antes de marcarlo como sincronizado.
+- Con la pantalla de ruta activa, auto-sync al volver Internet, activar/reanudar
+  ventana y cada 45 segundos con Internet. No corre con app cerrada ni garantiza
+  background Android; no usa WorkManager. Respeta Permitir conexion,
+  no interrumpe formulario ni captura. Manual y automatico comparten guards;
+  el servicio impide registro/descarga/login/logout concurrentes durante await.
+- Maximo 100 envios por lote. Timeouts/respuestas invalidas conservan los mismos
+  eventoId; una confirmacion perdida se reintenta idempotentemente. Solo pendientes
+  se envian automaticamente; rechazos conservan comprobante y motivo y requieren
+  resolver el conflicto con el operador. **Reintentar rechazados** es una accion
+  manual explicita que reenvia el mismo comprobante/eventoId sin editarlo; si
+  persiste el conflicto seguira rechazado. No se reenvian en bucle ni se descartan.
+- Alta/baja token es cliente HTTP manual, no integra SDK FCM, no obtiene token
+  real ni recibe notificaciones. No registrar valores ficticios en produccion.
+
+## Cifrado local
+
+El payload JSON de EstadoDemo Id=1 esta cifrado AES-256-GCM, nonce aleatorio y
+autenticacion de version/fila. Clave generada en SecureStorage, nunca hardcodeada.
+**No es SQLCipher ni cifrado integral del archivo SQLite**: esquema/metadatos
+siguen visibles. Demo y API usan archivos separados. Se desactiva backup Android.
+Al abrir un snapshot plano se deserializa/valida, cifra, verifica roundtrip y
+confirma transaccionalmente sin resetear la cola; secure_delete y VACUUM eliminan
+paginas libres locales de la migracion. No elimina copias historicas externas.
+Una clave perdida o ciphertext alterado produce error, no reinicializacion.
+No borrar SecureStorage/reinstalar sin resolver pendientes: no hay recuperacion
+remota de la clave ni exportacion de evidencia. Inyeccion ISnapshotCipher permite
+probar todo en net10 sin dependencias MAUI.
 
 ## Casos offline y sincronizacion para validar
 
@@ -122,10 +177,12 @@ No incorporar secretos de backend a la app ni al repositorio.
 - Impedir cierre de sesion con pendientes o rechazos para no perder comprobantes.
 - Serializacion/deserializacion de contratos y errores de entrada.
 
-Los 36 tests cubren logica, persistencia, contratos y HTTP con un handler de prueba
+Los 44 tests cubren logica, persistencia, contratos y HTTP con un handler de prueba
 (401/403/500, red/timeout, lotes inconsistentes, conflictos, reintento con el mismo
-eventoId, multiples rutas y aislamiento entre modos), no el renderizado XAML.
-En Samsung se verificaron arranque, recuperacion tras cierre del proceso,
+eventoId, multiples rutas, aislamiento entre modos, carga/entrega secuenciales,
+evidencias enviadas, exclusion concurrente, token alta/baja, migracion cifrada y
+clave incorrecta), no el renderizado XAML ni eventos Connectivity reales.
+En una version anterior en Samsung se verificaron arranque, recuperacion tras cierre del proceso,
 sincronizacion y navegacion/formulario. Tambien login HTTPS real y descarga
 de cero rutas para el 19/10 UTC. Para cerrar el recorrido real falta despachar
 una ruta de Norte para ese dia y `alvaro@demo.test`, descargarla, entregar
@@ -149,10 +206,14 @@ dotnet build '.\src\Plataforma.Mobile\Plataforma.Mobile.csproj' -t:Run -f net10.
 `EmbedAssembliesIntoApk=true` evita depender de archivos de Fast Deployment.
 Verificar el serial con `adb devices`.
 
-SQLite esta en el almacenamiento privado, **sin cifrado**: usar solo datos
-ficticios. Idempotencia durable del servidor, cifrado, foto/firma/GPS y push
-no quedan certificados por estas pruebas. El contrato v1 permite rechazar un
-reintento ya aplicado; se conserva el comprobante para no perder evidencia.
+Esta iteracion valida compilacion Android y tests net10, no instala ni ejecuta
+camara/GPS/firma en telefono. Falta prueba fisica de permisos, escaneo, foto,
+trazos y cambio real de red, y recorrido integrado contra backend local con su
+migracion aplicada. Se modifico backend local como indica contracts/repartidor;
+no se llamo produccion ni se modificaron recursos AWS. Compresion de
+foto solo implementada en Android; iOS/Windows/Mac Catalyst no certificados.
+No hay push FCM, sync app cerrada ni gestion de recuperacion de clave perdida.
+El contrato actual confirma nuevamente eventoId ya aplicado sin duplicar prueba.
 
 ## Futuro workflow separado
 

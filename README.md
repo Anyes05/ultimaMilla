@@ -63,7 +63,11 @@ mantienen los controles MAUI y una variante oscura; no se incorporo Bootstrap
 ni se cambiaron los flujos por adaptar el estilo. La fuente sigue siendo la
 Open Sans ya incluida en la app (Inter no esta incluida).
 
-Recorrido del doble, sin levantar el backend (activar **Usar demo (sin API)**):
+La app movil ahora usa exclusivamente la API; el selector demo fue retirado.
+El trabajo offline y la cola API se conservan. Consultar el README movil para
+configurar servidor y ejecutar el recorrido real.
+
+Recorrido historico del doble (solo referencia de pruebas, no disponible en la app):
 
 1. Ingresar con `alvaro@demo.test` / `Demo123!`. Es un acceso fijo de
    demostracion, no autenticacion de produccion.

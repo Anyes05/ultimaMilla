@@ -6,9 +6,9 @@ using Plataforma.Mobile.Services;
 
 namespace Plataforma.Mobile.Tests;
 
-public sealed class RepartidorHttpTests : IDisposable
+public sealed partial class RepartidorHttpTests : IDisposable
 {
-    private readonly string directory = Path.Combine(Path.GetTempPath(), "RepartidorHttpTests", Guid.NewGuid().ToString("N"));
+    private readonly string directory = Path.Combine(AppContext.BaseDirectory, "RepartidorHttpTests", Guid.NewGuid().ToString("N"));
     private readonly Tokens tokens = new();
     private readonly Servidor handler = new();
     private readonly RepartidorLocalData data;
@@ -207,8 +207,10 @@ public sealed class RepartidorHttpTests : IDisposable
         public Queue<HttpResponseMessage> Respuestas { get; } = new();
         public List<(string Path, string Body, string? Authorization)> Requests { get; } = [];
         public Exception? Error { get; set; }
+        public Task? Espera { get; set; }
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (Espera is not null) await Espera;
             Requests.Add((request.RequestUri!.AbsolutePath,
                 request.Content is null ? "" : await request.Content.ReadAsStringAsync(cancellationToken),
                 request.Headers.Authorization?.ToString()));

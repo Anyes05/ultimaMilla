@@ -180,7 +180,8 @@ public class DespachoYCacheTests
             Outbox(contexto),
             Publicar(contexto),
             new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
-            cache);
+            cache,
+            new IntentoEntregaRepositorio(contexto));
 
         var ok = await sync.Ejecutar(
             DatosSemilla.OperadorNorteId,
@@ -275,7 +276,8 @@ public class DespachoYCacheTests
             Outbox(contexto),
             Publicar(contexto),
             new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
-            cache);
+            cache,
+            new IntentoEntregaRepositorio(contexto));
 
         var comprobante = new ComprobanteEntrega(
             eventoId, envioId, EstadoEnvio.Entregado, "Receptor", "", DateTimeOffset.UtcNow);

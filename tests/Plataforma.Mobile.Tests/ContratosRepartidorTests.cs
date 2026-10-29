@@ -112,7 +112,7 @@ public sealed class ContratosRepartidorTests
     [Fact]
     public void ClienteUsaRutaDelContratoYSincronizaColaSqliteConDatosRealesDelFormulario()
     {
-        var path = Path.Combine(Path.GetTempPath(), $"Plataforma-contratos-{Guid.NewGuid():N}.db");
+        var path = Path.Combine(AppContext.BaseDirectory, $"Plataforma-contratos-{Guid.NewGuid():N}.db");
         try
         {
             var data = new RepartidorLocalData(path);

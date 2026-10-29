@@ -39,7 +39,12 @@ public sealed record ComprobanteEntrega(
     EstadoEnvio Estado,
     string NombreReceptor,
     string Observaciones,
-    DateTimeOffset FechaDispositivo);
+    DateTimeOffset FechaDispositivo,
+    string? Foto = null,
+    string? Firma = null,
+    decimal? Latitud = null,
+    decimal? Longitud = null,
+    string? CodigoEscaneado = null);
 
 public sealed record EventoAplicado(Guid EnvioId, EstadoEnvio Estado, int IntentosRealizados);
 

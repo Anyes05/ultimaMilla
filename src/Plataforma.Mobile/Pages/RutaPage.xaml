@@ -14,13 +14,18 @@
             <Label Text="ULTIMA MILLA / REPARTIDOR" Style="{StaticResource SectionLabel}" />
             <Label Text="{Binding Titulo}" Style="{StaticResource HeadingLabel}" FontSize="20" />
             <Label Text="{Binding ModoTexto}" Style="{StaticResource MutedLabel}" />
-            <Label Text="Solo datos ficticios: SQLite aun no esta cifrado." Style="{StaticResource MutedLabel}" />
+            <Label Text="Snapshot SQLite cifrado. Auto-sync con app abierta y al volver; no en app cerrada." Style="{StaticResource MutedLabel}" />
+            <Entry Placeholder="Token de dispositivo (sin FCM automatico)" Text="{Binding TokenDispositivo}" />
+            <HorizontalStackLayout>
+                <Button Text="Alta token" Command="{Binding AltaDispositivoCommand}" />
+                <Button Text="Baja token" Command="{Binding BajaDispositivoCommand}" />
+            </HorizontalStackLayout>
             <HorizontalStackLayout Spacing="10">
                 <Label Text="Permitir conexion" VerticalOptions="Center" />
                 <Switch IsToggled="{Binding ConexionSimulada}" AutomationId="ConexionSimulada" />
             </HorizontalStackLayout>
             <Label Text="{Binding Resumen}" AutomationId="RutaResumen" FontAttributes="Bold" />
-            <Label Text="Prueba: 001 se acepta; 002 se rechaza por Entregado; 003 por Extraviado." IsVisible="{Binding ModoDemo}" Style="{StaticResource MutedLabel}" />
+            <Button Text="Reintentar rechazados (sin cambiar comprobantes)" Command="{Binding ReintentarRechazadosCommand}" Style="{StaticResource SecondaryButton}" />
             <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                 <Button Text="Descargar ruta" Command="{Binding DescargarRutaCommand}" Style="{StaticResource SecondaryButton}" />
                 <Button Grid.Column="1" Text="Volver al acceso" Command="{Binding VolverAccesoCommand}" Style="{StaticResource SecondaryButton}" />
@@ -44,6 +49,7 @@
                             <Label Text="{Binding EstadoServidorTexto}" Style="{StaticResource EnvioStatusLabel}" />
                             <Label Text="{Binding EstadoLocalTexto}" FontAttributes="Bold" />
                             <Label Text="{Binding ComprobanteTexto}" Style="{StaticResource MutedLabel}" />
+                            <Button Text="Escanear carga" IsEnabled="{Binding PuedeCargar}" Clicked="EscanearCarga" CommandParameter="{Binding .}" />
                             <Button Text="Registrar entrega" IsEnabled="{Binding PuedeEntregar}"
                                     Style="{StaticResource SecondaryButton}"
                                     Command="{Binding Source={RelativeSource AncestorType={x:Type vm:RutaViewModel}}, Path=SeleccionarEntregaCommand}"
@@ -67,15 +73,25 @@
                     <Label Text="COMPROBANTE DE ENTREGA" Style="{StaticResource SectionLabel}" />
                     <Label Text="Registrar entrega" Style="{StaticResource HeadingLabel}" FontSize="22" />
                     <Label Text="{Binding EnvioSeleccionado.NumeroSeguimiento}" Style="{StaticResource SectionLabel}" />
-                    <Label Text="Nombre de quien recibe (dato ficticio)" FontAttributes="Bold" />
+                    <Label Text="Nombre de quien recibe" FontAttributes="Bold" />
                     <Entry Text="{Binding NombreReceptor}" MaxLength="100"
                            Placeholder="Receptor de prueba" AutomationId="EntregaReceptor" />
                     <Label Text="Observaciones opcionales" FontAttributes="Bold" />
                     <Editor Text="{Binding Observaciones}" MaxLength="500" HeightRequest="90"
                             AutomationId="EntregaObservaciones" />
-                    <Label Text="Se registra la hora del dispositivo. Sin foto, firma ni GPS todavia." Style="{StaticResource MutedLabel}" />
+                    <HorizontalStackLayout>
+                        <Label Text="Intento fallido (motivo obligatorio)" />
+                        <Switch IsToggled="{Binding IntentoFallido}" />
+                    </HorizontalStackLayout>
+                    <Button Text="Tomar foto JPEG" Clicked="TomarFoto" />
+                    <Button Text="Capturar posicion GPS" Clicked="CapturarGps" />
+                    <Label Text="Firma: dibuja en el recuadro. Se registra hora con offset al guardar." />
+                    <GraphicsView x:Name="LienzoFirma" HeightRequest="180" BackgroundColor="White"
+                                  StartInteraction="IniciarFirma" DragInteraction="DibujarFirma" />
+                    <Button Text="Borrar firma" Clicked="BorrarFirma" />
+                    <Label x:Name="EstadoEvidencia" />
                     <Label Text="{Binding Mensaje}" AutomationId="EntregaMensaje" />
-                    <Button Text="Guardar entrega pendiente" Command="{Binding GuardarEntregaCommand}"
+                    <Button Text="Guardar entrega / intento pendiente" Clicked="GuardarEvidencia"
                             AutomationId="EntregaGuardar" />
                     <Button Text="Cancelar" Command="{Binding CancelarEntregaCommand}" Style="{StaticResource SecondaryButton}" />
                 </VerticalStackLayout>

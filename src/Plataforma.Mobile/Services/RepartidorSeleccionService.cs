@@ -6,6 +6,10 @@ public sealed class RepartidorSeleccionService(
     RepartidorDemoService demo, RepartidorHttpService api) : IRepartidorService
 {
     public bool ModoDemo { get; set; }
+    public void RegistrarEvento(EntregaPendiente evento) => Actual.RegistrarEvento(evento);
+    public void ReintentarRechazados() => Actual.ReintentarRechazados();
+    public Task RegistrarDispositivoAsync(string token, string plataforma) => Actual.RegistrarDispositivoAsync(token, plataforma);
+    public Task BorrarDispositivoAsync(string token) => Actual.BorrarDispositivoAsync(token);
     private IRepartidorService Actual => ModoDemo ? demo : api;
     public bool HaySesion => Actual.HaySesion;
     public bool ConexionSimulada { get => Actual.ConexionSimulada; set => Actual.ConexionSimulada = value; }
