@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Plataforma.Avisos;
 using Plataforma.Backoffice.Tablero;
 using StackExchange.Redis;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +16,7 @@ builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Backoffice);
+builder.Services.AddRateLimiter(_ => { });
 
 // Claves de Data Protection compartidas entre réplicas (igual que el Portal).
 // Sin esto, el token antiforgery emitido por un pod no se puede validar en otro: HTTP 400.
@@ -73,7 +76,45 @@ app.UseStatusCodePages(contexto =>
     return Task.CompletedTask;
 });
 
+app.Use(async (contexto, siguiente) =>
+{
+    if (
+        string.Equals(contexto.Request.Host.Host, "tracking.tallernet.cloud-ip.cc", StringComparison.OrdinalIgnoreCase) &&
+        contexto.Request.Path == "/")
+    {
+        contexto.Request.Path = "/Seguimiento";
+    }
+
+    await siguiente();
+});
+
 app.UseRouting();
+app.UseWhen(
+    contexto => string.Equals(
+        contexto.Request.Host.Host,
+        "tracking.tallernet.cloud-ip.cc",
+        StringComparison.OrdinalIgnoreCase),
+    seguimiento => seguimiento.UseRateLimiter(new RateLimiterOptions
+    {
+        GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(contexto =>
+        {
+            var ipCliente = contexto.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',', 2)[0].Trim();
+            var clave = string.IsNullOrWhiteSpace(ipCliente)
+                ? contexto.Connection.RemoteIpAddress?.ToString() ?? "sin-ip"
+                : ipCliente;
+
+            return
+            RateLimitPartition.GetFixedWindowLimiter(
+                clave,
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 30,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                });
+        })
+    }));
 app.UseAuthentication();
 app.UseAuthorization();
 
