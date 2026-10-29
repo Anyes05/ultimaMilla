@@ -72,7 +72,7 @@
                         }
                         @if (usuario.IsInRole(Roles.Administrador))
                         {
-                            <span class="app-sidebar__user-label mt-3">Administración</span>
+                            <span class="app-sidebar__section">Administración</span>
                             <a class="@ClaseNav("/Tarifas")" asp-area="" asp-page="/Tarifas">Tarifas</a>
                             <a class="@ClaseNav("/Avisos")" asp-area="" asp-page="/Avisos">Avisos fallidos</a>
                             <a class="@ClaseNav("/Cache")" asp-area="" asp-page="/Cache">Caché</a>

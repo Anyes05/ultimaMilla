@@ -81,7 +81,7 @@
                 @foreach (var entrega in Model.Entregas)
                 {
                     <tr>
-                        <td class="small">@entrega.ActualizadaEn.ToString("dd/MM HH:mm:ss") UTC</td>
+                        <td class="small">@TextosUsuario.HoraOperador(entrega.ActualizadaEn, Model.Operador?.ZonaHoraria, "dd/MM HH:mm:ss")</td>
                         <td><span class="tracking-number">@(Model.Tracking.TryGetValue(entrega.EnvioId, out var tracking) ? tracking : entrega.EnvioId.ToString()[..8])</span></td>
                         <td>@TiposDeEvento.Nombre(entrega.TipoEvento)</td>
                         <td>

@@ -7,6 +7,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ServicioAvisos ServicioAvisos
 @inject ListarEnvios ListarEnvios
+@inject IOperadorRepositorio Operadores
 @inject NavigationManager Navegacion
 @inject ILogger<Avisos> Logger
 
@@ -111,13 +112,13 @@
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>Fecha (UTC)</th><th>Envío</th><th>Evento del envío</th><th>Aviso</th><th>Intentos</th><th>Detalle</th><th></th></tr>
+                        <tr><th>Fecha</th><th>Envío</th><th>Evento del envío</th><th>Aviso</th><th>Intentos</th><th>Detalle</th><th></th></tr>
                     </thead>
                     <tbody>
                         @foreach (var entrega in Entregas)
                         {
                             <tr @key="entrega.Id">
-                                <td class="small">@entrega.ActualizadaEn.ToString("dd/MM HH:mm:ss")</td>
+                                <td class="small">@TextosUsuario.HoraOperador(entrega.ActualizadaEn, zonaHoraria, "dd/MM HH:mm:ss")</td>
                                 <td><span class="tracking-number">@(Tracking.TryGetValue(entrega.EnvioId, out var numero) ? numero : entrega.EnvioId.ToString()[..8])</span></td>
                                 <td>@TiposDeEvento.Nombre(entrega.TipoEvento)</td>
                                 <td><span class="status-badge @ClaseEstado(entrega.Estado)">@NombreEstado(entrega.Estado)</span></td>
@@ -157,6 +158,7 @@
     private string? ErrorQuery { get; set; }
 
     private string? mensajeError;
+    private string? zonaHoraria;
     private bool TieneSuscripcion;
     private string SecretoVisible = string.Empty;
     private List<EntregaVista> Entregas = [];
@@ -182,6 +184,8 @@
 
         try
         {
+            // Las fechas del historial se muestran en la hora del operador, no en UTC.
+            zonaHoraria = (await Operadores.ObtenerAsync(acceso.OperadorId))?.ZonaHoraria;
             var suscripcion = await ServicioAvisos.ObtenerSuscripcionAsync(acceso.OperadorId, comercioId);
             TieneSuscripcion = suscripcion is not null;
             SecretoVisible = suscripcion is null ? string.Empty : "…" + suscripcion.Secreto[^4..];
@@ -218,7 +222,7 @@
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
-            mensajeError = ex.Message;
+            mensajeError = TextosUsuario.Error(ex);
             return;
         }
 

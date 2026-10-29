@@ -104,7 +104,7 @@ public class DespachoModel : PageModel
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
-            TempData["Error"] = ex.Message;
+            TempData["Error"] = TextosUsuario.Error(ex);
         }
 
         // PRG: recargar no vuelve a despachar.
@@ -126,7 +126,7 @@ public class DespachoModel : PageModel
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
-            TempData["Error"] = ex.Message;
+            TempData["Error"] = TextosUsuario.Error(ex);
         }
 
         // PRG: recargar no vuelve a iniciar.

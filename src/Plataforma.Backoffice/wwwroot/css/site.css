@@ -279,6 +279,15 @@ body {
   text-transform: uppercase;
 }
 
+/* Título de sección del menú ("Administración"), alineado con el texto de los enlaces. */
+.app-sidebar__section {
+  color: #a7f3d0;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  padding: 0.9rem 0.9rem 0.2rem calc(0.9rem + 3px);
+  text-transform: uppercase;
+}
+
 .app-sidebar__user-name {
   font-size: 0.85rem;
   overflow: hidden;
@@ -287,6 +296,8 @@ body {
 }
 
 .app-sidebar__user-role {
+  /* La columna de .app-sidebar__user estira a sus hijos: sin esto la etiqueta ocupa todo el ancho. */
+  align-self: flex-start;
   display: inline-block;
   margin-top: 0.25rem;
   padding: 0.1rem 0.5rem;
@@ -340,6 +351,18 @@ body {
     position: sticky;
     top: 0;
     width: 250px;
+  }
+
+  /* El menú del administrador es más largo: si no entra en la pantalla, se desplaza el menú
+     y el bloque de sesión queda siempre visible abajo, sin cortarse. */
+  .app-sidebar__top {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .app-sidebar__user {
+    flex-shrink: 0;
   }
 
   .app-sidebar__toggle {

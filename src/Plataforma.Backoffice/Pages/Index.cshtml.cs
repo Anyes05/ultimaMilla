@@ -84,7 +84,7 @@ public class IndexModel : PageModel
         }
         catch (InvalidOperationException ex)
         {
-            TempData["Error"] = ex.Message;
+            TempData["Error"] = TextosUsuario.Error(ex);
         }
 
         // PRG: evita reenviar el mismo cambio al refrescar o con doble clic.

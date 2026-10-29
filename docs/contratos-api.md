@@ -70,7 +70,7 @@ Cuando el endpoint devuelve cuerpo de error, usa:
 | 4 | `GET /api/repartidores` | `despachador`, `administrador`, `operario_deposito` | Lista para el selector de despacho |
 | 5 | `POST /api/despacho` | `despachador`, `administrador`, `operario_deposito` | Crear ruta + paradas y asignar envíos |
 | 6 | `GET /api/seguimiento/{token}` | Público (token de seguimiento) | Seguimiento visible de un envío |
-| 7 | `GET /tecnico/cache` | Técnico | Métrica de aciertos/fallos del caché |
+| 7 | `GET /tecnico/cache` | `administrador` | Métrica de aciertos/fallos del caché |
 | 8 | `POST /api/repartidor/dispositivos` | `repartidor` | Registrar token FCM del dispositivo |
 | 9 | `DELETE /api/repartidor/dispositivos/{token}` | `repartidor` | Quitar token del dispositivo |
 | 10 | `POST /api/envios/{envioId}/estado` | `despachador`, `administrador`, `operario_deposito` | Cambiar estado (genera outbox + `eventId`) |
@@ -355,7 +355,7 @@ Seguimiento visible de un envío por su **token público** (no por número de se
 
 ### 5.2 `GET /tecnico/cache`
 
-Métrica del caché de lectura.
+Métrica del caché de lectura. Requiere sesión de `administrador` (sin sesión responde `401`; con otro perfil, `403`).
 
 **Response `200`**
 
@@ -439,7 +439,7 @@ curl -s -X POST "{{baseUrl}}/api/repartidor/sincronizacion" \
   -d @contracts/repartidor/sincronizacion.request.json
 
 # Métrica de caché
-curl -s "{{baseUrl}}/tecnico/cache"
+curl -s -b cookies.txt "{{baseUrl}}/tecnico/cache"   # cookie de sesión de un administrador
 ```
 
 Usuario demo de repartidor Norte: `alvaro@demo.test` / `Demo123!` (solo ambientes de desarrollo/demo).

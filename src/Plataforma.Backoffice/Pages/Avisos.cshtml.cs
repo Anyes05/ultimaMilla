@@ -70,7 +70,7 @@ public class AvisosModel : PageModel
         catch (Npgsql.PostgresException ex)
         {
             _logger.LogError(ex, "No se pudo leer el módulo de avisos.");
-            Error ??= "El módulo de avisos no está disponible (¿se aplicaron sus migraciones?).";
+            Error ??= "Los avisos no están disponibles en este momento. Intentá de nuevo en unos minutos.";
         }
     }
 
@@ -81,7 +81,7 @@ public class AvisosModel : PageModel
 
         await AvisosTecnicosApi.CambiarReceptorAsync(_contexto, acceso.OperadorId, forzarFallo, HttpContext.RequestAborted);
         TempData["Mensaje"] = forzarFallo
-            ? "Receptor de prueba en falla: responde 503 y los avisos se reintentan."
+            ? "Receptor de prueba en falla: los avisos nuevos van a fallar y se reintentarán automáticamente."
             : "Receptor de prueba disponible.";
         return RedirectToPage(new { Filtro });
     }
@@ -94,17 +94,17 @@ public class AvisosModel : PageModel
         try
         {
             await _avisos.ReintentarAsync(entregaId, acceso.OperadorId, cancellationToken: HttpContext.RequestAborted);
-            TempData["Mensaje"] = "Aviso reencolado: el worker lo vuelve a enviar con el mismo EventId.";
+            TempData["Mensaje"] = "Aviso reenviado: se vuelve a intentar con el mismo identificador de evento, así el comercio no lo recibe duplicado.";
         }
         catch (InvalidOperationException ex)
         {
-            TempData["Error"] = ex.Message;
+            TempData["Error"] = TextosUsuario.Error(ex);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // Quedó Pendiente en la base: el barrido del worker lo encola aunque la cola no haya respondido ahora.
             _logger.LogWarning(ex, "Reintento {EntregaId} guardado pero no publicado.", entregaId);
-            TempData["Mensaje"] = "Reintento registrado. La cola no respondió; el worker lo enviará en breve.";
+            TempData["Mensaje"] = "Reintento registrado: el aviso se enviará en unos segundos.";
         }
 
         return RedirectToPage(new { Filtro });

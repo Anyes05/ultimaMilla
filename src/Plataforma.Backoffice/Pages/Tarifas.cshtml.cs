@@ -80,7 +80,7 @@ public class TarifasModel : PageModel
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
-            Error = ex.Message;
+            Error = TextosUsuario.Error(ex);
         }
 
         return Page();
@@ -122,7 +122,7 @@ public class TarifasModel : PageModel
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or ArgumentOutOfRangeException)
         {
-            TempData["Error"] = ex.Message;
+            TempData["Error"] = TextosUsuario.Error(ex);
         }
 
         return RedirectToPage();

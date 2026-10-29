@@ -5,6 +5,7 @@ using Plataforma.Avisos;
 using Plataforma.Application;
 using Plataforma.Domain;
 using Plataforma.Infrastructure;
+using Plataforma.PortalComercio;
 using Plataforma.PortalComercio.Components;
 using StackExchange.Redis;
 
@@ -112,7 +113,7 @@ app.MapPost("/avisos/reenviar", async (HttpContext contexto, IAntiforgery antifo
     }
     catch (InvalidOperationException ex)
     {
-        return Results.Redirect("/avisos?error=" + Uri.EscapeDataString(ex.Message));
+        return Results.Redirect("/avisos?error=" + Uri.EscapeDataString(TextosUsuario.Error(ex)));
     }
     catch (Exception ex) when (ex is not OperationCanceledException)
     {

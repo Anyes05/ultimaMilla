@@ -225,6 +225,7 @@ public static class RepartidorApi
             }
         }).RequireAuthorization();
 
+        // Métrica técnica: solo el administrador, igual que la pantalla Caché (sin sesión responde 401).
         app.MapGet("/tecnico/cache", (ICacheLectura cache) =>
         {
             var stats = cache.Estadisticas();
@@ -234,7 +235,7 @@ public static class RepartidorApi
                 misses = stats.Misses,
                 ratio = stats.Ratio
             });
-        });
+        }).RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute { Roles = Roles.Administrador });
 
         return app;
     }

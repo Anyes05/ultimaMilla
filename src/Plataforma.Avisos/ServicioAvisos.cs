@@ -54,7 +54,7 @@ public sealed class ServicioAvisos
         CancellationToken cancellationToken = default)
     {
         if (!_opciones.UrlPermitida(url?.Trim() ?? string.Empty))
-            throw new ArgumentException("La URL debe ser https (http solo para el receptor de prueba configurado).", nameof(url));
+            throw new ArgumentException("La URL debe empezar con https://.", nameof(url));
 
         var ahora = DateTime.UtcNow;
         var suscripcion = await _db.Suscripciones

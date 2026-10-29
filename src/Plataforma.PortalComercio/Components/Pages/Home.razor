@@ -201,7 +201,7 @@
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
-            mensajeError = ex.Message;
+            mensajeError = TextosUsuario.Error(ex);
             await ActualizarEnviosAsync();
             return;
         }
