@@ -22,6 +22,7 @@ public class IndexModel : PageModel
     public Operador? Operador { get; private set; }
     public string? Error { get; private set; }
     public string? Mensaje { get; private set; }
+    public string? Referencia { get; private set; }
     public string ColorMarcaCss => Operador?.ColorMarca switch
     {
         "verde" => "#198754",
@@ -44,6 +45,7 @@ public class IndexModel : PageModel
     {
         Error = sinPermiso ? "Tu perfil no tiene acceso a esa página." : TempData["Error"] as string;
         Mensaje = TempData["Mensaje"] as string;
+        Referencia = TempData["Referencia"] as string;
         FiltroEstado = estado;
         Pagina = pagina < 1 ? 1 : pagina;
         await CargarAsync();
@@ -73,9 +75,12 @@ public class IndexModel : PageModel
             var resultado = await _transicion.EjecutarAsync(
                 envioId, acceso.OperadorId, nuevoEstado, User.Identity?.Name);
 
-            TempData["Mensaje"] = resultado.EventId is Guid eventId
-                ? $"Estado {resultado.EstadoAnterior} → {resultado.EstadoNuevo}. EventId outbox: {eventId}"
-                : $"Estado actualizado a {resultado.EstadoNuevo}.";
+            // Mensaje para el usuario con nombres legibles; el EventId queda como referencia corta
+            // (sirve para seguir el evento en los logs del worker sin ensuciar el mensaje).
+            TempData["Mensaje"] =
+                $"{envio.NumeroSeguimiento} pasó de {EstadosVista.Nombre(resultado.EstadoAnterior)} a {EstadosVista.Nombre(resultado.EstadoNuevo)}.";
+            if (resultado.EventId is Guid eventId)
+                TempData["Referencia"] = eventId.ToString()[..8];
         }
         catch (InvalidOperationException ex)
         {
