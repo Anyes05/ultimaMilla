@@ -1,12 +1,11 @@
-using System.Security.Cryptography;
 using System.Security.Claims;
-using System.Text;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Plataforma.Application;
-using Plataforma.Application.Mensajes;
+using Plataforma.Avisos;
 using Plataforma.Domain;
 using Plataforma.Infrastructure;
+using AvisoRecibido = Plataforma.Avisos.AvisoComercio;
+using RegistroAvisoComercio = Plataforma.Domain.AvisoComercio;
 
 namespace Plataforma.Backoffice;
 
@@ -14,79 +13,90 @@ public static class AvisosTecnicosApi
 {
     public static IEndpointRouteBuilder MapAvisosTecnicos(this IEndpointRouteBuilder app)
     {
+        // Receptor de prueba "del comercio" (letra 6.9). Se configura como URL de la suscripción en el Portal.
+        // Como el comercio real, verifica la firma con el secreto que el comercio cargó en su suscripción
+        // (si no hay, usa Avisos:ClaveFirma). Con "Receptor: fallando" responde 503 para demostrar
+        // reintentos, cola de fallidos y recuperación.
         app.MapPost("/api/receptor-prueba/avisos", async (
             HttpRequest request,
             PlataformaDbContext contexto,
-            IHubContext<HubAvisosOperador> hub,
+            ServicioAvisos avisos,
             IConfiguration configuracion,
             CancellationToken cancellationToken) =>
         {
             var json = await new StreamReader(request.Body).ReadToEndAsync(cancellationToken);
-            var clave = configuracion["Avisos:ClaveFirma"];
-            var firma = request.Headers["X-Plataforma-Firma"].ToString();
-            if (string.IsNullOrWhiteSpace(clave) || !FirmaValida(clave, json, firma))
-                return Results.Unauthorized();
 
-            EnvioEstadoCambiado? evento;
+            AvisoRecibido? aviso;
             try
             {
-                evento = EnvioEstadoCambiado.Deserializar(json);
+                aviso = System.Text.Json.JsonSerializer.Deserialize<AvisoRecibido>(json, JsonAvisos.Opciones);
             }
             catch (System.Text.Json.JsonException)
             {
-                return Results.BadRequest(new { mensaje = "Evento inválido." });
+                return Results.BadRequest(new { mensaje = "Aviso inválido." });
             }
-            if (evento is null)
-                return Results.BadRequest(new { mensaje = "Evento inválido." });
+            if (aviso is null || aviso.EnvioId == Guid.Empty)
+                return Results.BadRequest(new { mensaje = "Aviso inválido." });
 
+            // El aviso no trae el operador (no se le exponen ids internos al comercio): se resuelve por el envío.
+            var envio = await contexto.Envios.IgnoreQueryFilters()
+                .SingleOrDefaultAsync(item => item.Id == aviso.EnvioId, cancellationToken);
+            if (envio is null)
+                return Results.BadRequest(new { mensaje = "El envío del aviso no existe." });
+
+            // Receptor "caído": responde 503 sin procesar, como un servidor fuera de servicio.
             var configuracionReceptor = await contexto.ReceptoresPruebaConfiguracion
                 .IgnoreQueryFilters()
-                .SingleOrDefaultAsync(item => item.OperadorId == evento.OperadorId, cancellationToken);
+                .SingleOrDefaultAsync(item => item.OperadorId == envio.OperadorId, cancellationToken);
             if (configuracionReceptor?.ForzarFallo == true)
                 return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
 
-            var envio = await contexto.Envios.IgnoreQueryFilters()
-                .SingleOrDefaultAsync(item => item.Id == evento.EnvioId && item.OperadorId == evento.OperadorId, cancellationToken);
-            if (envio is null)
-                return Results.BadRequest(new { mensaje = "El envío no pertenece al operador del evento." });
+            var suscripcion = await avisos.ObtenerSuscripcionAsync(envio.OperadorId, envio.ComercioId, cancellationToken);
+            var clave = suscripcion?.Secreto ?? configuracion["Avisos:ClaveFirma"];
+            if (string.IsNullOrWhiteSpace(clave) || !FirmaAviso.Verificar(
+                    clave,
+                    request.Headers[FirmaAviso.HeaderTimestamp],
+                    json,
+                    request.Headers[FirmaAviso.HeaderFirma],
+                    DateTimeOffset.UtcNow))
+                return Results.Unauthorized();
 
-            contexto.AvisosComercio.Add(AvisoComercio.Crear(
-                Guid.NewGuid(), evento.OperadorId, envio.ComercioId,
-                $"Envío {evento.EnvioId}: {evento.EstadoAnterior} -> {evento.EstadoNuevo}", DateTime.UtcNow));
+            contexto.AvisosComercio.Add(RegistroAvisoComercio.Crear(
+                Guid.NewGuid(), envio.OperadorId, envio.ComercioId,
+                $"Envío {aviso.EnvioId}: {aviso.EstadoAnterior} -> {aviso.EstadoNuevo} (evento {aviso.EventId})", DateTime.UtcNow));
             await contexto.SaveChangesAsync(cancellationToken);
 
-            await hub.Clients.Group(HubAvisosOperador.Grupo(evento.OperadorId)).SendAsync(
-                "estadoEnvioCambiado",
-                new { evento.EventId, evento.EnvioId, evento.EstadoAnterior, evento.EstadoNuevo, evento.Fecha },
-                cancellationToken);
+            // El tablero en vivo no depende del receptor: lo alimenta TableroConsumidor desde la cola.
             return Results.Ok();
         }).AllowAnonymous();
 
         var tecnico = app.MapGroup("/api/tecnico/avisos").RequireAuthorization();
-        tecnico.MapGet("/fallidos", async (ClaimsPrincipal principal, PlataformaDbContext contexto, CancellationToken cancellationToken) =>
+        tecnico.MapGet("/fallidos", async (ClaimsPrincipal principal, ServicioAvisos avisos, CancellationToken cancellationToken) =>
         {
-            if (!PuedeOperar(principal, out _)) return Results.Forbid();
-            var fallidos = await contexto.AvisosFallidos
-                .Where(aviso => aviso.ResueltoEn == null)
-                .OrderByDescending(aviso => aviso.ActualizadoEn)
-                .Select(aviso => new { aviso.Id, aviso.EventId, aviso.EnvioId, aviso.Error, aviso.Intentos, aviso.CreadoEn, aviso.ActualizadoEn })
-                .ToListAsync(cancellationToken);
-            return Results.Ok(fallidos);
+            if (!PuedeOperar(principal, out var acceso)) return Results.Forbid();
+            var fallidos = await avisos.ListarEntregasOperadorAsync(acceso.OperadorId, EstadoEntrega.Fallido, 200, cancellationToken);
+            return Results.Ok(fallidos.Select(aviso => new
+            {
+                aviso.Id, aviso.EventId, aviso.EnvioId, Error = aviso.UltimoError, aviso.Intentos, CreadoEn = aviso.CreadaEn, ActualizadoEn = aviso.ActualizadaEn
+            }));
         });
 
         tecnico.MapPost("/fallidos/{id:guid}/reintentar", async (
             Guid id,
             ClaimsPrincipal principal,
-            PlataformaDbContext contexto,
-            IPublicadorMensajes publicador,
+            ServicioAvisos avisos,
             CancellationToken cancellationToken) =>
         {
-            if (!PuedeOperar(principal, out _)) return Results.Forbid();
-            var fallido = await contexto.AvisosFallidos.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
-            if (fallido is null || fallido.ResueltoEn is not null) return Results.NotFound();
-            var evento = EnvioEstadoCambiado.Deserializar(fallido.Payload);
-            if (evento is null) return Results.BadRequest(new { mensaje = "El payload del aviso es inválido." });
-            await publicador.PublicarAsync(EnvioEstadoCambiado.Tipo, EnvioEstadoCambiado.Version, evento.EventId, fallido.Payload, cancellationToken);
+            if (!PuedeOperar(principal, out var acceso)) return Results.Forbid();
+            try
+            {
+                // Reintenta solo esa entrega con el mismo EventId; no republica el evento a los demás consumidores.
+                await avisos.ReintentarAsync(id, acceso.OperadorId, cancellationToken: cancellationToken);
+            }
+            catch (InvalidOperationException)
+            {
+                return Results.NotFound();
+            }
             return Results.Accepted($"/api/tecnico/avisos/fallidos/{id}");
         });
 
@@ -97,26 +107,32 @@ public static class AvisosTecnicosApi
             CancellationToken cancellationToken) =>
         {
             if (!PuedeOperar(principal, out var acceso)) return Results.Forbid();
-            var receptor = await contexto.ReceptoresPruebaConfiguracion.SingleOrDefaultAsync(item => item.OperadorId == acceso.OperadorId, cancellationToken);
-            if (receptor is null)
-                contexto.ReceptoresPruebaConfiguracion.Add(ReceptorPruebaConfiguracion.Crear(acceso.OperadorId, solicitud.ForzarFallo));
-            else
-                receptor.CambiarFallo(solicitud.ForzarFallo);
-            await contexto.SaveChangesAsync(cancellationToken);
+            await CambiarReceptorAsync(contexto, acceso.OperadorId, solicitud.ForzarFallo, cancellationToken);
             return Results.NoContent();
         });
 
         return app;
     }
 
-    private static bool PuedeOperar(ClaimsPrincipal principal, out AccesoActual acceso) =>
-        AccesoActual.Intentar(principal, out acceso) && acceso.Rol is Roles.Administrador or Roles.Despachador or Roles.OperarioDeposito;
-
-    private static bool FirmaValida(string clave, string json, string firma)
+    /// <summary>Activa o desactiva la caída simulada del receptor de prueba del operador.</summary>
+    public static async Task CambiarReceptorAsync(
+        PlataformaDbContext contexto,
+        Guid operadorId,
+        bool forzarFallo,
+        CancellationToken cancellationToken)
     {
-        var esperada = Convert.ToHexString(HMACSHA256.HashData(Encoding.UTF8.GetBytes(clave), Encoding.UTF8.GetBytes(json)));
-        return CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(esperada), Encoding.UTF8.GetBytes(firma));
+        var receptor = await contexto.ReceptoresPruebaConfiguracion
+            .SingleOrDefaultAsync(item => item.OperadorId == operadorId, cancellationToken);
+        if (receptor is null)
+            contexto.ReceptoresPruebaConfiguracion.Add(ReceptorPruebaConfiguracion.Crear(operadorId, forzarFallo));
+        else
+            receptor.CambiarFallo(forzarFallo);
+        await contexto.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>Mensajes fallidos y receptor de prueba: el administrador (letra 6.8).</summary>
+    private static bool PuedeOperar(ClaimsPrincipal principal, out AccesoActual acceso) =>
+        AccesoActual.Intentar(principal, out acceso) && acceso.Rol == Roles.Administrador;
 }
 
 public sealed record ReceptorPruebaSolicitud(bool ForzarFallo);

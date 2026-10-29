@@ -10,7 +10,7 @@ namespace Plataforma.Backoffice.Pages;
 /// Tablero de operación en vivo (letra 6.10): carga el estado actual y después se actualiza por SignalR
 /// con los cambios de estado y los resultados de los avisos a comercios, solo del operador autenticado.
 /// </summary>
-[Authorize(Roles = Roles.Administrador + "," + Roles.Despachador + "," + Roles.OperarioDeposito)]
+[Authorize(Roles = PermisosPerfil.Planificacion)]
 public class TableroModel : PageModel
 {
     private readonly ListarEnvios _listarEnvios;

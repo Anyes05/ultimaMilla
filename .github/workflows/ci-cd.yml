@@ -146,6 +146,10 @@ jobs:
           rollout backoffice
           rollout portal
           if [ "$WORKER_DEPLOY_ENABLED" = "true" ]; then
+            # El worker necesita ConnectionStrings__Default del secreto de la aplicación (igual que el backoffice).
+            # Idempotente: es lo mismo que el env_from de platform.tf, para que funcione aunque no se haya aplicado.
+            kubectl -n tallernet patch deployment queue-worker --type strategic -p \
+              '{"spec":{"template":{"spec":{"containers":[{"name":"queue-worker","envFrom":[{"secretRef":{"name":"tallernet-application-secrets"}}]}]}}}}'
             kubectl -n tallernet set image deployment/queue-worker queue-worker=$ECR_REGISTRY/tallernet/worker:$IMAGE_TAG
             kubectl -n tallernet scale deployment/queue-worker --replicas=1
             rollout queue-worker

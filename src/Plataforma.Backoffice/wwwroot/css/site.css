@@ -286,6 +286,16 @@ body {
   white-space: nowrap;
 }
 
+.app-sidebar__user-role {
+  display: inline-block;
+  margin-top: 0.25rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
 /* Botón de menú en pantallas chicas (sin JavaScript) */
 .app-sidebar__toggle-input {
   display: none;

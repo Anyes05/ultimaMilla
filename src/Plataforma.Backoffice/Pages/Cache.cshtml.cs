@@ -6,7 +6,7 @@ using Plataforma.Domain;
 namespace Plataforma.Backoffice.Pages;
 
 /// <summary>Vista técnica del caché: aciertos, fallos y relación de aciertos.</summary>
-[Authorize(Roles = Roles.Administrador + "," + Roles.Despachador + "," + Roles.OperarioDeposito)]
+[Authorize(Roles = PermisosPerfil.Administracion)]
 public class CacheModel : PageModel
 {
     private readonly ICacheLectura _cache;

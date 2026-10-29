@@ -19,6 +19,7 @@ public static class DatosSemilla
     public static readonly Guid UsuarioComercioSurId = Guid.Parse("55555555-5555-5555-5555-555555555504");
     public static readonly Guid UsuarioRepartidorNorteId = Guid.Parse("55555555-5555-5555-5555-555555555505");
     public static readonly Guid UsuarioRepartidorSurId = Guid.Parse("55555555-5555-5555-5555-555555555506");
+    public static readonly Guid UsuarioAdministradorSurId = Guid.Parse("55555555-5555-5555-5555-555555555507");
 
     public static readonly Guid ReglaTarifaNorteId = Guid.Parse("66666666-6666-6666-6666-666666666601");
     public static readonly Guid ReglaTarifaSurId = Guid.Parse("66666666-6666-6666-6666-666666666602");
@@ -41,6 +42,7 @@ public static class DatosSemilla
     public const string UsuarioComercioNorte = "norte.comercio";
     public const string UsuarioDespachadorSur = "sur.despachador";
     public const string UsuarioComercioSur = "sur.comercio";
+    public const string UsuarioAdministradorSur = "sur.admin";
     /// <summary>Coincide con contracts/repartidor/login.request.json (demo Álvaro).</summary>
     public const string UsuarioRepartidorNorte = "alvaro@demo.test";
     public const string UsuarioRepartidorSur = "sur.repartidor";

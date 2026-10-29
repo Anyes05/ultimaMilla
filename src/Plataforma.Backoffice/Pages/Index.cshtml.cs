@@ -6,12 +6,13 @@ using Plataforma.Domain;
 
 namespace Plataforma.Backoffice.Pages;
 
-[Authorize(Roles = Roles.Administrador + "," + Roles.Despachador + "," + Roles.OperarioDeposito)]
+[Authorize(Roles = PermisosPerfil.Operacion)]
 public class IndexModel : PageModel
 {
     private readonly ListarEnvios _listarEnvios;
     private readonly ITransicionEnvio _transicion;
     private readonly IOperadorRepositorio _operadores;
+    private readonly IEnvioRepositorio _envios;
 
     public List<Envio> Envios { get; set; } = new();
     public int TotalEnvios { get; private set; }
@@ -28,16 +29,20 @@ public class IndexModel : PageModel
         _ => "#6f42c1"
     };
 
-    public IndexModel(ListarEnvios listarEnvios, ITransicionEnvio transicion, IOperadorRepositorio operadores)
+    public IndexModel(ListarEnvios listarEnvios, ITransicionEnvio transicion, IOperadorRepositorio operadores, IEnvioRepositorio envios)
     {
         _listarEnvios = listarEnvios;
         _transicion = transicion;
         _operadores = operadores;
+        _envios = envios;
     }
 
-    public async Task OnGetAsync(EstadoEnvio? estado = null, int pagina = 1)
+    /// <summary>Rol del usuario autenticado (vacío si no hay sesión válida).</summary>
+    private string Rol => AccesoActual.Intentar(User, out var acceso) ? acceso.Rol : string.Empty;
+
+    public async Task OnGetAsync(EstadoEnvio? estado = null, int pagina = 1, bool sinPermiso = false)
     {
-        Error = TempData["Error"] as string;
+        Error = sinPermiso ? "Tu perfil no tiene acceso a esa página." : TempData["Error"] as string;
         Mensaje = TempData["Mensaje"] as string;
         FiltroEstado = estado;
         Pagina = pagina < 1 ? 1 : pagina;
@@ -48,6 +53,20 @@ public class IndexModel : PageModel
     {
         if (!AccesoActual.Intentar(User, out var acceso))
             return Challenge();
+
+        // Autorización en el servidor: no alcanza con esconder el botón (letra 6.3).
+        var envio = await _envios.ObtenerPorOperadorAsync(envioId, acceso.OperadorId, HttpContext.RequestAborted);
+        if (envio is null)
+        {
+            TempData["Error"] = "El envío no existe.";
+            return RedirectToPage();
+        }
+
+        if (!PermisosPerfil.PuedeCambiar(acceso.Rol, envio.Estado, nuevoEstado))
+        {
+            TempData["Error"] = "Tu perfil no puede hacer ese cambio de estado.";
+            return RedirectToPage();
+        }
 
         try
         {
@@ -67,8 +86,9 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
+    /// <summary>Solo los cambios válidos que además puede hacer el perfil del usuario.</summary>
     public IReadOnlyList<EstadoEnvio> DestinosDesde(EstadoEnvio estado) =>
-        _transicion.DestinosDesde(estado);
+        PermisosPerfil.DestinosPermitidos(Rol, estado, _transicion.DestinosDesde(estado));
 
     private async Task CargarAsync()
     {

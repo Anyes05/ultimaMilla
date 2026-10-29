@@ -39,6 +39,19 @@ spec:
                 secretKeyRef:
                   name: tallernet-redis-credentials
                   key: redis-password
+            # RabbitMQ: el outbox publica los eventos y el tablero/avisos los consumen.
+            # Mismos valores y secreto que usa el queue-worker (platform.tf).
+            - name: RabbitMq__Host
+              value: tallernet-rabbitmq.tallernet.svc.cluster.local
+            - name: RabbitMq__Port
+              value: "5672"
+            - name: RabbitMq__Username
+              value: tallernet_worker
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef:
+                  name: tallernet-rabbitmq-credentials
+                  key: rabbitmq-password
           startupProbe:
             httpGet:
               path: /live
@@ -114,6 +127,19 @@ spec:
                 secretKeyRef:
                   name: tallernet-redis-credentials
                   key: redis-password
+            # RabbitMQ: el outbox publica los eventos y el tablero/avisos los consumen.
+            # Mismos valores y secreto que usa el queue-worker (platform.tf).
+            - name: RabbitMq__Host
+              value: tallernet-rabbitmq.tallernet.svc.cluster.local
+            - name: RabbitMq__Port
+              value: "5672"
+            - name: RabbitMq__Username
+              value: tallernet_worker
+            - name: RabbitMq__Password
+              valueFrom:
+                secretKeyRef:
+                  name: tallernet-rabbitmq-credentials
+                  key: rabbitmq-password
           startupProbe:
             httpGet:
               path: /live

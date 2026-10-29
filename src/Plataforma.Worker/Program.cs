@@ -1,20 +1,43 @@
+using Plataforma.Avisos;
 using Plataforma.Worker;
-using Microsoft.EntityFrameworkCore;
-using Plataforma.Application;
-using Plataforma.Infrastructure;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Services.Configure<OpcionesRabbitMqWorker>(builder.Configuration.GetSection(OpcionesRabbitMqWorker.Seccion));
-builder.Services.Configure<OpcionesAvisos>(builder.Configuration.GetSection(OpcionesAvisos.Seccion));
-builder.Services.AddScoped<IOperadorActual>(_ => new OperadorActualFijo(null));
-builder.Services.AddDbContextFactory<PlataformaDbContext>(opciones =>
-	opciones.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
-builder.Services.AddHttpClient("receptor-avisos", cliente =>
-	cliente.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddAvisos(builder.Configuration);
+builder.Services.AddHttpClient(ConsumidorEntregas.ClienteHttp);
 builder.Services.AddHostedService<ConsumidorEnvioEstadoCambiado>();
+builder.Services.AddHostedService<ConsumidorEntregas>();
+builder.Services.AddHostedService<BarridoEntregasPendientes>();
 
 // Apagado controlado: da tiempo a terminar el mensaje en curso antes de cortar (SIGTERM de Kubernetes).
 builder.Services.Configure<HostOptions>(opciones => opciones.ShutdownTimeout = TimeSpan.FromSeconds(20));
 
-builder.Build().Run();
+var host = builder.Build();
+var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Default")))
+{
+    logger.LogCritical("Falta ConnectionStrings:Default: el worker necesita la base para la idempotencia y el historial.");
+    return 1;
+}
+
+// La base puede tardar en estar disponible (compose o pod nuevo): se reintenta antes de consumir.
+for (var intento = 1; ; intento++)
+{
+    try
+    {
+        await host.Services.MigrarAvisosAsync();
+        logger.LogInformation("Esquema {Esquema} migrado.", AvisosDbContext.Esquema);
+        break;
+    }
+    catch (Exception ex) when (intento < 12)
+    {
+        logger.LogWarning(ex, "No se pudo migrar el esquema de avisos (intento {Intento}); reintento en 5 s.", intento);
+        await Task.Delay(TimeSpan.FromSeconds(5));
+    }
+}
+
+await host.RunAsync();
+return 0;
+
+public partial class Program;

@@ -10,7 +10,7 @@ namespace Plataforma.Backoffice.Pages;
 /// Arma y despacha una ruta: elige repartidor, fecha y envíos en depósito.
 /// Usa los casos de uso de Application directamente (sin HTTP interno).
 /// </summary>
-[Authorize(Roles = Roles.Administrador + "," + Roles.Despachador + "," + Roles.OperarioDeposito)]
+[Authorize(Roles = PermisosPerfil.Planificacion)]
 public class DespachoModel : PageModel
 {
     private readonly ListarEnvios _listarEnvios;

@@ -111,7 +111,7 @@
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>Fecha (UTC)</th><th>Envío</th><th>Evento</th><th>Estado</th><th>Intentos</th><th>Detalle</th><th></th></tr>
+                        <tr><th>Fecha (UTC)</th><th>Envío</th><th>Evento del envío</th><th>Aviso</th><th>Intentos</th><th>Detalle</th><th></th></tr>
                     </thead>
                     <tbody>
                         @foreach (var entrega in Entregas)
@@ -245,9 +245,9 @@
 
     private static string NombreEstado(EstadoEntrega estado) => estado switch
     {
-        EstadoEntrega.Entregado => "Entregado",
-        EstadoEntrega.Fallido => "Fallido",
-        _ => "Pendiente"
+        EstadoEntrega.Entregado => "Recibido por tu sistema",
+        EstadoEntrega.Fallido => "Falló",
+        _ => "Reintentando"
     };
 
     public sealed class SuscripcionForm

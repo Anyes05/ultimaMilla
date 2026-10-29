@@ -28,7 +28,7 @@
     <div class="col-6 col-md-3 col-xl-2">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3">
-                <span class="small text-muted d-block">Avisos entregados</span>
+                <span class="small text-muted d-block">Avisos recibidos por el comercio</span>
                 <strong class="fs-3 text-success" id="avisos-entregados">@(Model.Avisos?.Entregados ?? 0)</strong>
             </div>
         </div>
@@ -36,7 +36,7 @@
     <div class="col-6 col-md-3 col-xl-2">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3">
-                <span class="small text-muted d-block">Avisos fallidos</span>
+                <span class="small text-muted d-block">Avisos que fallaron</span>
                 <strong class="fs-3 text-danger" id="avisos-fallidos">@(Model.Avisos?.Fallidos ?? 0)</strong>
             </div>
         </div>
@@ -148,9 +148,12 @@
                 const tracking = fila?.dataset.tracking ?? a.envioId.substring(0, 8);
                 if (a.estado === "Entregado") sumar("#avisos-entregados", 1);
                 if (a.estado === "Fallido") sumar("#avisos-fallidos", 1);
+                // Habla del aviso al sistema del comercio, no del paquete.
                 const texto = a.estado === "Pendiente"
-                    ? `Aviso a comercio de ${tracking}: falló el intento ${a.intentos}, se reintentará`
-                    : `Aviso a comercio de ${tracking}: ${a.estado.toLowerCase()} (intento ${a.intentos})`;
+                    ? `Aviso al comercio de ${tracking}: falló el intento ${a.intentos}, se reintentará`
+                    : a.estado === "Entregado"
+                        ? `Aviso al comercio de ${tracking}: recibido por el comercio (intento ${a.intentos})`
+                        : `Aviso al comercio de ${tracking}: falló tras ${a.intentos} intentos, quedó en fallidos`;
                 registrar(texto, a.error ?? "");
             });
 

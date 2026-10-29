@@ -10,7 +10,7 @@ namespace Plataforma.Backoffice.Pages;
 /// <summary>
 /// Cuadro tarifario del operador: vigente, simulador, publicar versión e historial.
 /// </summary>
-[Authorize(Roles = Roles.Administrador)]
+[Authorize(Roles = PermisosPerfil.Administracion)]
 public class TarifasModel : PageModel
 {
     private readonly ITarifaRepositorio _tarifas;

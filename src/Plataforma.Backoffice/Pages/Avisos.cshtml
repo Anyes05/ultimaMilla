@@ -1,45 +1,110 @@
 @page
 @model AvisosModel
+@using Plataforma.Avisos
 @{
-    ViewData["Title"] = "Avisos fallidos";
+    ViewData["Title"] = "Avisos a comercios";
 }
 
 <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
     <div>
-        <p class="text-uppercase fw-semibold small mb-1">Operación técnica</p>
-        <h1 class="display-6 fw-bold mb-1">Avisos fallidos</h1>
-        <p class="text-muted mb-0">Mensajes que agotaron reintentos de entrega al comercio.</p>
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @EstadosVista.ColorMarca(Model.Operador)">Administración</p>
+        <h1 class="display-6 fw-bold mb-1">Avisos a comercios</h1>
+        <p class="text-muted mb-0">Mensajes que agotaron los reintentos automáticos. Reintentar reutiliza el mismo EventId.</p>
     </div>
-    <form method="post" asp-page-handler="CambiarReceptor">
-        <input type="hidden" name="forzarFallo" value="@(!Model.ReceptorFalla)" />
-        <button class="btn @(Model.ReceptorFalla ? "btn-warning" : "btn-outline-secondary")" type="submit">
-            @(Model.ReceptorFalla ? "Receptor: fallando" : "Receptor: disponible")
-        </button>
-    </form>
+    <div class="d-flex gap-2">
+        <form method="post" asp-page-handler="CambiarReceptor" asp-route-filtro="@Model.Filtro">
+            <input type="hidden" name="forzarFallo" value="@(!Model.ReceptorFalla)" />
+            <button class="btn @(Model.ReceptorFalla ? "btn-warning" : "btn-outline-secondary")" type="submit"
+                    title="Simula la caída del receptor de prueba del comercio">
+                @(Model.ReceptorFalla ? "Receptor: fallando" : "Receptor: disponible")
+            </button>
+        </form>
+        <form method="post" action="/logout">
+            <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+        </form>
+    </div>
 </div>
 
-@if (TempData["Mensaje"] is string mensaje)
+@if (Model.Mensaje is not null)
 {
-    <div class="alert alert-success" role="status">@mensaje</div>
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
 }
 
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body p-4">
+            <span class="small text-muted d-block">Reintentando</span>
+            <strong class="display-6">@Model.Resumen.Pendientes</strong>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body p-4">
+            <span class="small text-muted d-block">Recibidos por el comercio</span>
+            <strong class="display-6 text-success">@Model.Resumen.Entregados</strong>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body p-4">
+            <span class="small text-muted d-block">Fallaron</span>
+            <strong class="display-6 text-danger">@Model.Resumen.Fallidos</strong>
+        </div></div>
+    </div>
+</div>
+
 <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center gap-3 flex-wrap">
+        <h2 class="h5 mb-0">@(Model.Filtro == "todos" ? "Últimos avisos" : "Mensajes fallidos")</h2>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Filtro">
+            <a class="btn @(Model.Filtro != "todos" ? "btn-primary" : "btn-outline-primary")" asp-page="/Avisos" asp-route-filtro="fallidos">Fallidos</a>
+            <a class="btn @(Model.Filtro == "todos" ? "btn-primary" : "btn-outline-primary")" asp-page="/Avisos" asp-route-filtro="todos">Todos</a>
+        </div>
+    </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table align-middle mb-0">
-                <thead class="table-light"><tr><th>EventId</th><th>Envío</th><th>Intentos</th><th>Error</th><th>Actualizado</th><th></th></tr></thead>
+                <thead class="table-light">
+                    <tr>
+                        <th>Actualizado</th>
+                        <th>Envío</th>
+                        <th>Evento del envío</th>
+                        <th>Aviso</th>
+                        <th>Intentos</th>
+                        <th>Último error</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
                 <tbody>
-                @if (Model.Fallidos.Count == 0)
-                {
-                    <tr><td colspan="6" class="text-center text-muted py-5">No hay avisos fallidos para este operador.</td></tr>
-                }
-                @foreach (var aviso in Model.Fallidos)
+                @foreach (var entrega in Model.Entregas)
                 {
                     <tr>
-                        <td><code>@aviso.EventId</code></td><td><code>@aviso.EnvioId</code></td><td>@aviso.Intentos</td>
-                        <td class="text-danger">@aviso.Error</td><td>@aviso.ActualizadoEn.LocalDateTime.ToString("g")</td>
-                        <td class="text-end"><form method="post" asp-page-handler="Reintentar"><input type="hidden" name="id" value="@aviso.Id" /><button class="btn btn-sm btn-primary" type="submit">Reintentar</button></form></td>
+                        <td class="small">@entrega.ActualizadaEn.ToString("dd/MM HH:mm:ss") UTC</td>
+                        <td><span class="tracking-number">@(Model.Tracking.TryGetValue(entrega.EnvioId, out var tracking) ? tracking : entrega.EnvioId.ToString()[..8])</span></td>
+                        <td>@TiposDeEvento.Nombre(entrega.TipoEvento)</td>
+                        <td>
+                            <span class="status-badge @(entrega.Estado switch { EstadoEntrega.Entregado => "status-entregado", EstadoEntrega.Fallido => "status-no-entregado", _ => "status-en-transito" })">
+                                @(entrega.Estado switch { EstadoEntrega.Entregado => "Recibido por el comercio", EstadoEntrega.Fallido => "Falló", _ => "Reintentando" })
+                            </span>
+                        </td>
+                        <td>@entrega.Intentos</td>
+                        <td class="small text-muted" title="@entrega.Url">@(entrega.UltimoError ?? "—")</td>
+                        <td class="text-end">
+                            @if (entrega.Estado == EstadoEntrega.Fallido)
+                            {
+                                <form method="post" asp-page-handler="Reintentar" asp-route-filtro="@Model.Filtro">
+                                    <input type="hidden" name="entregaId" value="@entrega.Id" />
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Reintentar</button>
+                                </form>
+                            }
+                        </td>
                     </tr>
+                }
+                @if (Model.Entregas.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-5">@(Model.Filtro == "todos" ? "Todavía no hay avisos." : "No hay mensajes fallidos.")</td></tr>
                 }
                 </tbody>
             </table>

@@ -60,6 +60,19 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
+// Página que el perfil no puede abrir (URL escrita a mano): en vez de un 403 en blanco, vuelve a Monitoreo con aviso.
+// Va antes de la autorización para capturar su 403. Las APIs y el hub siguen respondiendo 403.
+app.UseStatusCodePages(contexto =>
+{
+    var http = contexto.HttpContext;
+    if (http.Response.StatusCode == StatusCodes.Status403Forbidden &&
+        !http.Request.Path.StartsWithSegments("/api") &&
+        !http.Request.Path.StartsWithSegments("/hubs") &&
+        !http.Request.Path.StartsWithSegments("/tecnico"))
+        http.Response.Redirect("/?sinPermiso=true");
+    return Task.CompletedTask;
+});
+
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -78,7 +91,8 @@ app.MapPost("/session/login", async (HttpRequest request, IniciarSesion iniciarS
         formulario["clave"].ToString(),
         cancellationToken);
 
-    if (resultado is ResultadoInicio.Ok ok && ok.Sesion.Rol != RolUsuario.Comercio)
+    // Solo perfiles del operador: el comercio usa el Portal y el repartidor la app móvil.
+    if (resultado is ResultadoInicio.Ok ok && PermisosPerfil.PuedeEntrarAlBackoffice(ok.Sesion.Rol))
     {
         request.HttpContext.Response.Cookies.Append(
             CookieAcceso.Backoffice,

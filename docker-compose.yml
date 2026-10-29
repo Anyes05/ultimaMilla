@@ -55,6 +55,8 @@ services:
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: ${RABBITMQ_USERNAME:-tallernet_worker}
       RabbitMq__Password: ${RABBITMQ_PASSWORD:-tallernet_dev}
+      # Secreto del receptor de prueba (/api/receptor-prueba/avisos); en producción viene del secreto de Kubernetes.
+      Avisos__ClaveFirma: ${AVISOS_CLAVE_FIRMA:-clave-demo-avisos-2026}
     ports:
       - "8080:8080"
     depends_on:
@@ -76,6 +78,7 @@ services:
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: ${RABBITMQ_USERNAME:-tallernet_worker}
       RabbitMq__Password: ${RABBITMQ_PASSWORD:-tallernet_dev}
+      Avisos__HostsHttpPermitidos__0: backoffice
     ports:
       - "8081:8080"
     volumes:
@@ -94,10 +97,16 @@ services:
       dockerfile: src/Plataforma.Worker/Dockerfile
     environment:
       DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=${POSTGRES_DB:-tallernet};Username=${POSTGRES_USER:-tallernet_admin};Password=${POSTGRES_PASSWORD:-tallernet_dev}
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: ${RABBITMQ_USERNAME:-tallernet_worker}
       RabbitMq__Password: ${RABBITMQ_PASSWORD:-tallernet_dev}
+      # El receptor de prueba (dentro del Backoffice) corre sin TLS en la red de compose.
+      # URL a cargar en el Portal: http://backoffice:8080/api/receptor-prueba/avisos
+      Avisos__HostsHttpPermitidos__0: backoffice
     depends_on:
+      postgres:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
 

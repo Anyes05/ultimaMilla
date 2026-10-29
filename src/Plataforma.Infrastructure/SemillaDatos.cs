@@ -102,18 +102,35 @@ public static class SemillaDatos
         await AsegurarRepartidoresAsync(context, cancellationToken);
     }
 
+    /// <summary>Un administrador por operador (letra 3.3): cada inquilino configura su propia operación.</summary>
     private static async Task AsegurarAdministradorAsync(PlataformaDbContext context, CancellationToken cancellationToken)
     {
+        await AsegurarAdministradorAsync(context, DatosSemilla.UsuarioAdministradorNorteId, DatosSemilla.OperadorNorteId,
+            "Administrador Norte", "admin@norte.test", DatosSemilla.UsuarioAdministradorNorte, cancellationToken);
+        await AsegurarAdministradorAsync(context, DatosSemilla.UsuarioAdministradorSurId, DatosSemilla.OperadorSurId,
+            "Administrador Sur", "admin@sur.test", DatosSemilla.UsuarioAdministradorSur, cancellationToken);
+    }
+
+    private static async Task AsegurarAdministradorAsync(
+        PlataformaDbContext context,
+        Guid id,
+        Guid operadorId,
+        string nombre,
+        string email,
+        string nombreUsuario,
+        CancellationToken cancellationToken)
+    {
+        // Idempotente: no se duplica ni por id ni por nombre de usuario (el login busca por nombre).
         if (await context.Usuarios.AnyAsync(
-                usuario => usuario.Id == DatosSemilla.UsuarioAdministradorNorteId, cancellationToken))
+                usuario => usuario.Id == id || usuario.NombreUsuario == nombreUsuario, cancellationToken))
             return;
 
         context.Usuarios.Add(UsuarioPlataforma.Registrar(
-            DatosSemilla.UsuarioAdministradorNorteId,
-            DatosSemilla.OperadorNorteId,
-            "Administrador Norte",
-            "admin@norte.test",
-            DatosSemilla.UsuarioAdministradorNorte,
+            id,
+            operadorId,
+            nombre,
+            email,
+            nombreUsuario,
             HashClave.Crear(DatosSemilla.ClaveDesarrollo),
             RolUsuario.Administrador,
             null));

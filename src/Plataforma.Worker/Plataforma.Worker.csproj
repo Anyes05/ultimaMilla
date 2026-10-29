@@ -1,15 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Worker">
 
   <ItemGroup>
-    <!-- Solo el contrato de mensajes (Application.Mensajes); el worker no usa la API ni sus repositorios. -->
-    <ProjectReference Include="..\Plataforma.Application\Plataforma.Application.csproj" />
-    <ProjectReference Include="..\Plataforma.Infrastructure\Plataforma.Infrastructure.csproj" />
+    <!-- Módulo de avisos: modelo, persistencia (esquema avisos), firma y colas. El worker no usa el núcleo. -->
+    <ProjectReference Include="..\Plataforma.Avisos\Plataforma.Avisos.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
-    <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
   </ItemGroup>
 
   <PropertyGroup>
