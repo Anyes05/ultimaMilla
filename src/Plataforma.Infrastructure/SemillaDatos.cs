@@ -97,27 +97,35 @@ public static class SemillaDatos
             await context.SaveChangesAsync(cancellationToken);
         }
 
-        await AsegurarAdministradorAsync(context, cancellationToken);
+        await AsegurarPerfilesOperadorAsync(context, cancellationToken);
         await AsegurarTarifasAsync(context, cancellationToken);
         await AsegurarRepartidoresAsync(context, cancellationToken);
     }
 
-    /// <summary>Un administrador por operador (letra 3.3): cada inquilino configura su propia operación.</summary>
-    private static async Task AsegurarAdministradorAsync(PlataformaDbContext context, CancellationToken cancellationToken)
+    /// <summary>
+    /// Perfiles del operador para cada inquilino (letra 3.3): un administrador que configura la operación
+    /// y un operario de depósito que recibe y rinde bultos. Los despachadores se crean arriba con el operador.
+    /// </summary>
+    private static async Task AsegurarPerfilesOperadorAsync(PlataformaDbContext context, CancellationToken cancellationToken)
     {
-        await AsegurarAdministradorAsync(context, DatosSemilla.UsuarioAdministradorNorteId, DatosSemilla.OperadorNorteId,
-            "Administrador Norte", "admin@norte.test", DatosSemilla.UsuarioAdministradorNorte, cancellationToken);
-        await AsegurarAdministradorAsync(context, DatosSemilla.UsuarioAdministradorSurId, DatosSemilla.OperadorSurId,
-            "Administrador Sur", "admin@sur.test", DatosSemilla.UsuarioAdministradorSur, cancellationToken);
+        await AsegurarUsuarioOperadorAsync(context, DatosSemilla.UsuarioAdministradorNorteId, DatosSemilla.OperadorNorteId,
+            "Administrador Norte", "admin@norte.test", DatosSemilla.UsuarioAdministradorNorte, RolUsuario.Administrador, cancellationToken);
+        await AsegurarUsuarioOperadorAsync(context, DatosSemilla.UsuarioAdministradorSurId, DatosSemilla.OperadorSurId,
+            "Administrador Sur", "admin@sur.test", DatosSemilla.UsuarioAdministradorSur, RolUsuario.Administrador, cancellationToken);
+        await AsegurarUsuarioOperadorAsync(context, DatosSemilla.UsuarioOperarioNorteId, DatosSemilla.OperadorNorteId,
+            "Operario Norte", "operario@norte.test", DatosSemilla.UsuarioOperarioNorte, RolUsuario.OperarioDeposito, cancellationToken);
+        await AsegurarUsuarioOperadorAsync(context, DatosSemilla.UsuarioOperarioSurId, DatosSemilla.OperadorSurId,
+            "Operario Sur", "operario@sur.test", DatosSemilla.UsuarioOperarioSur, RolUsuario.OperarioDeposito, cancellationToken);
     }
 
-    private static async Task AsegurarAdministradorAsync(
+    private static async Task AsegurarUsuarioOperadorAsync(
         PlataformaDbContext context,
         Guid id,
         Guid operadorId,
         string nombre,
         string email,
         string nombreUsuario,
+        RolUsuario rol,
         CancellationToken cancellationToken)
     {
         // Idempotente: no se duplica ni por id ni por nombre de usuario (el login busca por nombre).
@@ -132,7 +140,7 @@ public static class SemillaDatos
             email,
             nombreUsuario,
             HashClave.Crear(DatosSemilla.ClaveDesarrollo),
-            RolUsuario.Administrador,
+            rol,
             null));
         await context.SaveChangesAsync(cancellationToken);
     }
