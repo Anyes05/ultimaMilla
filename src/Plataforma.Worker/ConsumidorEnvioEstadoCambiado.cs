@@ -121,7 +121,7 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
     {
         var comercio = await db.Database
             .SqlQuery<Guid>($"""SELECT "ComercioId" AS "Value" FROM public."Envios" WHERE "Id" = {evento.EnvioId} AND "OperadorId" = {evento.OperadorId}""")
-            .FirstOrDefaultAsync(ct);
+            .SingleOrDefaultAsync(ct); // Id es la clave: a lo sumo una fila (y EF no advierte First sin OrderBy).
         return comercio == Guid.Empty ? null : comercio;
     }
 
