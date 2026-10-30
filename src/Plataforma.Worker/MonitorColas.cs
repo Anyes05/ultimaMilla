@@ -42,6 +42,8 @@ public sealed class MonitorColas : BackgroundService
         {
             try
             {
+                // Es medición interna: sin trazas, para que cada 15 s no aparezca una consulta en Tempo.
+                using var sinTrazas = OpenTelemetry.SuppressInstrumentationScope.Begin();
                 await LeerColasAsync(stoppingToken);
                 await LeerEntregasAsync(stoppingToken);
             }

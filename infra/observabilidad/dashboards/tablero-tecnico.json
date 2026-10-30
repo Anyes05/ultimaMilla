@@ -15,7 +15,7 @@
     {
       "type": "stat",
       "title": "Tiempo medio de respuesta",
-      "description": "Promedio de las respuestas HTTP de Backoffice y Portal (sin sondas), últimos 5 min.",
+      "description": "Promedio de las respuestas HTTP de Backoffice y Portal (sin sondas), últimos 5 min. No incluye las sondas de Kubernetes ni el receptor de prueba, que simula el sistema del comercio.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -33,7 +33,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_sum{http_route!~\"/live|/ready\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready\"}[5m]))",
+          "expr": "sum(rate(http_server_request_duration_seconds_sum{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m]))",
           "instant": false
         }
       ],
@@ -83,7 +83,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])))",
           "instant": false
         }
       ],
@@ -133,7 +133,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])))",
           "instant": false
         }
       ],
@@ -183,7 +183,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready\",http_response_status_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready\"}[5m]))",
+          "expr": "(sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\",http_response_status_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m]))",
           "instant": false
         }
       ],
@@ -293,7 +293,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(plataforma_avisos_entregas{estado=\"Fallido\"}) or vector(0)",
+          "expr": "max(plataforma_avisos_entregas{estado=\"Fallido\"}) or vector(0)",
           "instant": false
         }
       ],
@@ -348,7 +348,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_sum{http_route!~\"/live|/ready\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready\"}[5m]))",
+          "expr": "sum(rate(http_server_request_duration_seconds_sum{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m]))",
           "legendFormat": "media"
         },
         {
@@ -357,7 +357,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])))",
           "legendFormat": "p95"
         },
         {
@@ -366,7 +366,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])))",
           "legendFormat": "p99"
         }
       ],
@@ -407,7 +407,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (job, instance) (rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready\"}[1m]))",
+          "expr": "sum by (job, instance) (rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m]))",
           "legendFormat": "{{job}} {{instance}}"
         }
       ],
@@ -430,7 +430,7 @@
     {
       "type": "timeseries",
       "title": "Profundidad de las colas",
-      "description": "Mensajes esperando en cada cola de avisos de RabbitMQ (eventos, entregas, esperas de reintento y fallidos).",
+      "description": "Mensajes esperando en cada cola de avisos de RabbitMQ (eventos, entregas, esperas de reintento y fallidos). Es un valor leído de RabbitMQ: con varias réplicas del worker se toma el máximo, no la suma.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -448,7 +448,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (cola) (plataforma_cola_mensajes)",
+          "expr": "max by (cola) (plataforma_cola_mensajes)",
           "legendFormat": "{{cola}}"
         }
       ],
@@ -530,7 +530,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (job) (rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready\",http_response_status_code=~\"5..\"}[5m]))",
+          "expr": "sum by (job) (rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\",http_response_status_code=~\"5..\"}[5m]))",
           "legendFormat": "{{job}}"
         }
       ],
