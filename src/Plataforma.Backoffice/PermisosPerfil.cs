@@ -18,6 +18,9 @@ public static class PermisosPerfil
     /// <summary>Despacho de rutas y tablero en vivo: quien planifica y monitorea la jornada.</summary>
     public const string Planificacion = Roles.Administrador + "," + Roles.Despachador;
 
+    /// <summary>Trabajo en depósito (rendición de devoluciones; luego recepción por escaneo): quien recibe y rinde bultos.</summary>
+    public const string Deposito = Roles.Administrador + "," + Roles.OperarioDeposito;
+
     /// <summary>Configuración y operación técnica: tarifas, avisos fallidos, caché.</summary>
     public const string Administracion = Roles.Administrador;
 

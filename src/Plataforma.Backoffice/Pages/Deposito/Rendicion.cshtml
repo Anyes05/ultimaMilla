@@ -1,0 +1,112 @@
+@page
+@model RendicionModel
+@{
+    ViewData["Title"] = "Rendición de devoluciones";
+}
+
+<div class="mb-4">
+    <p class="text-uppercase text-primary fw-semibold small mb-1">Depósito</p>
+    <h1 class="display-6 fw-bold mb-1">Rendición de devoluciones</h1>
+    <p class="text-muted mb-0">Registrá los bultos que vuelven al depósito para devolverlos al comercio.</p>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form method="post" asp-page-handler="Escanear" class="row g-2 align-items-end" autocomplete="off">
+            <div class="col-sm-8 col-lg-6">
+                <label class="form-label fw-semibold" for="numeroSeguimiento">Número de seguimiento</label>
+                <input id="numeroSeguimiento" name="numeroSeguimiento" class="form-control form-control-lg"
+                       placeholder="Escaneá el código o escribí el número" autofocus required />
+            </div>
+            <div class="col-sm-4 col-lg-3">
+                <button class="btn btn-primary btn-lg w-100" type="submit">Rendir</button>
+            </div>
+        </form>
+        <p class="small text-muted mt-2 mb-0">Con lector de códigos alcanza con escanear: el lector envía el número y confirma solo.</p>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+    <h2 class="h5 mb-0">Pendientes de rendir</h2>
+    <span class="badge rounded-pill text-bg-light">@Model.TotalPendientes</span>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th>N° Tracking</th>
+                    <th>Destinatario</th>
+                    <th>Dirección de entrega</th>
+                    <th class="text-center">Intentos</th>
+                    <th class="text-end">Acción</th>
+                </tr>
+                </thead>
+                <tbody>
+                @if (Model.Pendientes.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-5">No hay envíos en devolución para rendir.</td>
+                    </tr>
+                }
+                @foreach (var envio in Model.Pendientes)
+                {
+                    <tr>
+                        <td><span class="tracking-number">@envio.NumeroSeguimiento</span></td>
+                        <td>@envio.Destinatario</td>
+                        <td>@envio.DireccionEntrega</td>
+                        <td class="text-center">@envio.IntentosRealizados</td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="Rendir">
+                                <input type="hidden" name="envioId" value="@envio.Id" />
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Rendir</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (Model.TotalPaginas > 1)
+{
+    <nav class="mt-3" aria-label="Páginas">
+        <ul class="pagination justify-content-end mb-0">
+            <li class="page-item @(Model.Pagina <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-route-pagina="@(Model.Pagina - 1)">Anterior</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">@Model.Pagina de @Model.TotalPaginas</span></li>
+            <li class="page-item @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")">
+                <a class="page-link" asp-route-pagina="@(Model.Pagina + 1)">Siguiente</a>
+            </li>
+        </ul>
+    </nav>
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js" referrerpolicy="no-referrer"></script>
+    <script>
+        // Si otro usuario cambia un estado (por ejemplo, un envío pasa a devolución), la lista se actualiza.
+        // No se recarga mientras el operario está escribiendo o escaneando, para no perder lo ingresado.
+        const campo = document.getElementById('numeroSeguimiento');
+        const avisos = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/avisos', { skipNegotiation: true, transport: signalR.HttpTransportType.WebSockets })
+            .withAutomaticReconnect()
+            .build();
+        avisos.on('estadoEnvioCambiado', () => { if (!campo.value) window.location.reload(); });
+        avisos.start().catch(() => {});
+    </script>
+}

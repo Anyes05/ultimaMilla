@@ -70,6 +70,11 @@
                             <a class="@ClaseNav("/Despacho")" asp-area="" asp-page="/Despacho">Despacho</a>
                             <a class="@ClaseNav("/Tablero")" asp-area="" asp-page="/Tablero">Tablero en vivo</a>
                         }
+                        @if (usuario.IsInRole(Roles.Administrador) || usuario.IsInRole(Roles.OperarioDeposito))
+                        {
+                            <span class="app-sidebar__section">Depósito</span>
+                            <a class="@ClaseNav("/Deposito/Rendicion")" asp-area="" asp-page="/Deposito/Rendicion">Rendición de devoluciones</a>
+                        }
                         @if (usuario.IsInRole(Roles.Administrador))
                         {
                             <span class="app-sidebar__section">Administración</span>
