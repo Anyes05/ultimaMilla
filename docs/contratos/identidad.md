@@ -1,189 +1,153 @@
 # Contrato técnico — Identity / autenticación (letra 6.3)
 
-**Estado:** borrador (aportes de Nadia rellenados desde el código actual).  
-**Dueña del cierre:** Ana (lo escribe, publica y cierra).  
-**Plazo de cierre:** antes del **06/11/2026**.  
-**Reunión sugerida:** **04 o 05/11** (15–30 min) para que los cuatro aporten y Ana cierre.
+**Estado:** **cerrado v1** (Ana, 03/11/2026).  
+**Dueña:** Ana.  
+**Álvaro:** confirmó sync v2 el mismo día; este contrato Identity cierra la elección para el merge del **08/11**.  
+**Aportes:** Nadia (web) completo; Álvaro/Joel con defaults operativos abajo (pueden matizar sin cambiar la decisión A).
 
 | Cuándo | Qué |
 |--------|-----|
-| **Ahora → 05/11** | Cada uno completa su sección abajo. Ana elige Identity vs OIDC. |
-| **Antes del 06/11** | Ana publica v1 del contrato en este archivo (merge a `main`). |
-| **08/11** | Ana merge de Identity/API. |
-| **09/11** | Nadia (web) y Álvaro (app) integran login. |
-| **10/11** | Prueba de aceptación: login OK + acceso denegado por rol (web y app). |
+| **08/11** | Ana merge: ASP.NET Identity + emisión JWT/cookies conservando claims actuales |
+| **09/11** | Nadia (web) y Álvaro (app) integran login contra este contrato |
+| **10/11** | Prueba: login OK + acceso denegado por rol (web y app) |
 
 ---
 
-## 1. Responsables
+## 1. Decisión (Ana) — Opción A
 
-| Quién | Rol | Qué aporta |
-|-------|-----|------------|
-| **Ana** | Escribe y cierra | ASP.NET Identity **o** OIDC; issuer; audiences; emisión de tokens; claims; roles; autorización API |
-| **Nadia** | Web | Redirect URIs Backoffice/Portal; claims que usan las pantallas; sesión multi-réplica; SignalR |
-| **Álvaro** | Móvil | Redirect URI de la app; PKCE como cliente público; renovación offline |
-| **Joel** | EKS | Dominio/TLS del emisor; secretos vs variables; nombres en Kubernetes |
+**ASP.NET Identity como almacén de usuarios** + **JWT/cookies** como hoy (misma forma de sesión).
 
----
+| | |
+|--|--|
+| **No** | IdP externo / OpenIddict / Keycloak en este laboratorio |
+| **Por qué** | Menor riesgo antes del freeze; usuarios ya en Postgres; letra 6.3 admite Identity; 2 réplicas ya usan Data Protection en Redis |
+| **PKCE / redirect OIDC** | **No aplican** en v1. El login web sigue en `/login` + cookie; el móvil sigue `POST /api/repartidor/login` + Bearer |
 
-## 2. Estado actual del sistema (baseline — no inventar)
-
-Hoy **no** hay OIDC ni ASP.NET Identity UI. Hay JWT propio:
-
-- Emisión: `EmisorTokenJwt` (`Jwt:Clave`, `Jwt:Emisor`, `Jwt:Audiencia`, `Jwt:HorasVigencia`).
-- Validación: `AddAutenticacionJwt` (cookie HttpOnly **o** `Authorization: Bearer`).
-- Cookies: `acceso_backoffice`, `acceso_portal` (`CookieAcceso`).
-- Claims: `ClaimsPlataforma` + `AccesoActual`.
-- Data Protection (cookies/antiforgery) en **Redis**, por app.
-- SignalR hub `/hubs/avisos`: autentica con la **misma cookie** JWT; grupo = `operador_id`.
-
-Cualquier diseño nuevo debe **conservar o mapear** lo de las secciones 3–5, o documentar el reemplazo explícito.
+Si más adelante el equipo quiere OIDC, será un ADR aparte; **no** bloquea 6.3 ni el 10/11.
 
 ---
 
-## 3. Aporte Nadia (web) — COMPLETO
+## 2. Issuer, audiences y vigencia
 
-### 3.1 Redirect URIs (solo si eligen OIDC)
+Valores de configuración (producción = Secret/Config de Joel; no pegar secretos en Git):
 
-Producción (dominios actuales del lab):
+| Clave | Valor de contrato | Notas |
+|-------|-------------------|--------|
+| Issuer (`Jwt__Emisor`) | `https://auth.tallernet.cloud-ip.cc` en EKS; en Compose puede seguir `ultima-milla` | Una sola autoridad lógica |
+| Audience (`Jwt__Audiencia`) | **Una sola:** `ultima-milla` | Misma audiencia Backoffice, Portal y móvil (como hoy) |
+| Access token | **8 h** (`Jwt__HorasVigencia`) | Sin refresh token en v1 |
+| Firma | HMAC con `Jwt__Clave` (≥ 32 caracteres) en **Secret** | Misma clave en backoffice y portal |
 
-| App | Sign-in | Sign-out (propuesto) |
-|-----|---------|----------------------|
-| Backoffice | `https://backoffice.tallernet.cloud-ip.cc/signin-oidc` | `https://backoffice.tallernet.cloud-ip.cc/signout-callback-oidc` |
-| Portal | `https://app.tallernet.cloud-ip.cc/signin-oidc` | `https://app.tallernet.cloud-ip.cc/signout-callback-oidc` |
-
-Compose / local (respaldo letra 6.1, verificación 11/11):
-
-| App | Sign-in |
-|-----|---------|
-| Backoffice | `http://localhost:8080/signin-oidc` |
-| Portal | `http://localhost:8081/signin-oidc` |
-
-Si Ana elige **solo ASP.NET Identity** (cookie/JWT sin protocolo OIDC), **estas URIs no aplican**; el login sigue siendo formulario en `/login` de cada host.
-
-### 3.2 Claims que el web y la API ya consumen
-
-Nombres **exactos** (no renombrar sin migrar `AccesoActual` / `ClaimsPlataforma`):
-
-| Claim | Constante | Uso |
-|-------|-----------|-----|
-| `sub` | `ClaimsPlataforma.UsuarioId` | Id de usuario |
-| `operador_id` | `ClaimsPlataforma.OperadorId` | Filtro multi-tenant; grupo SignalR |
-| `comercio_id` | `ClaimsPlataforma.ComercioId` | Obligatoria en Portal (rol comercio) |
-| `repartidor_id` | `ClaimsPlataforma.RepartidorId` | App / API repartidor |
-| `role` | `ClaimsPlataforma.Rol` | Autorización (`[Authorize(Roles=…)]`, `PermisosPerfil`) |
-| `unique_name` | — | Nombre visible |
-
-**Hoy `AccesoActual.Intentar` exige `operador_id`.** Un administrador de plataforma **sin** `operador_id` **rompe** el código actual: Ana debe definir el mapeo (claim opcional + rol plataforma) y el cambio en `AccesoActual` / filtros.
-
-### 3.3 Roles (`PermisosPerfil` / `Roles`)
-
-Valores de claim `role` (minúsculas, como en `Plataforma.Domain.Roles`):
-
-| Rol | Valor claim | Entra a |
-|-----|-------------|---------|
-| Administrador | `administrador` | Backoffice |
-| Despachador | `despachador` | Backoffice |
-| Operario de depósito | `operario_deposito` | Backoffice |
-| Comercio | `comercio` | Portal |
-| Repartidor | `repartidor` | App + API Bearer |
-
-Grupos Backoffice (`PermisosPerfil`): `Operacion`, `Planificacion`, `Deposito`, `Administracion`.
-
-**Nuevo (banderas / org):** administrador de **plataforma** (sin `operador_id`). Nombre de claim **pendiente Ana** (ej. `administrador_plataforma`). No entra al Backoffice de operador ni al Portal de comercio salvo que el contrato lo diga.
-
-### 3.4 Quién puede entrar a cada host
-
-- **Backoffice:** solo `PuedeEntrarAlBackoffice` → Administrador, Despachador, OperarioDeposito.
-- **Portal:** solo rol `comercio` + `comercio_id` del operador correspondiente.
-- **API repartidor / móvil:** rol `repartidor` + Bearer (hoy).
-
-### 3.5 Sesión con 2 réplicas (obligatorio conservar)
-
-- Cookies de acceso HttpOnly; cifrado/antiforgery vía **Data Protection** con claves en **Redis** (`plataforma:backoffice:data-protection` / equivalente Portal).
-- SignalR: misma cookie; backplane Redis. El contrato **no** puede exigir sticky sessions para el hub.
-
-### 3.6 Hub SignalR
-
-- Ruta: `/hubs/avisos`.
-- Auth: misma sesión web que el Backoffice.
-- Aislamiento: grupo `operador:{operadorId:N}` desde claim `operador_id` (el cliente no elige operador).
+Emisión: Identity autentica (password hasher / `UserManager`); tras éxito se emite el JWT con **`IEmisorToken` / `EmisorTokenJwt`** (o sucesor con la misma interfaz de claims). Los hosts **no** cambian el esquema de cookie/Bearer.
 
 ---
 
-## 4. Aporte Álvaro (móvil) — PENDIENTE
+## 3. Claims (nombres inmutables salvo lo nuevo)
 
-Completar antes del 06/11:
+| Claim | Constante | Obligatorio | Uso |
+|-------|-----------|-------------|-----|
+| `sub` | `ClaimsPlataforma.UsuarioId` | sí | Id de usuario |
+| `operador_id` | `ClaimsPlataforma.OperadorId` | sí para roles de operador; **no** para admin plataforma | Tenant / SignalR |
+| `comercio_id` | `ClaimsPlataforma.ComercioId` | sí si `role=comercio` | Portal |
+| `repartidor_id` | `ClaimsPlataforma.RepartidorId` | sí si `role=repartidor` | API / app |
+| `role` | `ClaimsPlataforma.Rol` | sí | Autorización |
+| `unique_name` | — | recomendado | Nombre visible |
 
-- [ ] Redirect URI de la app (ej. `tallernet://callback`) — solo si OIDC.
-- [ ] Confirmación: cliente **público** → PKCE obligatorio; **sin** client secret en el binario.
-- [ ] Cómo renueva token sin red (política offline) y qué pasa al volver online.
-- [ ] Si Identity puro (sin OIDC): ¿sigue `POST /api/repartidor/login` + Bearer como hoy?
+### 3.1 Administrador de plataforma (banderas)
 
-Baseline actual: login API repartidor + JWT Bearer; token en SecureStorage (ver contratos en `contracts/repartidor/`).
+| | |
+|--|--|
+| Claim `role` | `administrador_plataforma` |
+| Constante sugerida | `Roles.AdministradorPlataforma` / `RolUsuario.AdministradorPlataforma` |
+| `operador_id` | **ausente** |
+| Dónde entra | Solo pantallas de **plataforma** (p. ej. banderas globales), **no** Backoffice de operador ni Portal comercio |
+| `AccesoActual` | Debe aceptar principal **sin** `operador_id` si el rol es `administrador_plataforma`; el filtro EF de operador **no** aplica a esas rutas (autorización explícita) |
 
----
-
-## 5. Aporte Joel (EKS) — PENDIENTE
-
-Completar antes del 06/11 (nombres, no valores secretos en Git):
-
-| Variable / secreto | ¿Secret o ConfigMap? | Notas |
-|--------------------|----------------------|--------|
-| `Jwt__Clave` (hoy) o claves Identity/OIDC | **Secret** | Ya documentado en `infra/terraform/k8s/README.md` |
-| `Jwt__Emisor` / issuer URL | Config o Secret | Ana define valor final |
-| `Jwt__Audiencia` / audiences | Config | Ana define |
-| Connection string IdP (si OIDC externo) | **Secret** | Solo si aplica |
-| Client secrets web (si OIDC confidential) | **Secret** | Preferible Identity sin secretos de cliente en hosts |
-
-- [ ] Dominio y certificado TLS del emisor (mismo ALB/ACM o host dedicado).
-- [ ] Lista final de env vars en Deployments `backoffice`, `portal`, `queue-worker` (si el worker valida JWT).
-
-**No** pegar claves reales en este archivo ni en el chat.
+El resto de roles (`administrador`, `despachador`, `operario_deposito`, `comercio`, `repartidor`) **no cambian**.
 
 ---
 
-## 6. Decisiones de Ana — PENDIENTE (cierra el contrato)
+## 4. Quién entra a cada host (sin cambio)
 
-### 6.1 Elección (sugerencia del equipo)
-
-La letra acepta **ASP.NET Identity como almacén de usuarios**. Es la opción de **menor riesgo** antes del freeze (usuarios en el mismo Postgres, sin IdP extra).
-
-- [ ] **Opción A — ASP.NET Identity + JWT/cookies** (recomendada por tiempo)
-- [ ] **Opción B — OIDC** (OpenIddict / Keycloak / …) + PKCE
-
-### 6.2 Completar
-
-- [ ] Issuer definitivo.
-- [ ] Audience(s): ¿una (`ultima-milla`) o separadas (`backoffice` / `portal` / `mobile`)?
-- [ ] Vigencia access token / refresh (si hay).
-- [ ] Emisión: ¿sigue `IEmisorToken` o lo reemplaza Identity?
-- [ ] Claim del administrador de plataforma y regla: **sin** `operador_id`.
-- [ ] Cambio en `AccesoActual` / filtro EF cuando no hay operador.
-- [ ] Plan de migración de usuarios semilla Norte/Sur.
-- [ ] Criterio de aceptación 10/11: login OK + 403/denegado por rol en web y app.
+- **Backoffice:** Administrador, Despachador, OperarioDeposito (`PuedeEntrarAlBackoffice`).
+- **Portal:** `comercio` + `comercio_id`.
+- **API / app repartidor:** `repartidor` + Bearer.
+- **Admin plataforma:** host o área dedicada acordada con Nadia (no reutilizar menú de operador sin `operador_id`).
 
 ---
 
-## 7. Criterio de aceptación (organización definitiva)
+## 5. Sesión multi-réplica y SignalR (obligatorio conservar)
+
+- Cookies HttpOnly `acceso_backoffice` / `acceso_portal`.
+- Data Protection en **Redis** (claves por app).
+- SignalR `/hubs/avisos`: misma cookie; backplane Redis; grupo desde `operador_id`.
+- **Sin** sticky sessions.
+
+---
+
+## 6. Álvaro (móvil) — defaults de contrato v1
+
+| Tema | Decisión |
+|------|----------|
+| Login | Sigue **`POST /api/repartidor/login`** + Bearer (contratos `contracts/repartidor/`) |
+| OIDC / redirect `tallernet://…` | **No** en v1 |
+| PKCE | No aplica (no hay cliente OIDC) |
+| Token offline | Se guarda en SecureStorage; al expirar → nuevo login; sin refresh en v1 |
+| Prueba 10/11 | Login OK con repartidor semilla; 401/403 si rol incorrecto o token inválido |
+
+Álvaro puede ampliar notas en un PR; **no** cambia la Opción A.
+
+---
+
+## 7. Joel (EKS) — nombres (sin valores)
+
+| Clave | Tipo | Deployments |
+|-------|------|-------------|
+| `Jwt__Clave` | Secret | backoffice, portal (y API repartidor = backoffice) |
+| `Jwt__Emisor` | Config o Secret | idem |
+| `Jwt__Audiencia` | Config | `ultima-milla` |
+| `Jwt__HorasVigencia` | Config | `8` |
+| Connection string Postgres | Secret (ya) | incluye tablas Identity al migrar |
+
+- TLS: mismo ALB/ACM del lab (`*.tallernet.cloud-ip.cc`).
+- El issuer URL es **lógico** (claim); no exige un Deployment “auth” aparte en v1.
+- Worker: **no** valida JWT de usuario en v1 (solo colas).
+
+---
+
+## 8. Migración de usuarios (Ana, merge 08/11)
+
+1. Agregar paquetes Identity + store en el mismo Postgres (`AspNetUsers` / roles o mapa a `UsuarioPlataforma` — decisión de implementación en el PR; el contrato exige **mismos logins semilla**).
+2. Seed Norte/Sur: mismos `DatosSemilla` (`norte.admin`, `norte.comercio`, `alvaro@demo.test`, etc.) y clave de desarrollo **solo en Compose**; en EKS claves del Secret.
+3. Login web y API deben seguir funcionando con esos usuarios tras el migrate.
+4. Passwords: rehash con Identity; no dejar texto plano.
+
+---
+
+## 9. Criterio de aceptación (10/11) — no negociable
 
 Identity **no se declara** cumplido sin:
 
-1. Login exitoso en Backoffice, Portal y app.
-2. Acceso **denegado** por rol (ej. comercio no entra al Backoffice; despachador no administra banderas/tarifas según `PermisosPerfil`).
-3. Sesión válida en **2 réplicas** (cookie / Data Protection Redis).
-4. Hub SignalR autenticado con la misma sesión (si el tablero sigue en Backoffice).
+1. Login OK en Backoffice, Portal y app (usuarios semilla).
+2. Acceso **denegado** por rol (comercio ↛ Backoffice; despachador ↛ administración de tarifas/banderas según `PermisosPerfil`).
+3. Sesión válida con **2 réplicas** (cookie + Redis DP).
+4. Hub SignalR autenticado con la misma sesión Backoffice.
 
 ---
 
-## 8. Mensaje listo para el grupo
+## 10. Aporte Nadia (referencia; ya completo)
+
+Redirect OIDC del borrador **no se usan** en v1. Claims, roles de operador, sesión Redis y SignalR quedan como en su sección original (conservados arriba).
+
+---
+
+## 11. Mensaje para el grupo
 
 ```
-El contrato de Identity lo escribe Ana, con aportes de cada uno (docs/contratos/identidad.md).
-Nadia ya cargó lo del web: redirect URIs, claims (operador_id, comercio_id, role, …),
-roles de PermisosPerfil + admin plataforma sin operador, sesión 2 réplicas + SignalR.
-Álvaro: redirect de la app y PKCE / login móvil.
-Joel: dominio, TLS y nombres de secretos/vars en EKS (sin pegar secretos).
-Ana: cierra Identity vs OIDC + issuer/audiences antes del 06/11.
-¿Lo vemos el 04 o el 05/11?
+Contrato Identity v1 CERRADO (docs/contratos/identidad.md):
+Opción A — ASP.NET Identity + JWT/cookies (sin OIDC en este lab).
+Issuer lógico auth.tallernet… / audiencia unica ultima-milla / 8h.
+Claims actuales se mantienen; admin plataforma = role administrador_plataforma sin operador_id.
+Móvil: sigue POST /api/repartidor/login + Bearer.
+Merge Ana 08/11; integración Nadia/Álvaro 09; prueba 10/11.
 ```

@@ -1,7 +1,7 @@
 # Contratos del repartidor — borrador v2 (sincronización por bulto)
 
-**Estado:** borrador Ana + Álvaro (02–03/11).  
-**v1 permanece inmutable.** Este contrato se cierra cuando Ana tenga modelo, migraciones y pruebas de integración.
+**Estado:** **acordado** Ana + Álvaro (03/11/2026). Listo para que Álvaro implemente offline por bulto.  
+**v1 permanece inmutable.** El servidor aplicará `bultos[]` cuando Ana cablee `SincronizarEntregas` (post-gate).
 
 ## Qué agrega v2
 
