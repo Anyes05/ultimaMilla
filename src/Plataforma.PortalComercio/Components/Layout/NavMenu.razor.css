@@ -93,6 +93,40 @@
     display: none;
 }
 
+/* Bloque de sesión al pie del menú (mismo diseño que el Backoffice). */
+.sesion {
+    background-color: rgba(0, 0, 0, 0.18);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    padding: 0.8rem 1rem;
+}
+
+.sesion__titulo {
+    color: #fed7aa;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.sesion__usuario {
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sesion__perfil {
+    /* La columna estira a sus hijos: sin esto la etiqueta ocupa todo el ancho. */
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+    padding: 0.1rem 0.5rem;
+}
+
 .navbar-toggler:checked ~ .nav-scrollable {
     display: block;
 }
@@ -109,5 +143,17 @@
         /* Allow sidebar to scroll for tall menus */
         height: calc(100vh - 3.5rem);
         overflow-y: auto;
+
+        /* El bloque de sesión queda abajo de todo, como en el Backoffice. */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .nav-scrollable .nav {
+        flex: 1 1 auto;
+    }
+
+    .sesion {
+        flex-shrink: 0;
     }
 }

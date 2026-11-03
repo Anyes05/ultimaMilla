@@ -27,6 +27,16 @@
             <NavLink class="nav-link" href="avisos">Avisos automáticos</NavLink>
         </div>
     </nav>
+
+    @* Igual que el Backoffice: quién está conectado y con qué perfil, al pie del menú. *@
+    @if (!string.IsNullOrWhiteSpace(NombreUsuario))
+    {
+        <div class="sesion">
+            <span class="sesion__titulo">Sesión</span>
+            <span class="sesion__usuario">@NombreUsuario</span>
+            <span class="sesion__perfil">Comercio</span>
+        </div>
+    }
 </div>
 
 @code {
@@ -35,4 +45,7 @@
 
     [Parameter]
     public string ColorMarcaCss { get; set; } = "#4f46e5";
+
+    [Parameter]
+    public string? NombreUsuario { get; set; }
 }

@@ -205,3 +205,23 @@ h1:focus {
     color: var(--bs-body-color);
     font-weight: 600;
 }
+
+/* Celular: el número de seguimiento (ENV- y 32 caracteres, sin espacios) puede cortarse en cualquier carácter,
+   así no empuja el estado fuera de la pantalla; el badge del estado nunca se achica. */
+.tracking-number {
+    overflow-wrap: anywhere;
+}
+
+/* En una tabla el número no se corta: la tabla se desplaza dentro de su .table-responsive. */
+td .tracking-number {
+    overflow-wrap: normal;
+}
+
+.status-badge {
+    flex-shrink: 0;
+}
+
+/* Hijo de un contenedor flex que puede achicarse por debajo del ancho de su texto. */
+.min-w-0 {
+    min-width: 0;
+}

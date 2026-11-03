@@ -6,6 +6,9 @@
 
 main {
     flex: 1;
+    /* Hijo de un contenedor flex: sin esto, una tabla ancha estira toda la página en vez de
+       desplazarse dentro de su .table-responsive (tablet, Avisos automáticos). */
+    min-width: 0;
 }
 
 .sidebar {

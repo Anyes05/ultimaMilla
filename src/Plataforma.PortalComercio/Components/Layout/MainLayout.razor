@@ -8,12 +8,13 @@
     @if (MostrarBarraLateral)
     {
         <div class="sidebar">
-            <NavMenu NombreOperador="@NombreOperador" ColorMarcaCss="@ColorMarcaCss" />
+            <NavMenu NombreOperador="@NombreOperador" ColorMarcaCss="@ColorMarcaCss" NombreUsuario="@NombreUsuario" />
         </div>
     }
 
     @code {
         private string? NombreOperador { get; set; }
+        private string? NombreUsuario => HttpContextAccessor.HttpContext?.User.Identity?.Name;
         private string ColorMarcaCss { get; set; } = "#4f46e5";
 
         // Igual que el Backoffice: sin sesión de comercio (login, errores) no se muestra el menú.
