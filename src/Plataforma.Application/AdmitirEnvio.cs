@@ -53,15 +53,44 @@ public sealed class AdmitirEnvio
 
         await _envios.AgregarAsync(envio);
 
-        var pesoPorBulto = cantidadBultos == 1 ? pesoKg : 0;
+        // Reparte el peso del envío entre bultos (capacidad de vehículo / RF 8).
+        // El último se ajusta para que la suma coincida con pesoKg pese al redondeo.
+        var pesos = RepartirPesoEntreBultos(pesoKg, cantidadBultos);
         for (var i = 1; i <= cantidadBultos; i++)
         {
             var codigo = $"{envio.NumeroSeguimiento}-B{i:00}";
             await _bultos.AgregarAsync(
-                Bulto.Crear(Guid.NewGuid(), operadorId, envio.Id, codigo, pesoPorBulto),
+                Bulto.Crear(Guid.NewGuid(), operadorId, envio.Id, codigo, pesos[i - 1]),
                 cancellationToken);
         }
 
         return envio;
+    }
+
+    public static decimal[] RepartirPesoEntreBultos(decimal pesoKg, int cantidadBultos)
+    {
+        if (cantidadBultos < 1)
+            throw new ArgumentOutOfRangeException(nameof(cantidadBultos));
+
+        if (pesoKg < 0)
+            throw new ArgumentOutOfRangeException(nameof(pesoKg));
+
+        if (pesoKg == 0)
+            throw new ArgumentOutOfRangeException(nameof(pesoKg), "El peso del envío debe ser mayor que 0.");
+
+        var pesos = new decimal[cantidadBultos];
+        var baseKg = decimal.Round(pesoKg / cantidadBultos, 3, MidpointRounding.AwayFromZero);
+        decimal acumulado = 0;
+        for (var i = 0; i < cantidadBultos - 1; i++)
+        {
+            pesos[i] = baseKg > 0 ? baseKg : 0.001m;
+            acumulado += pesos[i];
+        }
+
+        pesos[^1] = decimal.Round(pesoKg - acumulado, 3, MidpointRounding.AwayFromZero);
+        if (pesos[^1] <= 0)
+            pesos[^1] = 0.001m;
+
+        return pesos;
     }
 }

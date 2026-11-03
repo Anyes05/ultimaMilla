@@ -37,6 +37,17 @@ public class TransicionesEnvioTests
             new object[] { EstadoEnvio.EnDevolucion, EstadoEnvio.Devuelto }
         };
 
+    [Fact]
+    public void EntregadoParcialmente_QuedaAlFinalSinDesplazarIntsHistoricos()
+    {
+        Assert.Equal(0, (int)EstadoEnvio.Admitido);
+        Assert.Equal(4, (int)EstadoEnvio.Entregado);
+        Assert.Equal(5, (int)EstadoEnvio.NoEntregado);
+        Assert.Equal(8, (int)EstadoEnvio.Devuelto);
+        Assert.Equal(9, (int)EstadoEnvio.Extraviado);
+        Assert.Equal(10, (int)EstadoEnvio.EntregadoParcialmente);
+    }
+
     [Theory]
     [MemberData(nameof(TransicionesValidas))]
     public void Transicion_valida_es_aceptada(

@@ -55,7 +55,7 @@ public class BultoYDerivacionTests
     [Fact]
     public void Bulto_exige_motivo_si_no_entregado()
     {
-        var bulto = Bulto.Crear(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "COD-1");
+        var bulto = Bulto.Crear(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "COD-1", pesoKg: 1);
         bulto.CambiarEstado(EstadoBulto.EnRuta);
         Assert.Throws<InvalidOperationException>(() => bulto.CambiarEstado(EstadoBulto.NoEntregado));
         bulto.CambiarEstado(EstadoBulto.NoEntregado, "Ausente");

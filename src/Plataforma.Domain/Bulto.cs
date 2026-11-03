@@ -36,8 +36,10 @@ public class Bulto
             throw new ArgumentException("El bulto necesita un envío.", nameof(envioId));
         if (string.IsNullOrWhiteSpace(codigo))
             throw new ArgumentException("El código del bulto es requerido.", nameof(codigo));
-        if (pesoKg < 0 || altoCm < 0 || anchoCm < 0 || largoCm < 0)
-            throw new ArgumentOutOfRangeException(nameof(pesoKg), "Dimensiones y peso no pueden ser negativos.");
+        if (pesoKg <= 0)
+            throw new ArgumentOutOfRangeException(nameof(pesoKg), "El peso del bulto debe ser mayor que 0.");
+        if (altoCm < 0 || anchoCm < 0 || largoCm < 0)
+            throw new ArgumentOutOfRangeException(nameof(altoCm), "Las dimensiones no pueden ser negativas.");
 
         return new Bulto
         {

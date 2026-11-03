@@ -7,10 +7,11 @@ public enum EstadoEnvio
     AsignadoARuta,
     EnTransito,
     Entregado,
-    EntregadoParcialmente,
     NoEntregado,
     Reprogramado,
     EnDevolucion,
     Devuelto,
-    Extraviado
+    Extraviado,
+    /// <summary>Al final a propósito: no desplaza los ints históricos (0–9) en la base.</summary>
+    EntregadoParcialmente
 }
