@@ -17,6 +17,12 @@ public class Envio
 
     public EstadoEnvio Estado { get; private set; }
     public decimal TarifaCalculada { get; private set; }
+    /// <summary>Regla tarifaria vigente al admitir (6.6: conserva el tratamiento original).</summary>
+    public Guid? ReglaTarifariaId { get; private set; }
+    /// <summary>Vigencia concreta aplicada al calcular la tarifa, si existía.</summary>
+    public Guid? VigenciaTarifaId { get; private set; }
+    /// <summary>Token de concurrencia optimista (6.4); se incrementa en cada mutación de estado.</summary>
+    public int Version { get; private set; }
     public DateTime FechaCreacion { get; private set; }
     public Guid? RutaId { get; private set; }
     public int IntentosRealizados { get; private set; }
@@ -52,27 +58,29 @@ public class Envio
     internal static string GenerarNumeroSeguimiento() =>
         $"ENV-{Guid.NewGuid():N}".ToUpperInvariant();
 
-    // Método de fábrica para altas explícitas
     public static Envio Admitir(
-        Guid operadorId, 
-        Guid comercioId, 
-        string destinatario, 
-        string direccionEntrega, 
-        string emailDestinatario = "", 
-        decimal tarifaCalculada = 0)
+        Guid operadorId,
+        Guid comercioId,
+        string destinatario,
+        string direccionEntrega,
+        string emailDestinatario = "",
+        decimal tarifaCalculada = 0,
+        Guid? reglaTarifariaId = null,
+        Guid? vigenciaTarifaId = null)
     {
         var envio = new Envio(destinatario, direccionEntrega)
         {
             OperadorId = operadorId,
             ComercioId = comercioId,
             EmailDestinatario = emailDestinatario,
-            TarifaCalculada = tarifaCalculada
+            TarifaCalculada = tarifaCalculada,
+            ReglaTarifariaId = reglaTarifariaId,
+            VigenciaTarifaId = vigenciaTarifaId
         };
 
         return envio;
     }
 
-    // Transición de estado con validación
     public void CambiarEstado(EstadoEnvio nuevoEstado)
     {
         if (!TransicionesEnvio.EsValida(Estado, nuevoEstado))
@@ -81,18 +89,33 @@ public class Envio
         }
 
         Estado = nuevoEstado;
+        Version++;
 
-        // Vuelve a depósito o se reprograma: debe poder despacharse de nuevo.
         if (nuevoEstado is EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado)
             RutaId = null;
     }
 
-    // Sobrecarga con auditoría (usuario/motivo los persiste la capa de aplicación).
     public void CambiarEstado(EstadoEnvio nuevoEstado, string usuario, string motivo)
     {
         _ = usuario;
         _ = motivo;
         CambiarEstado(nuevoEstado);
+    }
+
+    /// <summary>
+    /// Aplica el estado derivado de los bultos respetando las transiciones del envío.
+    /// </summary>
+    public void AplicarEstadoDerivadoDeBultos(IReadOnlyList<EstadoBulto> estadosBultos)
+    {
+        var derivado = DerivacionEstadoEnvio.DesdeBultos(estadosBultos);
+        if (derivado == Estado)
+            return;
+
+        if (!TransicionesEnvio.EsValida(Estado, derivado))
+            throw new InvalidOperationException(
+                $"El estado derivado {derivado} no es alcanzable desde {Estado}.");
+
+        CambiarEstado(derivado);
     }
 
     public void AsignarARuta(Guid rutaId)
@@ -113,5 +136,6 @@ public class Envio
             throw new InvalidOperationException($"Se alcanzó el máximo de {maximoIntentos} intentos.");
 
         IntentosRealizados++;
+        Version++;
     }
 }

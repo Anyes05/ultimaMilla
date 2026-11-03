@@ -13,7 +13,7 @@ namespace Plataforma.Infrastructure;
 public sealed class OutboxPublicadorBackground : BackgroundService
 {
     private const string ClaveLock = "plataforma:outbox:publicador";
-    private static readonly TimeSpan TtlLock = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan TtlLock = TimeSpan.FromSeconds(25);
 
     private readonly IServiceScopeFactory _scopes;
     private readonly ILogger<OutboxPublicadorBackground> _logger;
@@ -33,16 +33,25 @@ public sealed class OutboxPublicadorBackground : BackgroundService
             try
             {
                 using var scope = _scopes.CreateScope();
-                if (!await IntentarObtenerLockAsync(scope.ServiceProvider, stoppingToken))
+                var redis = scope.ServiceProvider.GetService<IConnectionMultiplexer>();
+                var token = Environment.MachineName + ":" + Environment.ProcessId;
+                if (!await IntentarObtenerLockAsync(redis, token, stoppingToken))
                 {
                     await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
                     continue;
                 }
 
-                var publicar = scope.ServiceProvider.GetRequiredService<PublicarOutboxPendientes>();
-                var cantidad = await publicar.EjecutarAsync(50, stoppingToken);
-                if (cantidad > 0)
-                    _logger.LogInformation("Outbox: publicados {Cantidad} mensaje(s).", cantidad);
+                try
+                {
+                    var publicar = scope.ServiceProvider.GetRequiredService<PublicarOutboxPendientes>();
+                    var cantidad = await publicar.EjecutarAsync(50, stoppingToken);
+                    if (cantidad > 0)
+                        _logger.LogInformation("Outbox: publicados {Cantidad} mensaje(s).", cantidad);
+                }
+                finally
+                {
+                    await LiberarLockAsync(redis, token);
+                }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -54,10 +63,10 @@ public sealed class OutboxPublicadorBackground : BackgroundService
     }
 
     private async Task<bool> IntentarObtenerLockAsync(
-        IServiceProvider servicios,
+        IConnectionMultiplexer? redis,
+        string token,
         CancellationToken cancellationToken)
     {
-        var redis = servicios.GetService<IConnectionMultiplexer>();
         if (redis is null)
         {
             // Sin Redis (dev local con caché en memoria): una sola instancia típica; se permite.
@@ -67,13 +76,30 @@ public sealed class OutboxPublicadorBackground : BackgroundService
         try
         {
             var db = redis.GetDatabase();
-            var token = Environment.MachineName + ":" + Environment.ProcessId;
             return await db.StringSetAsync(ClaveLock, token, TtlLock, When.NotExists);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Outbox: no se pudo tomar el lock Redis; se omite este ciclo.");
             return false;
+        }
+    }
+
+    private async Task LiberarLockAsync(IConnectionMultiplexer? redis, string token)
+    {
+        if (redis is null)
+            return;
+
+        try
+        {
+            var db = redis.GetDatabase();
+            var valor = await db.StringGetAsync(ClaveLock);
+            if (valor == token)
+                await db.KeyDeleteAsync(ClaveLock);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Outbox: no se pudo liberar el lock Redis.");
         }
     }
 }

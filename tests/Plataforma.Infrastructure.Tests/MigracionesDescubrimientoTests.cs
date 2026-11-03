@@ -13,7 +13,7 @@ namespace Plataforma.Infrastructure.Tests;
 public class MigracionesDescubrimientoTests
 {
     [Fact]
-    public void GetMigrations_IncluyeLasSieteMigracionesConAtributos()
+    public void GetMigrations_IncluyeLasOchoMigracionesConAtributos()
     {
         // Proveedor relacional requerido por GetMigrations; no abre conexión real.
         var options = new DbContextOptionsBuilder<PlataformaDbContext>()
@@ -23,7 +23,7 @@ public class MigracionesDescubrimientoTests
         using var contexto = new PlataformaDbContext(options);
         var ids = contexto.Database.GetMigrations().ToArray();
 
-        Assert.Equal(7, ids.Length);
+        Assert.Equal(8, ids.Length);
         Assert.Contains("20261013023329_InitialCreate", ids);
         Assert.Contains("20261023010000_SeguimientoUnicoComprobanteYZona", ids);
         Assert.Contains("20261023020000_OutboxEnvioEstadoCambiado", ids);
@@ -31,10 +31,11 @@ public class MigracionesDescubrimientoTests
         Assert.Contains("20261023040000_EventosSincronizacionProcesados", ids);
         Assert.Contains("20261023234302_WorkerAvisosYFallidos", ids);
         Assert.Contains("20261029210000_EvidenciaCargaMovil", ids);
+        Assert.Contains("20261102120000_BultosParcialTarifaYOutboxTrace", ids);
     }
 
     [Fact]
-    public void AtributosMigration_EstanEnLasCuatroMigracionesDel23()
+    public void AtributosMigration_EstanEnLasMigracionesPosterioresAlInitial()
     {
         var assembly = typeof(PlataformaDbContext).Assembly;
         var esperadas = new[]
@@ -44,7 +45,8 @@ public class MigracionesDescubrimientoTests
             "20261023030000_DispositivosRepartidor",
             "20261023040000_EventosSincronizacionProcesados",
             "20261023234302_WorkerAvisosYFallidos",
-            "20261029210000_EvidenciaCargaMovil"
+            "20261029210000_EvidenciaCargaMovil",
+            "20261102120000_BultosParcialTarifaYOutboxTrace"
         };
 
         foreach (var id in esperadas)
@@ -56,7 +58,7 @@ public class MigracionesDescubrimientoTests
     }
 
     [Fact]
-    public void EvidenciaCargaMovil_GeneraCambioAditivoYSnapshotActualizado()
+    public void EvidenciaCargaMovil_GeneraCambioAditivoYSnapshotSinPendientes()
     {
         var options = new DbContextOptionsBuilder<PlataformaDbContext>()
             .UseNpgsql("Host=127.0.0.1;Database=migraciones_descubrimiento;Username=x;Password=x")
@@ -67,5 +69,21 @@ public class MigracionesDescubrimientoTests
             "20261023234302_WorkerAvisosYFallidos", "20261029210000_EvidenciaCargaMovil");
         Assert.Contains("ADD \"CodigoEscaneado\" text", sql);
         Assert.DoesNotContain("DROP TABLE", sql);
+    }
+
+    [Fact]
+    public void BultosParcial_GeneraTablaYBUltosYColumnasDeGate()
+    {
+        var options = new DbContextOptionsBuilder<PlataformaDbContext>()
+            .UseNpgsql("Host=127.0.0.1;Database=migraciones_descubrimiento;Username=x;Password=x")
+            .Options;
+        using var contexto = new PlataformaDbContext(options);
+        var sql = contexto.GetService<IMigrator>().GenerateScript(
+            "20261029210000_EvidenciaCargaMovil", "20261102120000_BultosParcialTarifaYOutboxTrace");
+        Assert.Contains("CREATE TABLE \"Bultos\"", sql);
+        Assert.Contains("ReglaTarifariaId", sql);
+        Assert.Contains("TraceParent", sql);
+        Assert.Contains("AdmiteEntregaParcial", sql);
+        Assert.Contains("Version", sql);
     }
 }

@@ -26,7 +26,19 @@ public static class TransicionesEnvio
         [EstadoEnvio.EnTransito] =
         [
             EstadoEnvio.Entregado,
+            EstadoEnvio.EntregadoParcialmente,
             EstadoEnvio.NoEntregado,
+            EstadoEnvio.Extraviado
+        ],
+
+        [EstadoEnvio.EntregadoParcialmente] =
+        [
+            EstadoEnvio.Entregado,
+            EstadoEnvio.EntregadoParcialmente,
+            EstadoEnvio.NoEntregado,
+            EstadoEnvio.Reprogramado,
+            EstadoEnvio.EnDevolucion,
+            EstadoEnvio.EnDeposito,
             EstadoEnvio.Extraviado
         ],
 

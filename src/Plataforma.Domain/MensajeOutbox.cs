@@ -17,6 +17,8 @@ public class MensajeOutbox
     public string Payload { get; private set; } = string.Empty;
     public DateTimeOffset Fecha { get; private set; }
     public DateTimeOffset? PublicadoEn { get; private set; }
+    /// <summary>W3C traceparent capturado al registrar el outbox (correlación 6.12).</summary>
+    public string? TraceParent { get; private set; }
 
     private MensajeOutbox()
     {
@@ -29,7 +31,8 @@ public class MensajeOutbox
         string tipo,
         string version,
         string payload,
-        DateTimeOffset fecha)
+        DateTimeOffset fecha,
+        string? traceParent = null)
     {
         if (eventId == Guid.Empty)
             throw new ArgumentException("El EventId es requerido.", nameof(eventId));
@@ -57,7 +60,8 @@ public class MensajeOutbox
             Tipo = tipo.Trim(),
             Version = version.Trim(),
             Payload = payload,
-            Fecha = fecha
+            Fecha = fecha,
+            TraceParent = string.IsNullOrWhiteSpace(traceParent) ? null : traceParent.Trim()
         };
     }
 

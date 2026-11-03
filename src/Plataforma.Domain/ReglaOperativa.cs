@@ -10,6 +10,8 @@ public class ReglaOperativa
     public bool ExigeFoto { get; private set; }
     public bool ExigeGeocerca { get; private set; }
     public int PlazoReprogramacionHoras { get; private set; }
+    public bool AdmiteEntregaParcial { get; private set; }
+    public PoliticaBultosPendientes PoliticaBultosPendientes { get; private set; }
     public DateTime VigenciaDesde { get; private set; }
     public DateTime VigenciaHasta { get; private set; }
     public bool Activa { get; private set; }
@@ -28,7 +30,9 @@ public class ReglaOperativa
         bool exigeGeocerca,
         int plazoReprogramacionHoras,
         DateTime vigenciaDesde,
-        DateTime vigenciaHasta)
+        DateTime vigenciaHasta,
+        bool admiteEntregaParcial = false,
+        PoliticaBultosPendientes politicaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("La regla operativa necesita un identificador.");
@@ -52,6 +56,8 @@ public class ReglaOperativa
             ExigeFoto = exigeFoto,
             ExigeGeocerca = exigeGeocerca,
             PlazoReprogramacionHoras = plazoReprogramacionHoras,
+            AdmiteEntregaParcial = admiteEntregaParcial,
+            PoliticaBultosPendientes = politicaBultosPendientes,
             VigenciaDesde = vigenciaDesde,
             VigenciaHasta = vigenciaHasta,
             Activa = true

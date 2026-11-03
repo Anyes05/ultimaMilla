@@ -1,0 +1,27 @@
+{
+  "fecha": "2026-10-15",
+  "eventos": [
+    {
+      "eventoId": "50000000-0000-0000-0000-000000000011",
+      "envioId": "40000000-0000-0000-0000-000000000001",
+      "estado": "EntregadoParcialmente",
+      "nombreReceptor": "Receptor parcial",
+      "observaciones": "Un bulto rechazado por daño",
+      "fechaDispositivo": "2026-10-15T12:00:00-03:00",
+      "latitud": -34.9011,
+      "longitud": -56.1645,
+      "bultos": [
+        {
+          "bultoId": "60000000-0000-0000-0000-000000000001",
+          "estado": "Entregado",
+          "firma": "[[{\"x\":1,\"y\":2}]]"
+        },
+        {
+          "bultoId": "60000000-0000-0000-0000-000000000002",
+          "estado": "PendienteNuevaVisita",
+          "motivoNoEntrega": "Bulto danado"
+        }
+      ]
+    }
+  ]
+}

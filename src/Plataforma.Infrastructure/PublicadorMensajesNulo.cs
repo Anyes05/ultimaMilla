@@ -20,11 +20,12 @@ public sealed class PublicadorMensajesNulo : IPublicadorMensajes
         string version,
         Guid eventId,
         string payloadJson,
+        string? traceParent = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
-            "Publicador nulo: no se publica {Tipo} v{Version} EventId={EventId}",
-            tipo, version, eventId);
+            "Publicador nulo: no se publica {Tipo} v{Version} EventId={EventId} TraceParent={TraceParent}",
+            tipo, version, eventId, traceParent);
         return Task.CompletedTask;
     }
 }

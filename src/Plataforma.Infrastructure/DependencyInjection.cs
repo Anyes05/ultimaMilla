@@ -37,6 +37,7 @@ public static class DependencyInjection
         }
 
         services.AddScoped<IEnvioRepositorio, EnvioRepositorio>();
+        services.AddScoped<IBultoRepositorio, BultoRepositorio>();
         services.AddScoped<IUsuarioRepositorio, UsuarioRepositorio>();
         services.AddScoped<IOperadorRepositorio, OperadorRepositorio>();
         services.AddScoped<IRutaRepositorio, RutaRepositorio>();

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Plataforma.Application.Mensajes;
 using Plataforma.Domain;
 
@@ -48,6 +49,9 @@ public sealed class RegistrarOutboxEstado
                     : motivo),
             cancellationToken);
 
+        // W3C: Activity.Id es el traceparent de la operación que originó el cambio.
+        var traceParent = Activity.Current?.Id;
+
         var fila = MensajeOutbox.CrearPendiente(
             mensaje.EventId,
             mensaje.OperadorId,
@@ -55,7 +59,8 @@ public sealed class RegistrarOutboxEstado
             EnvioEstadoCambiado.Tipo,
             EnvioEstadoCambiado.Version,
             mensaje.Serializar(),
-            mensaje.Fecha);
+            mensaje.Fecha,
+            traceParent);
 
         await _outbox.AgregarAsync(fila, cancellationToken);
         return mensaje.EventId;

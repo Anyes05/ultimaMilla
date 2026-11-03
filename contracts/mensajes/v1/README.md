@@ -48,6 +48,8 @@ Headers / metadatos de cola sugeridos (fuera del cuerpo JSON):
 |---|---|
 | `tipo` | `EnvioEstadoCambiado` |
 | `version` | `1` |
+| `eventId` | UUID del mensaje |
+| `traceparent` | W3C trace context capturado al escribir el outbox (si había Activity) |
 
 ## Alcance fuera de v1
 

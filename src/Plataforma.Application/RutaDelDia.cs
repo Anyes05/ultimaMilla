@@ -32,6 +32,14 @@ public sealed record EnvioDeRuta(
 
 public sealed record RutaDelDia(Guid Id, DateOnly Fecha, OperadorVisible Operador, IReadOnlyList<EnvioDeRuta> Envios);
 
+/// <summary>Resultado por bulto en sincronización v2 (borrador; v1 ignora la lista).</summary>
+public sealed record ResultadoBultoSync(
+    Guid BultoId,
+    EstadoBulto Estado,
+    string? MotivoNoEntrega = null,
+    string? Foto = null,
+    string? Firma = null);
+
 /// <summary>Comprobante offline del móvil (contrato de sincronización).</summary>
 public sealed record ComprobanteEntrega(
     Guid EventoId,
@@ -44,7 +52,9 @@ public sealed record ComprobanteEntrega(
     string? Firma = null,
     decimal? Latitud = null,
     decimal? Longitud = null,
-    string? CodigoEscaneado = null);
+    string? CodigoEscaneado = null,
+    /// <summary>v2: resultados por bulto. Ausente o vacío = comportamiento v1 (estado a nivel envío).</summary>
+    IReadOnlyList<ResultadoBultoSync>? Bultos = null);
 
 public sealed record EventoAplicado(Guid EnvioId, EstadoEnvio Estado, int IntentosRealizados);
 

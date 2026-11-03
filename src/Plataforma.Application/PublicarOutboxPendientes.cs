@@ -24,11 +24,16 @@ public sealed class PublicarOutboxPendientes
 
         foreach (var mensaje in pendientes)
         {
+            // Si otra réplica ya lo marcó, no republicar (idempotencia de drenado).
+            if (mensaje.PublicadoEn is not null)
+                continue;
+
             await _publicador.PublicarAsync(
                 mensaje.Tipo,
                 mensaje.Version,
                 mensaje.EventId,
                 mensaje.Payload,
+                mensaje.TraceParent,
                 cancellationToken);
 
             mensaje.MarcarPublicado(DateTimeOffset.UtcNow);
@@ -55,6 +60,7 @@ public sealed class PublicarOutboxPendientes
             mensaje.Version,
             mensaje.EventId,
             mensaje.Payload,
+            mensaje.TraceParent,
             cancellationToken);
 
         mensaje.MarcarPublicado(DateTimeOffset.UtcNow);

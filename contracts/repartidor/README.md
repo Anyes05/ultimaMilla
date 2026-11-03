@@ -4,6 +4,8 @@ Acordados entre Álvaro (móvil) y Ana (backend). Los JSON de ejemplo son el
 contrato de intercambio; el doble móvil y los endpoints `/api/repartidor/*`
 deben respetarlos.
 
+**Borrador v2 (parcial por bulto):** ver [v2/README.md](v2/README.md). v1 no cambia.
+
 ## Operaciones
 
 | Operación | Solicitud | Respuesta |

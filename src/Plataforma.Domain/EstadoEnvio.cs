@@ -7,9 +7,10 @@ public enum EstadoEnvio
     AsignadoARuta,
     EnTransito,
     Entregado,
+    EntregadoParcialmente,
     NoEntregado,
     Reprogramado,
     EnDevolucion,
     Devuelto,
-    Extraviado 
+    Extraviado
 }

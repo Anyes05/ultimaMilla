@@ -16,8 +16,17 @@ public class TransicionesEnvioTests
             new object[] { EstadoEnvio.AsignadoARuta, EstadoEnvio.EnDeposito },
 
             new object[] { EstadoEnvio.EnTransito, EstadoEnvio.Entregado },
+            new object[] { EstadoEnvio.EnTransito, EstadoEnvio.EntregadoParcialmente },
             new object[] { EstadoEnvio.EnTransito, EstadoEnvio.NoEntregado },
             new object[] { EstadoEnvio.EnTransito, EstadoEnvio.Extraviado },
+
+            new object[] { EstadoEnvio.EntregadoParcialmente, EstadoEnvio.Entregado },
+            new object[] { EstadoEnvio.EntregadoParcialmente, EstadoEnvio.EntregadoParcialmente },
+            new object[] { EstadoEnvio.EntregadoParcialmente, EstadoEnvio.NoEntregado },
+            new object[] { EstadoEnvio.EntregadoParcialmente, EstadoEnvio.Reprogramado },
+            new object[] { EstadoEnvio.EntregadoParcialmente, EstadoEnvio.EnDevolucion },
+            new object[] { EstadoEnvio.EntregadoParcialmente, EstadoEnvio.EnDeposito },
+            new object[] { EstadoEnvio.EntregadoParcialmente, EstadoEnvio.Extraviado },
 
             new object[] { EstadoEnvio.NoEntregado, EstadoEnvio.Reprogramado },
             new object[] { EstadoEnvio.NoEntregado, EstadoEnvio.EnDevolucion },

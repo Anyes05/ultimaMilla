@@ -40,6 +40,7 @@ public sealed class PublicadorMensajesRabbitMq : IPublicadorMensajes, IAsyncDisp
         string version,
         Guid eventId,
         string payloadJson,
+        string? traceParent = null,
         CancellationToken cancellationToken = default)
     {
         if (!Disponible)
@@ -51,18 +52,23 @@ public sealed class PublicadorMensajesRabbitMq : IPublicadorMensajes, IAsyncDisp
             var canal = await ObtenerCanalAsync(cancellationToken);
             var routingKey = $"{tipo.ToLowerInvariant()}.v{version}";
             var cuerpo = Encoding.UTF8.GetBytes(payloadJson);
+            var headers = new Dictionary<string, object?>
+            {
+                ["tipo"] = tipo,
+                ["version"] = version,
+                ["eventId"] = eventId.ToString()
+            };
+            if (!string.IsNullOrWhiteSpace(traceParent))
+                headers["traceparent"] = traceParent;
+
             var propiedades = new BasicProperties
             {
                 ContentType = "application/json",
                 DeliveryMode = DeliveryModes.Persistent,
                 MessageId = eventId.ToString(),
                 Type = tipo,
-                Headers = new Dictionary<string, object?>
-                {
-                    ["tipo"] = tipo,
-                    ["version"] = version,
-                    ["eventId"] = eventId.ToString()
-                }
+                Headers = headers,
+                CorrelationId = string.IsNullOrWhiteSpace(traceParent) ? null : traceParent
             };
 
             await canal.BasicPublishAsync(
@@ -74,8 +80,8 @@ public sealed class PublicadorMensajesRabbitMq : IPublicadorMensajes, IAsyncDisp
                 cancellationToken: cancellationToken);
 
             _logger.LogInformation(
-                "Publicado {Tipo} v{Version} EventId={EventId} routingKey={RoutingKey}",
-                tipo, version, eventId, routingKey);
+                "Publicado {Tipo} v{Version} EventId={EventId} routingKey={RoutingKey} TraceParent={TraceParent}",
+                tipo, version, eventId, routingKey, traceParent);
         }
         finally
         {

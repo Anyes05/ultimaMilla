@@ -95,6 +95,52 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("AvisosFallidos");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.Bulto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("AltoCm")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("AnchoCm")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("EnvioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("LargoCm")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("MotivoNoEntrega")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("PesoKg")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "Estado");
+
+                    b.HasIndex("OperadorId", "EnvioId", "Codigo")
+                        .IsUnique();
+
+                    b.ToTable("Bultos");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.Comercio", b =>
                 {
                     b.Property<Guid>("Id")
@@ -266,6 +312,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ReglaTarifariaId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("RutaId")
                         .HasColumnType("uuid");
 
@@ -275,6 +324,13 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<string>("TokenSeguimientoPublico")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("VigenciaTarifaId")
+                        .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
@@ -474,6 +530,10 @@ namespace Plataforma.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("TraceParent")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("Version")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -643,6 +703,11 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<bool>("Activa")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("AdmiteEntregaParcial")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("ExigeFirma")
                         .HasColumnType("boolean");
 
@@ -663,6 +728,11 @@ namespace Plataforma.Infrastructure.Migrations
 
                     b.Property<int>("PlazoReprogramacionHoras")
                         .HasColumnType("integer");
+
+                    b.Property<int>("PoliticaBultosPendientes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime>("VigenciaDesde")
                         .HasColumnType("timestamp with time zone");

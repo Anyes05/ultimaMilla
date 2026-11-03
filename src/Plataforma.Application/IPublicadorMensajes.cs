@@ -10,5 +10,6 @@ public interface IPublicadorMensajes
         string version,
         Guid eventId,
         string payloadJson,
+        string? traceParent = null,
         CancellationToken cancellationToken = default);
 }

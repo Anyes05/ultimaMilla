@@ -20,6 +20,7 @@ public class PlataformaDbContext : DbContext
     public Guid? OperadorIdFiltro { get; }
 
     public DbSet<Envio> Envios => Set<Envio>();
+    public DbSet<Bulto> Bultos => Set<Bulto>();
     public DbSet<Operador> Operadores => Set<Operador>();
     public DbSet<Comercio> Comercios => Set<Comercio>();
     public DbSet<UsuarioPlataforma> Usuarios => Set<UsuarioPlataforma>();
@@ -54,6 +55,7 @@ public class PlataformaDbContext : DbContext
             OperadorIdFiltro == null || operador.Id == OperadorIdFiltro);
 
         AplicarFiltroOperador<Envio>(modelBuilder);
+        AplicarFiltroOperador<Bulto>(modelBuilder);
         AplicarFiltroOperador<Comercio>(modelBuilder);
         AplicarFiltroOperador<UsuarioPlataforma>(modelBuilder);
         AplicarFiltroOperador<Repartidor>(modelBuilder);
@@ -81,13 +83,29 @@ public class PlataformaDbContext : DbContext
         AplicarFiltroOperador<AvisoFallido>(modelBuilder);
         AplicarFiltroOperador<ReceptorPruebaConfiguracion>(modelBuilder);
 
-        modelBuilder.Entity<Envio>()
-            .HasIndex(envio => envio.NumeroSeguimiento)
-            .IsUnique();
+        modelBuilder.Entity<Envio>(entidad =>
+        {
+            entidad.HasIndex(envio => envio.NumeroSeguimiento).IsUnique();
+            entidad.HasIndex(envio => envio.TokenSeguimientoPublico).IsUnique();
+            entidad.Property(envio => envio.Version).IsConcurrencyToken();
+        });
 
-        modelBuilder.Entity<Envio>()
-            .HasIndex(envio => envio.TokenSeguimientoPublico)
-            .IsUnique();
+        modelBuilder.Entity<Bulto>(entidad =>
+        {
+            entidad.HasKey(bulto => bulto.Id);
+            entidad.Property(bulto => bulto.Codigo).HasMaxLength(64);
+            entidad.Property(bulto => bulto.MotivoNoEntrega).HasMaxLength(200);
+            entidad.HasIndex(bulto => new { bulto.OperadorId, bulto.EnvioId, bulto.Codigo }).IsUnique();
+            entidad.HasIndex(bulto => new { bulto.OperadorId, bulto.Estado });
+        });
+
+        modelBuilder.Entity<ReglaOperativa>(entidad =>
+        {
+            entidad.Property(regla => regla.AdmiteEntregaParcial).HasDefaultValue(false);
+            entidad.Property(regla => regla.PoliticaBultosPendientes)
+                .HasConversion<int>()
+                .HasDefaultValue(PoliticaBultosPendientes.NuevaVisitaSinRecargo);
+        });
 
         modelBuilder.Entity<Operador>()
             .Property(operador => operador.ZonaHoraria)
@@ -99,6 +117,7 @@ public class PlataformaDbContext : DbContext
             entidad.HasKey(mensaje => mensaje.EventId);
             entidad.Property(mensaje => mensaje.Tipo).HasMaxLength(100);
             entidad.Property(mensaje => mensaje.Version).HasMaxLength(16);
+            entidad.Property(mensaje => mensaje.TraceParent).HasMaxLength(128);
             entidad.HasIndex(mensaje => new { mensaje.OperadorId, mensaje.PublicadoEn });
         });
 

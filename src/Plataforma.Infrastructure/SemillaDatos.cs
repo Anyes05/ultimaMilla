@@ -99,7 +99,52 @@ public static class SemillaDatos
 
         await AsegurarPerfilesOperadorAsync(context, cancellationToken);
         await AsegurarTarifasAsync(context, cancellationToken);
+        await AsegurarReglasOperativasParcialAsync(context, cancellationToken);
         await AsegurarRepartidoresAsync(context, cancellationToken);
+    }
+
+    /// <summary>
+    /// Norte admite parcial con nueva visita sin recargo; Sur no admite parcial (demo multi-tenant).
+    /// </summary>
+    private static async Task AsegurarReglasOperativasParcialAsync(
+        PlataformaDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (await context.ReglasOperativas.AnyAsync(cancellationToken))
+            return;
+
+        var desde = DateTime.UtcNow.AddYears(-1);
+        var hasta = DateTime.UtcNow.AddYears(10);
+
+        context.ReglasOperativas.AddRange(
+            ReglaOperativa.Crear(
+                Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1"),
+                DatosSemilla.OperadorNorteId,
+                maximoIntentos: DatosSemilla.NorteMaximoIntentos,
+                plazoEntregaHoras: 48,
+                exigeFirma: true,
+                exigeFoto: true,
+                exigeGeocerca: false,
+                plazoReprogramacionHoras: 24,
+                vigenciaDesde: desde,
+                vigenciaHasta: hasta,
+                admiteEntregaParcial: true,
+                politicaBultosPendientes: PoliticaBultosPendientes.NuevaVisitaSinRecargo),
+            ReglaOperativa.Crear(
+                Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2"),
+                DatosSemilla.OperadorSurId,
+                maximoIntentos: DatosSemilla.SurMaximoIntentos,
+                plazoEntregaHoras: 24,
+                exigeFirma: false,
+                exigeFoto: true,
+                exigeGeocerca: false,
+                plazoReprogramacionHoras: 12,
+                vigenciaDesde: desde,
+                vigenciaHasta: hasta,
+                admiteEntregaParcial: false,
+                politicaBultosPendientes: PoliticaBultosPendientes.DevolucionAlComercio));
+
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>

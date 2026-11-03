@@ -6,16 +6,17 @@ namespace Plataforma.Infrastructure.Tests;
 internal sealed class PublicadorMensajesPrueba : IPublicadorMensajes
 {
     public bool Disponible { get; init; }
-    public List<(string Tipo, string Version, Guid EventId, string Payload)> Publicados { get; } = [];
+    public List<(string Tipo, string Version, Guid EventId, string Payload, string? TraceParent)> Publicados { get; } = [];
 
     public Task PublicarAsync(
         string tipo,
         string version,
         Guid eventId,
         string payloadJson,
+        string? traceParent = null,
         CancellationToken cancellationToken = default)
     {
-        Publicados.Add((tipo, version, eventId, payloadJson));
+        Publicados.Add((tipo, version, eventId, payloadJson, traceParent));
         return Task.CompletedTask;
     }
 }
