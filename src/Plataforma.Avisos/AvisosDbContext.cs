@@ -18,6 +18,7 @@ public sealed class AvisosDbContext : DbContext
 
     public DbSet<SuscripcionAviso> Suscripciones => Set<SuscripcionAviso>();
     public DbSet<EntregaAviso> Entregas => Set<EntregaAviso>();
+    public DbSet<NotificacionPush> NotificacionesPush => Set<NotificacionPush>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,20 @@ public sealed class AvisosDbContext : DbContext
                 entidad.Property(entrega => entrega.Version).IsRowVersion();
             else
                 entidad.Ignore(entrega => entrega.Version);
+        });
+
+        modelBuilder.Entity<NotificacionPush>(entidad =>
+        {
+            entidad.ToTable("NotificacionesPush");
+            entidad.HasKey(notificacion => notificacion.Id);
+            entidad.Property(notificacion => notificacion.Token).HasMaxLength(512).IsRequired();
+            entidad.Property(notificacion => notificacion.Plataforma).HasMaxLength(20).IsRequired();
+            entidad.Property(notificacion => notificacion.UltimoError).HasMaxLength(500);
+            entidad.Property(notificacion => notificacion.Estado).HasConversion<string>().HasMaxLength(20);
+
+            // Idempotencia: un evento llega una sola vez a cada dispositivo.
+            entidad.HasIndex(notificacion => new { notificacion.EventId, notificacion.Token }).IsUnique();
+            entidad.HasIndex(notificacion => new { notificacion.OperadorId, notificacion.Estado });
         });
     }
 
