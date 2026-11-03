@@ -94,7 +94,8 @@ GET /api/historial/eventos?envioId=&estado=&desde=&hasta=&despuesDe=&tamano=50
   `Mongo__ConnectionString` del Secret de Kubernetes, referenciado por `queue-worker` y `backoffice`.
 5. No crear manualmente base, colección, documentos ni índices.
 
-Mientras Atlas no esté, desarrollo y pruebo con un `mongo:7` en compose; el código no cambia, solo la cadena.
+Para desarrollo local, `docker-compose.yml` levanta `mongo:8.2.2` con la cadena
+`mongodb://mongo:27017/tallernet`; el código no cambia, solo la cadena de conexión.
 
 ## Lo que necesito de Ana
 

@@ -43,6 +43,18 @@ services:
       timeout: 10s
       retries: 10
 
+  mongo:
+    image: mongo:8.2.2
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   backoffice:
     build:
       context: .
@@ -55,6 +67,7 @@ services:
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: ${RABBITMQ_USERNAME:-tallernet_worker}
       RabbitMq__Password: ${RABBITMQ_PASSWORD:-tallernet_dev}
+      Mongo__ConnectionString: mongodb://mongo:27017/tallernet
       # Secreto del receptor de prueba (/api/receptor-prueba/avisos); en producción viene del secreto de Kubernetes.
       Avisos__ClaveFirma: ${AVISOS_CLAVE_FIRMA:-clave-demo-avisos-2026}
     ports:
@@ -65,6 +78,8 @@ services:
       redis:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      mongo:
         condition: service_healthy
 
   portal:
@@ -101,6 +116,7 @@ services:
       RabbitMq__Host: rabbitmq
       RabbitMq__Username: ${RABBITMQ_USERNAME:-tallernet_worker}
       RabbitMq__Password: ${RABBITMQ_PASSWORD:-tallernet_dev}
+      Mongo__ConnectionString: mongodb://mongo:27017/tallernet
       # El receptor de prueba (dentro del Backoffice) corre sin TLS en la red de compose.
       # URL a cargar en el Portal: http://backoffice:8080/api/receptor-prueba/avisos
       Avisos__HostsHttpPermitidos__0: backoffice
@@ -109,8 +125,11 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
 
 volumes:
   postgres-data:
   portal-keys:
   rabbitmq-data:
+  mongo-data:

@@ -12,7 +12,7 @@ docker compose up --build
 
 Defina en `.env` `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD` y `RABBITMQ_ERLANG_COOKIE` antes de iniciar. Ese archivo contiene las credenciales locales y está excluido de Git; no las copie en `docker-compose.yml` ni las suba al repositorio.
 
-El Backoffice queda en `http://localhost:8080` y el Portal de Comercio en `http://localhost:8081`. PostgreSQL, Redis y RabbitMQ se ejecutan en la misma red Docker. Backoffice aplica la migración inicial de Entity Framework Core sobre PostgreSQL al iniciar; Portal usa la misma cadena de conexión. RabbitMQ Management queda en `http://localhost:15672` (usuario y contraseña de `.env`).
+El Backoffice queda en `http://localhost:8080` y el Portal de Comercio en `http://localhost:8081`. PostgreSQL, Redis, RabbitMQ y MongoDB se ejecutan en la misma red Docker. Backoffice aplica la migración inicial de Entity Framework Core sobre PostgreSQL al iniciar; Portal usa la misma cadena de conexión. RabbitMQ Management queda en `http://localhost:15672` (usuario y contraseña de `.env`) y MongoDB queda disponible en `mongodb://localhost:27017`.
 
 ### Recorrido Portal a Backoffice
 
@@ -144,3 +144,5 @@ Cada documento tiene `_id = eventId`, por lo que reintentos o mensajes duplicado
 Si Atlas no está disponible, los avisos a comercios no se detienen: el consumidor de historial reintenta con espera creciente y deriva el mensaje agotado a `plataforma.historial-eventos.fallidos`. La API autenticada `GET /api/historial/eventos` filtra siempre por el `operadorId` del JWT y pagina con cursor, sin aceptar el tenant desde el cliente.
 
 En Atlas solo se configura el usuario técnico con `readWrite` sobre `tallernet`, la regla de red y el Secret de GitHub `MONGODB_CONNECTION_STRING`. El CD lo copia como `Mongo__ConnectionString` al Secret de EKS sin exponerlo. El detalle técnico está en [la documentación de MongoDB](docs/propuestas/mongodb-eventos.md).
+
+En Compose se usa `mongo:8.2.2`, con la cadena interna `mongodb://mongo:27017/tallernet` para Backoffice y Worker. La base, colección `eventos_envio` e índices se crean automáticamente al arrancar el consumidor; el volumen `mongo-data` preserva los datos locales.
