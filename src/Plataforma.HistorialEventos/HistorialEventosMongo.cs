@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 
@@ -24,8 +25,8 @@ public sealed class MongoNoConfiguradoException : InvalidOperationException
 
 public sealed record EventoHistorialMongo(
     [property: BsonId] string Id,
-    [property: BsonElement("operadorId")] Guid OperadorId,
-    [property: BsonElement("envioId")] Guid EnvioId,
+    [property: BsonElement("operadorId"), BsonGuidRepresentation(GuidRepresentation.Standard)] Guid OperadorId,
+    [property: BsonElement("envioId"), BsonGuidRepresentation(GuidRepresentation.Standard)] Guid EnvioId,
     [property: BsonElement("tipo")] string Tipo,
     [property: BsonElement("version")] int Version,
     [property: BsonElement("estadoAnterior")] string EstadoAnterior,
