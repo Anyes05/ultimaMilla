@@ -137,10 +137,36 @@
                 return true;
             }
 
+            function agregarFila(envioId, tracking, destinatario, estado) {
+                const cuerpo = document.querySelector("table tbody");
+                cuerpo.querySelector("td[colspan]")?.closest("tr")?.remove();
+                const fila = document.createElement("tr");
+                fila.dataset.envio = envioId;
+                fila.dataset.tracking = tracking;
+                const celda = (contenido) => { const td = document.createElement("td"); td.append(contenido); return td; };
+                const numero = document.createElement("span");
+                numero.className = "tracking-number";
+                numero.textContent = tracking;
+                const badge = document.createElement("span");
+                badge.dataset.estado = estado;
+                badge.className = "status-badge " + clase(estado);
+                badge.textContent = nombre(estado);
+                const celdaEstado = celda(badge);
+                celdaEstado.className = "text-end";
+                fila.append(celda(numero), celda(destinatario ?? ""), celdaEstado);
+                cuerpo.prepend(fila);
+                return fila;
+            }
+
             conexion.on("estadoEnvioCambiado", e => {
                 if (!primeraVez("estado:" + e.eventId)) return;
-                const fila = document.querySelector(`tr[data-envio="${e.envioId}"]`);
-                const tracking = fila?.dataset.tracking ?? e.envioId.substring(0, 8);
+                let fila = document.querySelector(`tr[data-envio="${e.envioId}"]`);
+                const tracking = fila?.dataset.tracking ?? e.numeroSeguimiento ?? "Envío nuevo";
+                if (!fila && e.numeroSeguimiento) {
+                    // Envío creado después de abrir la página: se agrega arriba de la tabla.
+                    fila = agregarFila(e.envioId, e.numeroSeguimiento, e.destinatario, e.estadoAnterior);
+                    sumar(`[data-conteo="${e.estadoAnterior}"]`, 1);
+                }
                 if (fila) {
                     const badge = fila.querySelector("[data-estado]");
                     sumar(`[data-conteo="${badge.dataset.estado}"]`, -1);
@@ -157,7 +183,7 @@
             conexion.on("avisoResultado", a => {
                 if (!primeraVez(`aviso:${a.entregaId}:${a.intentos}:${a.estado}`)) return;
                 const fila = document.querySelector(`tr[data-envio="${a.envioId}"]`);
-                const tracking = fila?.dataset.tracking ?? a.envioId.substring(0, 8);
+                const tracking = fila?.dataset.tracking ?? a.numeroSeguimiento ?? "un envío";
                 if (a.estado === "Entregado") sumar("#avisos-entregados", 1);
                 if (a.estado === "Fallido") sumar("#avisos-fallidos", 1);
                 // Habla del aviso al sistema del comercio, no del paquete.

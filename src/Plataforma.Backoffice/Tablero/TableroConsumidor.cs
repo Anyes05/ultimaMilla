@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
+using Plataforma.Application;
 using Plataforma.Avisos;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -26,12 +27,18 @@ public sealed class TableroConsumidor : BackgroundService
     private const int VigenciaMensajeMs = 60_000;
 
     private readonly IHubContext<HubAvisosOperador> _hub;
+    private readonly IServiceScopeFactory _scopes;
     private readonly OpcionesRabbitMq _rabbit;
     private readonly ILogger<TableroConsumidor> _logger;
 
-    public TableroConsumidor(IHubContext<HubAvisosOperador> hub, IOptions<OpcionesRabbitMq> rabbit, ILogger<TableroConsumidor> logger)
+    public TableroConsumidor(
+        IHubContext<HubAvisosOperador> hub,
+        IServiceScopeFactory scopes,
+        IOptions<OpcionesRabbitMq> rabbit,
+        ILogger<TableroConsumidor> logger)
     {
         _hub = hub;
+        _scopes = scopes;
         _rabbit = rabbit.Value;
         _logger = logger;
     }
@@ -115,10 +122,13 @@ public sealed class TableroConsumidor : BackgroundService
                 var evento = JsonAvisos.Deserializar<EventoEstadoEnvio>(mensaje.Body.Span);
                 if (evento is null || evento.OperadorId == Guid.Empty)
                     return;
+                var envio = await BuscarEnvioAsync(evento.OperadorId, evento.EnvioId, ct);
                 await _hub.Clients.Group(HubAvisosOperador.Grupo(evento.OperadorId)).SendAsync("estadoEnvioCambiado", new
                 {
                     evento.EventId,
                     evento.EnvioId,
+                    envio.NumeroSeguimiento,
+                    envio.Destinatario,
                     evento.EstadoAnterior,
                     evento.EstadoNuevo,
                     evento.Fecha
@@ -129,11 +139,13 @@ public sealed class TableroConsumidor : BackgroundService
                 var resultado = JsonAvisos.Deserializar<ResultadoAviso>(mensaje.Body.Span);
                 if (resultado is null || resultado.OperadorId == Guid.Empty)
                     return;
+                var envioAviso = await BuscarEnvioAsync(resultado.OperadorId, resultado.EnvioId, ct);
                 await _hub.Clients.Group(HubAvisosOperador.Grupo(resultado.OperadorId)).SendAsync("avisoResultado", new
                 {
                     resultado.EntregaId,
                     resultado.EventId,
                     resultado.EnvioId,
+                    envioAviso.NumeroSeguimiento,
                     resultado.TipoEvento,
                     resultado.Estado,
                     resultado.Intentos,
@@ -141,6 +153,27 @@ public sealed class TableroConsumidor : BackgroundService
                     resultado.Fecha
                 }, ct);
                 break;
+        }
+    }
+
+    /// <summary>
+    /// El evento de la cola trae solo el id interno del envío; el tablero muestra el número de seguimiento
+    /// (también para envíos creados después de abrir la página). Si no se encuentra, la pantalla lo resuelve sola.
+    /// </summary>
+    private async Task<(string? NumeroSeguimiento, string? Destinatario)> BuscarEnvioAsync(
+        Guid operadorId, Guid envioId, CancellationToken ct)
+    {
+        try
+        {
+            await using var scope = _scopes.CreateAsyncScope();
+            var envios = scope.ServiceProvider.GetRequiredService<IEnvioRepositorio>();
+            var envio = await envios.ObtenerPorOperadorAsync(envioId, operadorId, ct);
+            return (envio?.NumeroSeguimiento, envio?.Destinatario);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogDebug(ex, "Tablero: no se pudo leer el envío {EnvioId}.", envioId);
+            return (null, null);
         }
     }
 }
