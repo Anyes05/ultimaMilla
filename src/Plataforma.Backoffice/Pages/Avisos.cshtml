@@ -13,7 +13,8 @@
     </div>
     <div class="d-flex gap-2">
         <form method="post" asp-page-handler="CambiarReceptor" asp-route-filtro="@Model.Filtro">
-            <input type="hidden" name="forzarFallo" value="@(!Model.ReceptorFalla)" />
+            @* Valor explícito: con un bool, Razor escribe value="value" en lugar de "True" y siempre llegaba false. *@
+            <input type="hidden" name="forzarFallo" value="@(Model.ReceptorFalla ? "false" : "true")" />
             <button class="btn @(Model.ReceptorFalla ? "btn-warning" : "btn-outline-secondary")" type="submit"
                     title="Simula la caída del receptor de prueba del comercio">
                 @(Model.ReceptorFalla ? "Receptor: fallando" : "Receptor: disponible")
