@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <!-- Lo trae el backplane Redis de SignalR; 2.5.302 tiene una vulnerabilidad (GHSA-qhrr-8q5h-9q3h, corregida en 2.5.303). -->
+    <PackageReference Include="MessagePack" Version="2.5.307" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">

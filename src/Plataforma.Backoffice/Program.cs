@@ -31,6 +31,9 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Métrica de aciertos por caso de uso y respaldo contra la base si el caché no responde (letra 6.7).
 builder.Services.AddCacheInstrumentada();
 builder.Services.AddChequeosSalud();
+// IP real del cliente detrás del ALB/NGINX, CORS restringido y cabeceras seguras (letra 6.3).
+builder.Services.AddSeguridadWeb(builder.Configuration);
+builder.SinCabeceraServidor();
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Backoffice);
 builder.Services.AddRateLimiter(_ => { });
 
@@ -74,6 +77,8 @@ if (string.Equals(builder.Configuration["Database:MigrateOnly"], "true", StringC
 {
     return;
 }
+
+app.UseSeguridadWeb();
 
 if (!app.Environment.IsDevelopment())
 {

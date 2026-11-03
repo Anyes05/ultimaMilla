@@ -1,7 +1,8 @@
 // Pruebas de carga (opcional 7.2, 2 puntos). Objetivos y escenarios explicados en README.md.
 //
-// Local (compose):  docker run --rm -i --network ultimamilla_default -v ${PWD}/tests/carga:/carga grafana/k6 run -e PERFIL=humo -e BACKOFFICE=http://backoffice:8080 -e TOKENS=<t1,t2> /carga/carga.js
-// Remoto (EKS):     k6 run -e PERFIL=carga -e BACKOFFICE=https://backoffice.tallernet.cloud-ip.cc -e API=https://api.tallernet.cloud-ip.cc -e TOKENS=<t1,t2> tests/carga/carga.js
+// Local (compose):  docker run --rm -i --network ultimamilla_default -v ${PWD}/tests/carga:/carga grafana/k6 run -e PERFIL=humo -e BACKOFFICE=http://backoffice:8080 /carga/carga.js
+// Remoto (EKS):     k6 run -e PERFIL=carga -e BACKOFFICE=https://backoffice.tallernet.cloud-ip.cc -e API=https://api.tallernet.cloud-ip.cc tests/carga/carga.js
+// TOKENS es opcional: sin él, el seguimiento se consulta por número (tomado de Monitoreo).
 //
 // No modifica datos: lee seguimiento y pantallas, y sincroniza comprobantes de envíos que no están en la ruta,
 // que el servidor valida y rechaza sin escribir.
@@ -83,8 +84,14 @@ export const options = {
 };
 
 export function setup() {
+  // Sin TOKENS (los tokens no se ven en ninguna pantalla), se toman números de seguimiento de Monitoreo
+  // con el despachador y se consulta el seguimiento por número: mismo caso de uso y mismo caché.
+  let numeros = [];
   if (TOKENS.length === 0) {
-    throw new Error('Falta TOKENS: tokens de seguimiento público separados por coma (ver README.md).');
+    http.post(`${BACKOFFICE}/session/login`, { usuario: USUARIO_BACKOFFICE, clave: CLAVE }, { redirects: 0 });
+    const monitoreo = http.get(`${BACKOFFICE}/`);
+    numeros = [...new Set([...monitoreo.body.matchAll(/tracking-number">([^<]+)</g)].map((m) => m[1].trim()))];
+    if (numeros.length === 0) throw new Error('No hay TOKENS ni envíos visibles en Monitoreo para consultar.');
   }
   // Un login por repartidor al inicio: el login tiene límite de intentos y la app real tampoco se loguea en cada sync.
   const sesiones = REPARTIDORES.map((usuario) => {
@@ -94,12 +101,14 @@ export function setup() {
     if (r.status !== 200) throw new Error(`Login de ${usuario} falló: HTTP ${r.status}`);
     return r.json('token');
   });
-  return { sesiones };
+  return { sesiones, numeros };
 }
 
-export function seguimiento() {
-  const token = TOKENS[Math.floor(Math.random() * TOKENS.length)];
-  const r = http.get(`${API}/api/seguimiento/${token}`, { tags: { escenario: 'seguimiento' } });
+export function seguimiento(datos) {
+  const azar = (lista) => lista[Math.floor(Math.random() * lista.length)];
+  const r = TOKENS.length > 0
+    ? http.get(`${API}/api/seguimiento/${azar(TOKENS)}`, { tags: { escenario: 'seguimiento' } })
+    : http.get(`${BACKOFFICE}/Seguimiento?Numero=${encodeURIComponent(azar(datos.numeros))}`, { tags: { escenario: 'seguimiento' } });
   check(r, { 'seguimiento 200': (x) => x.status === 200 });
 }
 

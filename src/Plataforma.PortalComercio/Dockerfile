@@ -11,7 +11,9 @@ RUN dotnet restore "src/Plataforma.PortalComercio/Plataforma.PortalComercio.cspr
 
 COPY src/ ./src/
 WORKDIR /src/src/Plataforma.PortalComercio
-RUN dotnet publish "Plataforma.PortalComercio.csproj" --configuration Release --output /app/publish --no-restore
+# Sin --no-restore: en .NET 10 blazor.web.js llega como paquete de recursos estáticos y solo se incluye si
+# publish restaura; con --no-restore la imagen quedaba sin el script (404 en /_framework/blazor.web.js).
+RUN dotnet publish "Plataforma.PortalComercio.csproj" --configuration Release --output /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app

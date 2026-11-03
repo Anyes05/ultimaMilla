@@ -39,7 +39,7 @@ El perfil `humo` hace lo mismo en escala chica (alrededor de 1 min): sirve para 
 | `PERFIL` | `humo` o `carga` | `carga` |
 | `BACKOFFICE` | URL del Backoffice | `https://backoffice.tallernet.cloud-ip.cc` |
 | `API` | URL de la API (seguimiento y repartidor) | `https://api.tallernet.cloud-ip.cc` |
-| `TOKENS` | Tokens de seguimiento público, separados por coma (los del enlace que recibe el destinatario) | `abc…,def…` |
+| `TOKENS` | **Opcional.** Tokens de seguimiento público separados por coma. Sin ellos, se toman números de seguimiento de Monitoreo (con el despachador) y se consulta el seguimiento por número: mismo caso de uso y caché | `abc…,def…` |
 | `REPARTIDORES` | Usuarios repartidor; se loguean una vez y se reparten entre los usuarios virtuales | `alvaro@demo.test` |
 | `USUARIO_BACKOFFICE`, `CLAVE` | Usuario del Backoffice y clave de la semilla | `norte.despachador` |
 
@@ -53,14 +53,14 @@ Local, contra compose y sin instalar k6:
 
 ```powershell
 docker run --rm -i --network ultimamilla_default -v ${PWD}/tests/carga:/carga grafana/k6 run `
-  -e PERFIL=humo -e BACKOFFICE=http://backoffice:8080 -e TOKENS=<t1,t2> /carga/carga.js
+  -e PERFIL=humo -e BACKOFFICE=http://backoffice:8080 /carga/carga.js
 ```
 
 Contra la nube (ventana de AWS acordada con Joel, porque genera costo):
 
 ```powershell
 k6 run -e PERFIL=carga -e BACKOFFICE=https://backoffice.tallernet.cloud-ip.cc `
-  -e API=https://api.tallernet.cloud-ip.cc -e TOKENS=<t1,t2> tests/carga/carga.js
+  -e API=https://api.tallernet.cloud-ip.cc tests/carga/carga.js
 ```
 
 Mientras corre: Grafana → Tablero técnico (latencia, p95, p99, errores y requests por instancia) y

@@ -30,6 +30,9 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Métrica de aciertos por caso de uso y respaldo contra la base si el caché no responde (letra 6.7).
 builder.Services.AddCacheInstrumentada();
 builder.Services.AddChequeosSalud();
+// IP real del cliente detrás del ALB/NGINX, CORS restringido y cabeceras seguras (letra 6.3).
+builder.Services.AddSeguridadWeb(builder.Configuration);
+builder.SinCabeceraServidor();
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Portal);
 // Suscripción a avisos e historial de entregas del comercio (letra 6.9).
 builder.Services.AddAvisos(builder.Configuration);
@@ -63,6 +66,8 @@ if (string.Equals(builder.Configuration["Database:MigrateOnStartup"], "true", St
 {
     await app.Services.MigrarBaseDeDatosAsync();
 }
+
+app.UseSeguridadWeb();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -147,7 +152,8 @@ app.MapPost("/avisos/reenviar", async (HttpContext contexto, IAntiforgery antifo
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    // La CSP completa (incluido frame-ancestors) la pone UseSeguridadWeb: sin esto Blazor agrega una segunda cabecera.
+    .AddInteractiveServerRenderMode(opciones => opciones.ContentSecurityFrameAncestorsPolicy = null);
 
 app.Run();
 

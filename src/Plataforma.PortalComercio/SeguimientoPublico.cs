@@ -59,14 +59,10 @@ public static class SeguimientoPublico
         return app;
     }
 
-    // Detrás del ALB y de NGINX la IP real del destinatario viene en X-Forwarded-For (primer valor).
-    private static string IpCliente(HttpContext contexto)
-    {
-        var reenviada = contexto.Request.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',', 2)[0].Trim();
-        return string.IsNullOrWhiteSpace(reenviada)
-            ? contexto.Connection.RemoteIpAddress?.ToString() ?? "sin-ip"
-            : reenviada;
-    }
+    // La IP ya viene resuelta por UseSeguridadWeb: X-Forwarded-For solo cuenta si lo agregó un proxy interno.
+    // Leer el encabezado crudo permitiría saltar el límite escribiendo una IP distinta en cada consulta.
+    private static string IpCliente(HttpContext contexto) =>
+        contexto.Connection.RemoteIpAddress?.ToString() ?? "sin-ip";
 
     /// <summary>Etapas del recorrido normal que ve el destinatario.</summary>
     public static readonly IReadOnlyList<(string Nombre, EstadoEnvio[] Estados)> Etapas =
