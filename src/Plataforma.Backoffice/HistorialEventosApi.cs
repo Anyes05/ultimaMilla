@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Plataforma.Application;
 using Plataforma.HistorialEventos;
 
@@ -19,7 +20,7 @@ public static class HistorialEventosApi
                 return Results.Ok(new { items = pagina.Items, siguiente = pagina.Siguiente });
             }
             catch (ArgumentException) { return Results.BadRequest(new { mensaje = "El cursor despuesDe es inválido." }); }
-        }).RequireAuthorization();
+        }).RequireAuthorization(new AuthorizeAttribute { Roles = PermisosPerfil.Operacion });
         return app;
     }
 }

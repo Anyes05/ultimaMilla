@@ -46,6 +46,10 @@ resource "helm_release" "nginx_ingress" {
         enabled = true
         default = true
       }
+      config = {
+        use-forwarded-headers = "true"
+        proxy-real-ip-cidr    = "172.31.0.0/16"
+      }
       resources = {
         requests = {
           cpu    = "100m"
