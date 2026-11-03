@@ -21,6 +21,7 @@ Antes del primer despliegue, cree `tallernet-application-secrets` en el namespac
 - `Jwt__Emisor`: emisor JWT de producción.
 - `Jwt__Audiencia`: audiencia JWT de producción.
 - `Avisos__ClaveFirma`: clave HMAC compartida entre Worker y receptor de prueba; se solicita durante `Deploy-Applications.ps1` y no se versiona.
+- `Mongo__ConnectionString`: URI `mongodb+srv://` de Atlas para el historial documental; se solicita durante `Deploy-Applications.ps1` y no se versiona.
 
 Terraform crea por separado `tallernet-redis-credentials` y `tallernet-rabbitmq-credentials`; no duplique sus claves en este Secret. Las aplicaciones obtienen la contraseña de Redis desde el Secret de plataforma.
 

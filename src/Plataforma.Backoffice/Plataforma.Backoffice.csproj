@@ -12,6 +12,7 @@
     <ProjectReference Include="..\Plataforma.Application\Plataforma.Application.csproj" />
     <ProjectReference Include="..\Plataforma.Avisos\Plataforma.Avisos.csproj" />
     <ProjectReference Include="..\Plataforma.Infrastructure\Plataforma.Infrastructure.csproj" />
+    <ProjectReference Include="..\Plataforma.HistorialEventos\Plataforma.HistorialEventos.csproj" />
   </ItemGroup>
 
   <ItemGroup>

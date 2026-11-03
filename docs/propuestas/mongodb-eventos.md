@@ -1,7 +1,7 @@
-# Propuesta: historial de eventos en MongoDB (opcional 7.2, NoSQL)
+# Historial de eventos en MongoDB (opcional 7.2, NoSQL)
 
-Estado: **propuesta para acordar** con Joel (Atlas) y Ana (contrato del evento).
-Implementa: Nadia (worker y API de lectura). Recurso Atlas: Joel.
+Estado: **implementado en código; pendiente de primer despliegue con Atlas**.
+Implementa: Joel (Atlas, Worker, API de lectura y despliegue).
 
 ## Qué pide la letra
 
@@ -28,7 +28,10 @@ cambio de estado ─outbox─▶ plataforma.eventos ──envioestadocambiado.v1
 
 ## Base y colección
 
-- Base: `tallernet` · Colección: `eventos_envio`
+- Base: `tallernet` · Colección: `eventos_envio`.
+- No se crea nada manualmente en Atlas: al iniciar `ConsumidorHistorial`, el Worker ejecuta
+  `createIndexes`. MongoDB crea la base y la colección si todavía no existen; la colección queda
+  vacía hasta que llegue el primer `EnvioEstadoCambiado`.
 
 Documento (un evento de la cola = un documento):
 
@@ -65,8 +68,8 @@ Documento (un evento de la cola = un documento):
 
 - **Retención: 180 días**, configurable (`Mongo:RetencionDias`). Pasado ese plazo Mongo borra solo.
   El historial oficial no se pierde: está en Postgres.
-- Los índices los **crea el worker al arrancar** (`createIndexes` es idempotente). Joel no tiene que crearlos
-  a mano, pero quedan documentados acá.
+- MongoDB crea también el índice único `_id_` de forma nativa. El Worker crea los cuatro índices de la tabla
+  al arrancar (`createIndexes` es idempotente): puede ejecutarse muchas veces y no duplica índices.
 
 ## API de lectura (paginada y filtrable)
 
@@ -81,15 +84,15 @@ GET /api/historial/eventos?envioId=&estado=&desde=&hasta=&despuesDe=&tamano=50
 - Respuesta: `{ "items": [...], "siguiente": "<cursor o null>" }`.
 - Tamaño máximo 200.
 
-## Lo que necesito de Joel (Atlas)
+## Preparación manual mínima en Atlas
 
 1. Cluster (M0 gratuito alcanza) en `us-east-1`.
 2. Usuario técnico con rol **`readWrite` solo sobre la base `tallernet`** (no `atlasAdmin`).
 3. Acceso de red: la IP de salida de los nodos EKS (y la de quien pruebe), no `0.0.0.0/0` salvo que sea
    imposible en AWS Academy; si se usa, dejarlo documentado como riesgo.
-4. Un Secret de Kubernetes con la clave `Mongo__ConnectionString` (cadena `mongodb+srv://...`), referenciado
-   por `queue-worker` y `backoffice`. Fuera de Git y de chat.
-5. Nada más: base, colección e índices los crea la aplicación.
+4. Secret de GitHub `MONGODB_CONNECTION_STRING` con la URI `mongodb+srv://...`. El CD actualiza la clave
+  `Mongo__ConnectionString` del Secret de Kubernetes, referenciado por `queue-worker` y `backoffice`.
+5. No crear manualmente base, colección, documentos ni índices.
 
 Mientras Atlas no esté, desarrollo y pruebo con un `mongo:7` en compose; el código no cambia, solo la cadena.
 

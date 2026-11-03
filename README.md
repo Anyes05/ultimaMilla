@@ -126,3 +126,21 @@ Para publicar desde GitHub Actions, configure los secretos de repositorio tempor
 > Nota: habilitar la publicación solo después de validar las credenciales de la sesión vigente de AWS Academy evita ejecuciones fallidas contra ECR.
 
 Si una publicación falla por credenciales, renueve la sesión de AWS Academy, actualice los secretos del repositorio y vuelva a ejecutar el workflow desde GitHub Actions.
+
+### Historial documental MongoDB
+
+El historial analítico usa MongoDB Atlas sin afectar PostgreSQL: cada `EnvioEstadoCambiado` llega por la cola propia `plataforma.historial-eventos` y se inserta en `tallernet.eventos_envio`. El Worker crea automáticamente la base, colección e índices al arrancar; no se crean manualmente desde Atlas.
+
+Cada documento tiene `_id = eventId`, por lo que reintentos o mensajes duplicados no duplican el historial. Incluye `operadorId` para aislamiento multi-tenant, `envioId`, estado anterior/nuevo, fecha del evento, fecha de registro, versión y `traceId`.
+
+| Índice automático | Uso |
+| --- | --- |
+| `_id_` único | Idempotencia por evento. |
+| `{ operadorId: 1, envioId: 1, fecha: 1 }` | Historial ordenado de un envío. |
+| `{ operadorId: 1, fecha: -1, _id: -1 }` | Listado por período y paginación por cursor. |
+| `{ operadorId: 1, estadoNuevo: 1, fecha: -1 }` | Consultas y análisis por estado. |
+| `{ registradoEn: 1 }` con TTL de 180 días | Retención automática de la copia analítica. |
+
+Si Atlas no está disponible, los avisos a comercios no se detienen: el consumidor de historial reintenta con espera creciente y deriva el mensaje agotado a `plataforma.historial-eventos.fallidos`. La API autenticada `GET /api/historial/eventos` filtra siempre por el `operadorId` del JWT y pagina con cursor, sin aceptar el tenant desde el cliente.
+
+En Atlas solo se configura el usuario técnico con `readWrite` sobre `tallernet`, la regla de red y el Secret de GitHub `MONGODB_CONNECTION_STRING`. El CD lo copia como `Mongo__ConnectionString` al Secret de EKS sin exponerlo. El detalle técnico está en [la documentación de MongoDB](docs/propuestas/mongodb-eventos.md).

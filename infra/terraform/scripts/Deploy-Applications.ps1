@@ -78,6 +78,15 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $rdsPassword = ConvertTo-PlainText (Read-Host -Prompt "Contrasena maestra de PostgreSQL" -AsSecureString)
 $jwtKey = ConvertTo-PlainText (Read-Host -Prompt "Clave JWT de produccion" -AsSecureString)
 $avisoSigningKey = ConvertTo-PlainText (Read-Host -Prompt "Clave de firma HMAC para avisos" -AsSecureString)
+$mongoConnectionStringBase64 = (& kubectl -n $Namespace get secret tallernet-application-secrets `
+    -o "jsonpath={.data.Mongo__ConnectionString}" 2>$null).Trim()
+if ($LASTEXITCODE -ne 0) {
+    $mongoConnectionStringBase64 = ""
+}
+if ([string]::IsNullOrWhiteSpace($mongoConnectionStringBase64)) {
+    $mongoConnectionString = ConvertTo-PlainText (Read-Host -Prompt "Cadena de conexion MongoDB Atlas" -AsSecureString)
+    $mongoConnectionStringBase64 = ConvertTo-Base64 $mongoConnectionString
+}
 
 try {
     $connectionString = "Host=$rdsEndpoint;Port=5432;Database=tallernet;Username=tallernet_admin;Password=$rdsPassword"
@@ -95,6 +104,7 @@ try {
             Jwt__Emisor                = ConvertTo-Base64 $JwtIssuer
             Jwt__Audiencia             = ConvertTo-Base64 $JwtAudience
             Avisos__ClaveFirma         = ConvertTo-Base64 $avisoSigningKey
+            Mongo__ConnectionString    = $mongoConnectionStringBase64
         }
     } | ConvertTo-Json -Depth 4
     Invoke-KubectlApply -Manifest $secretManifest
@@ -103,6 +113,8 @@ finally {
     $rdsPassword = $null
     $jwtKey = $null
     $avisoSigningKey = $null
+    $mongoConnectionString = $null
+    $mongoConnectionStringBase64 = $null
     $connectionString = $null
 }
 

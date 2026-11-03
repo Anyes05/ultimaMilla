@@ -544,6 +544,28 @@ resource "kubernetes_deployment_v1" "queue_worker" {
             value = local.otel_lgtm_endpoint
           }
 
+          readiness_probe {
+            initial_delay_seconds = 30
+            period_seconds        = 15
+            timeout_seconds       = 5
+            failure_threshold     = 3
+
+            exec {
+              command = ["/bin/sh", "-c", "find /tmp/worker-listo -mmin -1 | grep -q ."]
+            }
+          }
+
+          liveness_probe {
+            initial_delay_seconds = 30
+            period_seconds        = 15
+            timeout_seconds       = 5
+            failure_threshold     = 3
+
+            exec {
+              command = ["/bin/sh", "-c", "find /tmp/worker-vivo -mmin -1 | grep -q ."]
+            }
+          }
+
           resources {
             requests = {
               cpu    = "100m"

@@ -12,6 +12,7 @@ using System.Threading.RateLimiting;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Plataforma.Observabilidad;
+using Plataforma.HistorialEventos;
 using Serilog;
 using Serilog.Events;
 
@@ -46,6 +47,7 @@ if (opcionesRedis is not null)
 }
 // Módulo de avisos (fallidos y reintentos) y tablero en tiempo real alimentado desde la cola.
 builder.Services.AddAvisos(builder.Configuration);
+builder.Services.AddHistorialMongo(builder.Configuration);
 builder.Services.AddHostedService<TableroConsumidor>();
 // Métrica "sincronizaciones pendientes" del tablero técnico (letra 6.12).
 builder.Services.AddHostedService<MonitorSincronizaciones>();
@@ -172,6 +174,7 @@ app.MapPost("/logout", (HttpContext httpContext) =>
 
 app.MapApisRepartidor();
 app.MapAvisosTecnicos();
+app.MapHistorialEventos();
 app.MapHub<HubAvisosOperador>(HubAvisosOperador.Ruta).RequireAuthorization();
 
 app.MapStaticAssets();

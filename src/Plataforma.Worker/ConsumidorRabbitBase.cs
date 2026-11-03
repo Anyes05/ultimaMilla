@@ -31,6 +31,11 @@ public abstract class ConsumidorRabbitBase : BackgroundService
 
     protected abstract string Cola { get; }
 
+    protected virtual Task DeclararTopologiaAsync(IChannel canal, CancellationToken cancellationToken) =>
+        TopologiaAvisos.DeclararAsync(canal, Rabbit, Avisos, cancellationToken);
+
+    protected virtual Task InicializarAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
     /// <summary>Procesa el mensaje. Debe confirmar (ack/reject) él mismo los casos que resuelve.</summary>
     protected abstract Task ProcesarAsync(IChannel canal, BasicDeliverEventArgs entrega, CancellationToken stoppingToken);
 
@@ -71,7 +76,8 @@ public abstract class ConsumidorRabbitBase : BackgroundService
             .CreateConnectionAsync(stoppingToken);
         await using var canal = await conexion.CreateChannelAsync(cancellationToken: stoppingToken);
 
-        await TopologiaAvisos.DeclararAsync(canal, Rabbit, Avisos, stoppingToken);
+        await DeclararTopologiaAsync(canal, stoppingToken);
+        await InicializarAsync(stoppingToken);
         await canal.BasicQosAsync(prefetchSize: 0, prefetchCount: Avisos.Prefetch, global: false,
             cancellationToken: stoppingToken);
 

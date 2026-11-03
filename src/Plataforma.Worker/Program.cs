@@ -1,4 +1,5 @@
 using Plataforma.Avisos;
+using Plataforma.HistorialEventos;
 using Plataforma.Observabilidad;
 using Plataforma.Worker;
 
@@ -7,6 +8,7 @@ var builder = Host.CreateApplicationBuilder(args);
 // Logs estructurados, métricas y trazas (letra 6.12). La traza que llega en los headers del mensaje continúa acá.
 builder.AddObservabilidad("plataforma-worker");
 builder.Services.AddAvisos(builder.Configuration);
+builder.Services.AddHistorialMongo(builder.Configuration);
 builder.Services.AddHttpClient(ConsumidorEntregas.ClienteHttp);
 builder.Services.AddHostedService<ConsumidorEnvioEstadoCambiado>();
 builder.Services.AddHostedService<ConsumidorEntregas>();
@@ -14,12 +16,17 @@ builder.Services.AddHostedService<BarridoEntregasPendientes>();
 builder.Services.AddHostedService<MonitorColas>();
 // Salud para Kubernetes (sondas exec): /tmp/worker-vivo y /tmp/worker-listo.
 builder.Services.AddHostedService<LatidoWorker>();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Mongo:ConnectionString"]))
+    builder.Services.AddHostedService<ConsumidorHistorial>();
 
 // Apagado controlado: da tiempo a terminar el mensaje en curso antes de cortar (SIGTERM de Kubernetes).
 builder.Services.Configure<HostOptions>(opciones => opciones.ShutdownTimeout = TimeSpan.FromSeconds(20));
 
 var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+if (string.IsNullOrWhiteSpace(builder.Configuration["Mongo:ConnectionString"]))
+    logger.LogWarning("Mongo:ConnectionString no está configurado; el consumidor de historial permanece desactivado.");
 
 if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Default")))
 {

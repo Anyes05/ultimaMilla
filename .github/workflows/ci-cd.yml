@@ -123,9 +123,17 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
         run: |
           aws eks update-kubeconfig --name tallernet-cluster --region "$AWS_REGION"
           kubectl -n tallernet get secret tallernet-application-secrets
+          if [ -z "$MONGODB_CONNECTION_STRING" ]; then
+            echo "Falta el secret MONGODB_CONNECTION_STRING."
+            exit 1
+          fi
+          mongo_connection_string_base64="$(printf %s "$MONGODB_CONNECTION_STRING" | base64 --wrap=0)"
+          kubectl -n tallernet patch secret tallernet-application-secrets --type merge \
+            --patch "{\"data\":{\"Mongo__ConnectionString\":\"$mongo_connection_string_base64\"}}"
           kubectl -n tallernet delete job database-migration --ignore-not-found
           sed "s|tallernet/backend:bootstrap|$ECR_REGISTRY/tallernet/backend:$IMAGE_TAG|g" infra/terraform/k8s/base/migration.yaml | kubectl apply -f -
           kubectl -n tallernet wait --for=condition=complete job/database-migration --timeout=5m

@@ -23,6 +23,20 @@ spec:
           envFrom:
             - secretRef:
                 name: tallernet-application-secrets
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "find /tmp/worker-listo -mmin -1 | grep -q ."]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["/bin/sh", "-c", "find /tmp/worker-vivo -mmin -1 | grep -q ."]
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
           resources:
             requests:
               cpu: 100m
