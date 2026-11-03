@@ -1,7 +1,9 @@
 locals {
-  rabbitmq_release_name = "${var.project_name}-rabbitmq"
-  redis_service_name    = "${var.project_name}-redis"
-  worker_image          = "${aws_ecr_repository.worker.repository_url}:${var.worker_image_tag}"
+  rabbitmq_release_name  = "${var.project_name}-rabbitmq"
+  redis_service_name     = "${var.project_name}-redis"
+  otel_lgtm_service_name = "${var.project_name}-otel-lgtm"
+  otel_lgtm_endpoint     = "http://${local.otel_lgtm_service_name}.${var.application_namespace}.svc.cluster.local:4317"
+  worker_image           = "${aws_ecr_repository.worker.repository_url}:${var.worker_image_tag}"
 }
 
 resource "kubernetes_namespace_v1" "application" {
@@ -287,6 +289,181 @@ resource "kubernetes_service_v1" "redis" {
   depends_on = [kubernetes_deployment_v1.redis]
 }
 
+resource "kubernetes_config_map_v1" "otel_lgtm_dashboards" {
+  count = var.install_platform ? 1 : 0
+
+  metadata {
+    name      = "${local.otel_lgtm_service_name}-dashboards"
+    namespace = kubernetes_namespace_v1.application[0].metadata[0].name
+  }
+
+  data = {
+    "tablero-tecnico.json" = file("${path.module}/../observabilidad/dashboards/tablero-tecnico.json")
+  }
+}
+
+resource "kubernetes_config_map_v1" "otel_lgtm_provisioning" {
+  count = var.install_platform ? 1 : 0
+
+  metadata {
+    name      = "${local.otel_lgtm_service_name}-provisioning"
+    namespace = kubernetes_namespace_v1.application[0].metadata[0].name
+  }
+
+  data = {
+    "proveedor-tableros.yaml" = file("${path.module}/../observabilidad/proveedor-tableros.yaml")
+  }
+}
+
+resource "kubernetes_deployment_v1" "otel_lgtm" {
+  count = var.install_platform ? 1 : 0
+
+  metadata {
+    name      = local.otel_lgtm_service_name
+    namespace = kubernetes_namespace_v1.application[0].metadata[0].name
+    labels = {
+      "app.kubernetes.io/name"       = local.otel_lgtm_service_name
+      "app.kubernetes.io/component"  = "observability"
+      "app.kubernetes.io/part-of"    = var.project_name
+      "app.kubernetes.io/managed-by" = "terraform"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        "app.kubernetes.io/name" = local.otel_lgtm_service_name
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          "app.kubernetes.io/name" = local.otel_lgtm_service_name
+        }
+      }
+
+      spec {
+        automount_service_account_token = false
+
+        container {
+          name  = "otel-lgtm"
+          image = var.otel_lgtm_image
+
+          port {
+            name           = "otlp-grpc"
+            container_port = 4317
+          }
+
+          port {
+            name           = "grafana"
+            container_port = 3000
+          }
+
+          volume_mount {
+            name       = "dashboards"
+            mount_path = "/otel-lgtm/tableros-plataforma"
+            read_only  = true
+          }
+
+          volume_mount {
+            name       = "provisioning"
+            mount_path = "/otel-lgtm/grafana/conf/provisioning/dashboards"
+            read_only  = true
+          }
+
+          readiness_probe {
+            http_get {
+              path = "/api/health"
+              port = "grafana"
+            }
+
+            initial_delay_seconds = 10
+            period_seconds        = 10
+            timeout_seconds       = 3
+            failure_threshold     = 12
+          }
+
+          liveness_probe {
+            http_get {
+              path = "/api/health"
+              port = "grafana"
+            }
+
+            initial_delay_seconds = 30
+            period_seconds        = 20
+            timeout_seconds       = 3
+            failure_threshold     = 3
+          }
+
+          resources {
+            requests = {
+              cpu    = "250m"
+              memory = "1Gi"
+            }
+
+            limits = {
+              cpu    = "1"
+              memory = "1500Mi"
+            }
+          }
+        }
+
+        volume {
+          name = "dashboards"
+
+          config_map {
+            name = kubernetes_config_map_v1.otel_lgtm_dashboards[0].metadata[0].name
+          }
+        }
+
+        volume {
+          name = "provisioning"
+
+          config_map {
+            name = kubernetes_config_map_v1.otel_lgtm_provisioning[0].metadata[0].name
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service_v1" "otel_lgtm" {
+  count = var.install_platform ? 1 : 0
+
+  metadata {
+    name      = local.otel_lgtm_service_name
+    namespace = kubernetes_namespace_v1.application[0].metadata[0].name
+  }
+
+  spec {
+    selector = {
+      "app.kubernetes.io/name" = local.otel_lgtm_service_name
+    }
+
+    port {
+      name        = "otlp-grpc"
+      port        = 4317
+      target_port = "otlp-grpc"
+      protocol    = "TCP"
+    }
+
+    port {
+      name        = "grafana"
+      port        = 3000
+      target_port = "grafana"
+      protocol    = "TCP"
+    }
+
+    type = "ClusterIP"
+  }
+
+  depends_on = [kubernetes_deployment_v1.otel_lgtm]
+}
+
 resource "kubernetes_deployment_v1" "queue_worker" {
   count = var.install_platform ? 1 : 0
 
@@ -362,6 +539,11 @@ resource "kubernetes_deployment_v1" "queue_worker" {
             value = "http://backoffice.${var.application_namespace}.svc.cluster.local/api/receptor-prueba/avisos"
           }
 
+          env {
+            name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+            value = local.otel_lgtm_endpoint
+          }
+
           resources {
             requests = {
               cpu    = "100m"
@@ -378,7 +560,7 @@ resource "kubernetes_deployment_v1" "queue_worker" {
     }
   }
 
-  depends_on = [helm_release.rabbitmq]
+  depends_on = [helm_release.rabbitmq, kubernetes_service_v1.otel_lgtm]
 
   # Terraform crea el deployment bootstrap. CI/CD es dueño de la imagen SHA y sus réplicas.
   lifecycle {

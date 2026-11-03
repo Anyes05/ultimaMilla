@@ -142,7 +142,10 @@ if ($EnableWorker) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
-foreach ($serviceName in @("backoffice", "portal", "tallernet-rabbitmq", "tallernet-redis")) {
+& kubectl -n $Namespace rollout status deployment/tallernet-otel-lgtm --timeout=5m
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+foreach ($serviceName in @("backoffice", "portal", "tallernet-rabbitmq", "tallernet-redis", "tallernet-otel-lgtm")) {
     & kubectl -n $Namespace get service $serviceName | Out-Null
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }

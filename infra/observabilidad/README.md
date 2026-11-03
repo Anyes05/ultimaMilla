@@ -13,13 +13,13 @@ Responsable del código: Nadia. Responsable del despliegue en EKS: Joel.
 Todo se envía por **OTLP gRPC** a la dirección de la variable estándar `OTEL_EXPORTER_OTLP_ENDPOINT`.
 **Sin esa variable no se exporta nada** y las apps funcionan igual (es el estado actual de producción).
 
-## Qué hace falta en EKS (Joel)
+## Despliegue en EKS (Joel)
 
-1. Un receptor OTLP con almacenamiento y Grafana. Dos opciones:
-   - **Simple (la misma de compose):** un Deployment de `grafana/otel-lgtm:0.11.10` con un Service que exponga
-     `4317/TCP` (OTLP gRPC, interno) y `3000/TCP` (Grafana). Es un solo pod; pide alrededor de 1 GB de RAM.
-   - **Por partes:** OpenTelemetry Collector + Prometheus + Tempo + Loki + Grafana (más piezas, más memoria).
-2. La variable en los tres Deployments (`backoffice`, `portal`, `queue-worker`), apuntando al Service interno:
+Terraform instala automáticamente un Deployment interno `tallernet-otel-lgtm` con la imagen
+`grafana/otel-lgtm:0.11.10`, su Service ClusterIP y los ConfigMaps de provisionamiento/tablero.
+Pide 1 GiB de memoria y no se publica por Ingress.
+
+La variable se configura automáticamente en los tres procesos (`backoffice`, `portal`, `queue-worker`), apuntando al Service interno:
 
    ```yaml
    - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -27,12 +27,16 @@ Todo se envía por **OTLP gRPC** a la dirección de la variable estándar `OTEL_
    ```
 
    No es un secreto: va como `value`, no en el Secret de aplicación.
-3. El tablero: cargar `dashboards/tablero-tecnico.json` en Grafana. Con `otel-lgtm` alcanza con montar
-   `proveedor-tableros.yaml` en `/otel-lgtm/grafana/conf/provisioning/dashboards/` y la carpeta `dashboards/`
-   en `/otel-lgtm/tableros-plataforma` (por ejemplo, con un ConfigMap). El tablero usa la fuente de datos
-   Prometheus con `uid: prometheus`, que es la que trae `otel-lgtm`.
-4. Acceso a Grafana: por `kubectl port-forward` alcanza para la demo; si se publica por el Ingress, tiene que
-   llevar autenticación (por defecto `otel-lgtm` entra como administrador anónimo).
+El tablero `dashboards/tablero-tecnico.json` y `proveedor-tableros.yaml` se montan por ConfigMap. El tablero usa
+la fuente de datos Prometheus con `uid: prometheus`, incluida en `otel-lgtm`.
+
+Acceso seguro a Grafana, sin Ingress:
+
+```powershell
+kubectl -n tallernet port-forward service/tallernet-otel-lgtm 3000:3000
+```
+
+Abrir `http://localhost:3000` mientras el comando permanece activo.
 
 ## Cómo verificar que funciona
 

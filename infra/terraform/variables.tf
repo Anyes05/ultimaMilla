@@ -158,6 +158,12 @@ variable "rabbitmq_chart_version" {
   default     = "16.0.14"
 }
 
+variable "otel_lgtm_image" {
+  description = "Imagen fijada del stack Grafana LGTM para logs, metricas y trazas"
+  type        = string
+  default     = "grafana/otel-lgtm:0.11.10"
+}
+
 variable "redis_image" {
   description = "Imagen fija de Redis para el cache distribuido interno"
   type        = string

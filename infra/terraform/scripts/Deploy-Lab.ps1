@@ -206,6 +206,10 @@ function Repair-InterruptedPlatformState {
     Import-KubernetesResourceIfUnmanaged -Address "kubernetes_namespace_v1.application[0]" -ImportId "tallernet" -Resource "namespace/tallernet"
     Import-KubernetesResourceIfUnmanaged -Address "kubernetes_deployment_v1.redis[0]" -ImportId "tallernet/tallernet-redis" -Resource "deployment/tallernet-redis" -Namespace "tallernet"
     Import-KubernetesResourceIfUnmanaged -Address "kubernetes_service_v1.redis[0]" -ImportId "tallernet/tallernet-redis" -Resource "service/tallernet-redis" -Namespace "tallernet"
+    Import-KubernetesResourceIfUnmanaged -Address "kubernetes_config_map_v1.otel_lgtm_dashboards[0]" -ImportId "tallernet/tallernet-otel-lgtm-dashboards" -Resource "configmap/tallernet-otel-lgtm-dashboards" -Namespace "tallernet"
+    Import-KubernetesResourceIfUnmanaged -Address "kubernetes_config_map_v1.otel_lgtm_provisioning[0]" -ImportId "tallernet/tallernet-otel-lgtm-provisioning" -Resource "configmap/tallernet-otel-lgtm-provisioning" -Namespace "tallernet"
+    Import-KubernetesResourceIfUnmanaged -Address "kubernetes_deployment_v1.otel_lgtm[0]" -ImportId "tallernet/tallernet-otel-lgtm" -Resource "deployment/tallernet-otel-lgtm" -Namespace "tallernet"
+    Import-KubernetesResourceIfUnmanaged -Address "kubernetes_service_v1.otel_lgtm[0]" -ImportId "tallernet/tallernet-otel-lgtm" -Resource "service/tallernet-otel-lgtm" -Namespace "tallernet"
     Import-KubernetesResourceIfUnmanaged -Address "kubernetes_deployment_v1.queue_worker[0]" -ImportId "tallernet/queue-worker" -Resource "deployment/queue-worker" -Namespace "tallernet"
     Repair-UnmanagedHelmRelease -Address "helm_release.nginx_ingress[0]" -Name "ingress-nginx" -Namespace "ingress-nginx"
     Repair-UnmanagedHelmRelease -Address "helm_release.rabbitmq[0]" -Name "tallernet-rabbitmq" -Namespace "tallernet"
@@ -371,7 +375,7 @@ else {
     Confirm-ManualCertificateRecords -Prompt "Cree todos los CNAME anteriores en Cloudns y escriba CONTINUAR cuando haya guardado los registros"
 }
 
-Invoke-TerraformApplyPhase -Name "Fase 8 de 8: instalar NGINX, RabbitMQ, Redis y worker" -Arguments $fullTerraformArguments
+Invoke-TerraformApplyPhase -Name "Fase 8 de 8: instalar NGINX, RabbitMQ, Redis, Worker y LGTM" -Arguments $fullTerraformArguments
 
 if ([string]::IsNullOrWhiteSpace($ApplicationImageTag)) {
     if ($EnableWorker) {

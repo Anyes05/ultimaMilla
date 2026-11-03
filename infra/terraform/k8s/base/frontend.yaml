@@ -30,6 +30,8 @@ spec:
               value: Production
             - name: Database__MigrateOnStartup
               value: "false"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://tallernet-otel-lgtm.tallernet.svc.cluster.local:4317
             - name: Redis__Host
               value: tallernet-redis.tallernet.svc.cluster.local
             - name: Redis__Port
@@ -118,6 +120,8 @@ spec:
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: Production
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://tallernet-otel-lgtm.tallernet.svc.cluster.local:4317
             - name: Redis__Host
               value: tallernet-redis.tallernet.svc.cluster.local
             - name: Redis__Port

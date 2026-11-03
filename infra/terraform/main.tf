@@ -134,7 +134,8 @@ resource "aws_db_instance" "postgres" {
   storage_encrypted      = true
   db_name                = var.database_name
   username               = var.database_master_username
-  password               = var.database_master_password
+  password_wo            = var.database_master_password
+  password_wo_version    = 1
   port                   = 5432
   db_subnet_group_name   = aws_db_subnet_group.postgres.name
   vpc_security_group_ids = [aws_security_group.rds_postgres.id]
