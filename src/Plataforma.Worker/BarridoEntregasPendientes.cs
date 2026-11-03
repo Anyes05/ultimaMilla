@@ -8,7 +8,8 @@ namespace Plataforma.Worker;
 /// Red de seguridad: vuelve a encolar entregas Pendientes que quedaron sin mensaje en la cola
 /// (el worker se cayó entre guardar y publicar, o falló la publicación de un reintento manual).
 /// Solo toma las que llevan más tiempo quietas que la espera más larga, así no adelanta reintentos en curso.
-/// Si dos réplicas encolan la misma, la toma con concurrencia optimista evita el aviso duplicado.
+/// Con varias réplicas barre una sola por vuelta (bloqueo de Postgres); si aun así se encolara dos veces la misma,
+/// la toma con concurrencia optimista evita el aviso duplicado.
 /// </summary>
 public sealed class BarridoEntregasPendientes : BackgroundService
 {
@@ -42,28 +43,37 @@ public sealed class BarridoEntregasPendientes : BackgroundService
             {
                 await using var scope = _scopes.CreateAsyncScope();
                 var db = scope.ServiceProvider.GetRequiredService<AvisosDbContext>();
-                var limite = DateTime.UtcNow - quietas;
-                var tomaVencida = DateTime.UtcNow - EntregaAviso.TomaVencida;
-
-                var olvidadas = await db.Entregas.AsNoTracking()
-                    .Where(e => e.Estado == EstadoEntrega.Pendiente &&
-                                e.ActualizadaEn < limite &&
-                                (e.EnCursoDesde == null || e.EnCursoDesde < tomaVencida))
-                    .OrderBy(e => e.ActualizadaEn)
-                    .Select(e => e.Id)
-                    .Take(100)
-                    .ToListAsync(stoppingToken);
-
-                foreach (var id in olvidadas)
-                    await _publicador.PublicarEntregaAsync(id, stoppingToken);
-
-                if (olvidadas.Count > 0)
-                    _logger.LogInformation("Barrido: {Cantidad} entrega(s) pendiente(s) reencolada(s).", olvidadas.Count);
+                // Con varias réplicas del worker, una sola barre en cada vuelta (letra 6.13).
+                var ejecutado = await EjecucionUnica.IntentarAsync(
+                    db, EjecucionUnica.BarridoEntregas, ct => BarrerAsync(db, quietas, ct), stoppingToken);
+                if (!ejecutado)
+                    _logger.LogDebug("Barrido: otra instancia lo está ejecutando; se saltea esta vuelta.");
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 _logger.LogWarning(ex, "Barrido de entregas pendientes falló; se reintenta en {Segundos}s.", Intervalo.TotalSeconds);
             }
         }
+    }
+
+    private async Task BarrerAsync(AvisosDbContext db, TimeSpan quietas, CancellationToken stoppingToken)
+    {
+        var limite = DateTime.UtcNow - quietas;
+        var tomaVencida = DateTime.UtcNow - EntregaAviso.TomaVencida;
+
+        var olvidadas = await db.Entregas.AsNoTracking()
+            .Where(e => e.Estado == EstadoEntrega.Pendiente &&
+                        e.ActualizadaEn < limite &&
+                        (e.EnCursoDesde == null || e.EnCursoDesde < tomaVencida))
+            .OrderBy(e => e.ActualizadaEn)
+            .Select(e => e.Id)
+            .Take(100)
+            .ToListAsync(stoppingToken);
+
+        foreach (var id in olvidadas)
+            await _publicador.PublicarEntregaAsync(id, stoppingToken);
+
+        if (olvidadas.Count > 0)
+            _logger.LogInformation("Barrido: {Cantidad} entrega(s) pendiente(s) reencolada(s).", olvidadas.Count);
     }
 }

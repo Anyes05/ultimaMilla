@@ -27,6 +27,9 @@ builder.AddObservabilidad(
 builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructure(builder.Configuration);
+// Métrica de aciertos por caso de uso y respaldo contra la base si el caché no responde (letra 6.7).
+builder.Services.AddCacheInstrumentada();
+builder.Services.AddChequeosSalud();
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Backoffice);
 builder.Services.AddRateLimiter(_ => { });
 
@@ -44,6 +47,8 @@ if (opcionesRedis is not null)
 // Módulo de avisos (fallidos y reintentos) y tablero en tiempo real alimentado desde la cola.
 builder.Services.AddAvisos(builder.Configuration);
 builder.Services.AddHostedService<TableroConsumidor>();
+// Métrica "sincronizaciones pendientes" del tablero técnico (letra 6.12).
+builder.Services.AddHostedService<MonitorSincronizaciones>();
 
 builder.Services.ConfigureHttpJsonOptions(opciones =>
 {
@@ -55,14 +60,6 @@ if (opcionesRedis is not null)
     signalR.AddStackExchangeRedis(opcionesRedis.ToString());
 
 var app = builder.Build();
-
-// Aciertos y fallos del caché de esta réplica; el tablero suma las réplicas.
-var cache = app.Services.GetRequiredService<ICacheLectura>();
-MetricasWeb.RegistrarCache(() =>
-{
-    var estadisticas = cache.Estadisticas();
-    return (estadisticas.Hits, estadisticas.Misses);
-});
 
 if (string.Equals(builder.Configuration["Database:MigrateOnStartup"], "true", StringComparison.OrdinalIgnoreCase))
 {
@@ -143,11 +140,8 @@ app.UseWhen(
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/live", () => Results.Ok()).AllowAnonymous();
-app.MapGet("/ready", async (PlataformaDbContext context, CancellationToken cancellationToken) =>
-    await context.Database.CanConnectAsync(cancellationToken)
-        ? Results.Ok()
-        : Results.StatusCode(StatusCodes.Status503ServiceUnavailable)).AllowAnonymous();
+// /live, /ready y /health (letra 6.13); /health detalla base, Redis y RabbitMQ.
+app.MapChequeosSalud();
 
 app.MapPost("/session/login", async (HttpRequest request, IniciarSesion iniciarSesion, IEmisorToken emisor, CancellationToken cancellationToken) =>
 {
@@ -186,6 +180,6 @@ app.MapRazorPages()
 
 app.Run();
 
-static bool EsSonda(PathString ruta) => ruta.StartsWithSegments("/live") || ruta.StartsWithSegments("/ready");
+static bool EsSonda(PathString ruta) => ChequeosSalud.EsSonda(ruta);
 
 public partial class Program;

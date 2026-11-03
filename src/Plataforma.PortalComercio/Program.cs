@@ -27,9 +27,14 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddInfrastructure(builder.Configuration);
+// Métrica de aciertos por caso de uso y respaldo contra la base si el caché no responde (letra 6.7).
+builder.Services.AddCacheInstrumentada();
+builder.Services.AddChequeosSalud();
 builder.Services.AddAutenticacionJwt(builder.Configuration, "/login", CookieAcceso.Portal);
 // Suscripción a avisos e historial de entregas del comercio (letra 6.9).
 builder.Services.AddAvisos(builder.Configuration);
+// Seguimiento público del destinatario (sin sesión, con límite de tasa).
+builder.Services.AddSeguimientoPublico();
 
 var keysPath = Path.Combine(builder.Environment.ContentRootPath, "keys");
 var dataProtection = builder.Services.AddDataProtection()
@@ -54,14 +59,6 @@ builder.Services.AddAntiforgery(options =>
 
 var app = builder.Build();
 
-// Aciertos y fallos del caché de esta réplica; el tablero suma las réplicas.
-var cache = app.Services.GetRequiredService<ICacheLectura>();
-MetricasWeb.RegistrarCache(() =>
-{
-    var estadisticas = cache.Estadisticas();
-    return (estadisticas.Hits, estadisticas.Misses);
-});
-
 if (string.Equals(builder.Configuration["Database:MigrateOnStartup"], "true", StringComparison.OrdinalIgnoreCase))
 {
     await app.Services.MigrarBaseDeDatosAsync();
@@ -79,16 +76,16 @@ app.UseSerilogRequestLogging(opciones => opciones.GetLevel = (contexto, _, ex) =
     ex is not null || contexto.Response.StatusCode >= 500 ? LogEventLevel.Error
     : EsSonda(contexto.Request.Path) ? LogEventLevel.Verbose
     : LogEventLevel.Information);
+// Seguimiento público: host de tracking y límite de tasa. Antes del ruteo, para que el cambio de ruta aplique.
+app.UseSeguimientoPublico();
+app.UseRouting();
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapGet("/live", () => Results.Ok()).AllowAnonymous();
-app.MapGet("/ready", async (PlataformaDbContext context, CancellationToken cancellationToken) =>
-    await context.Database.CanConnectAsync(cancellationToken)
-        ? Results.Ok()
-        : Results.StatusCode(StatusCodes.Status503ServiceUnavailable)).AllowAnonymous();
+// /live, /ready y /health (letra 6.13); /health detalla base, Redis y RabbitMQ.
+app.MapChequeosSalud();
 
 app.MapPost("/session/login", async (HttpRequest request, IniciarSesion iniciarSesion, IEmisorToken emisor, CancellationToken cancellationToken) =>
 {
@@ -154,4 +151,4 @@ app.MapRazorComponents<App>()
 
 app.Run();
 
-static bool EsSonda(PathString ruta) => ruta.StartsWithSegments("/live") || ruta.StartsWithSegments("/ready");
+static bool EsSonda(PathString ruta) => ChequeosSalud.EsSonda(ruta);

@@ -73,9 +73,15 @@ public sealed class SuscripcionAviso
     public IReadOnlyList<string> Tipos =>
         string.IsNullOrWhiteSpace(TiposEvento) ? [] : TiposEvento.Split(',');
 
-    /// <summary>True si el aviso de este tipo (estado nuevo del envío) corresponde a la suscripción.</summary>
+    /// <summary>
+    /// True si el aviso de este tipo (estado nuevo del envío) corresponde a la suscripción.
+    /// Sin tipos elegidos recibe todos los del catálogo v1, no cualquier estado: un estado nuevo
+    /// (por ejemplo EntregadoParcialmente) no le llega a un comercio que integró el formato v1 (RF 36).
+    /// </summary>
     public bool Acepta(string tipoEvento) =>
-        Activa && (Tipos.Count == 0 || Tipos.Contains(tipoEvento, StringComparer.OrdinalIgnoreCase));
+        Activa &&
+        TiposDeEvento.Todos.Contains(tipoEvento, StringComparer.OrdinalIgnoreCase) &&
+        (Tipos.Count == 0 || Tipos.Contains(tipoEvento, StringComparer.OrdinalIgnoreCase));
 
     private static IEnumerable<string> NormalizarTipos(IEnumerable<string> tipos) =>
         (tipos ?? [])
@@ -88,6 +94,7 @@ public sealed class SuscripcionAviso
 /// <summary>
 /// Tipos de evento que un comercio puede elegir: el estado al que pasa el envío.
 /// Son los valores de texto de EstadoEnvio que viajan en el contrato v1 (contracts/mensajes/v1).
+/// Es el catálogo cerrado de v1: los estados que se agreguen después no se suman acá, van al contrato v2.
 /// </summary>
 public static class TiposDeEvento
 {

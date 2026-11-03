@@ -113,6 +113,11 @@ body {
   color: #166534;
 }
 
+.status-entregado-parcialmente {
+  background: #ccfbf1;
+  color: #115e59;
+}
+
 .status-extraviado,
 .status-no-entregado {
   background: #fee2e2;

@@ -104,6 +104,11 @@ h1:focus {
     color: #166534;
 }
 
+.status-entregado-parcialmente {
+    background: #ccfbf1;
+    color: #115e59;
+}
+
 .status-extraviado,
 .status-no-entregado {
     background: #fee2e2;
@@ -143,4 +148,60 @@ h1:focus {
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
+}
+/* Seguimiento público: recorrido del envío en etapas. */
+.seguimiento-etapas {
+    display: flex;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.seguimiento-etapa {
+    align-items: center;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.4rem;
+    position: relative;
+    text-align: center;
+}
+
+/* Línea que une cada punto con el anterior. */
+.seguimiento-etapa + .seguimiento-etapa::before {
+    background: #dee2e6;
+    content: "";
+    height: 3px;
+    left: calc(-50% + 0.75rem);
+    position: absolute;
+    right: calc(50% + 0.75rem);
+    top: 0.6rem;
+}
+
+.seguimiento-etapa__punto {
+    background: #dee2e6;
+    border-radius: 50%;
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.seguimiento-etapa__nombre {
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.seguimiento-etapa.completa .seguimiento-etapa__punto,
+.seguimiento-etapa.completa + .seguimiento-etapa::before {
+    background: var(--bs-primary);
+}
+
+.seguimiento-etapa.actual .seguimiento-etapa__punto {
+    background: var(--bs-primary);
+    box-shadow: 0 0 0 0.3rem rgba(13, 110, 253, 0.2);
+}
+
+.seguimiento-etapa.actual .seguimiento-etapa__nombre {
+    color: var(--bs-body-color);
+    font-weight: 600;
 }

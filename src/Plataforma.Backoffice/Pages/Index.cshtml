@@ -52,7 +52,7 @@
                     <td><span class="tracking-number">@envio.NumeroSeguimiento</span></td>
                     <td>@envio.Destinatario</td>
                     <td>@envio.DireccionEntrega</td>
-                    <td><span class="status-badge @EstadoClase(envio.Estado)">@EstadoNombre(envio.Estado)</span></td>
+                    <td><span class="status-badge @EstadosVista.Clase(envio.Estado)">@EstadosVista.Nombre(envio.Estado)</span></td>
                     <td class="text-end">
                         @if (Model.DestinosDesde(envio.Estado).Count > 0)
                         {
@@ -105,31 +105,12 @@
         EstadoEnvio.AsignadoARuta => "Asignar a ruta",
         EstadoEnvio.EnTransito => "Pasar a tránsito",
         EstadoEnvio.Entregado => "Marcar entregado",
+        EstadoEnvio.EntregadoParcialmente => "Marcar entregado en parte",
         EstadoEnvio.NoEntregado => "Marcar no entregado",
         EstadoEnvio.Reprogramado => "Reprogramar",
         EstadoEnvio.EnDevolucion => "Iniciar devolución",
         EstadoEnvio.Devuelto => "Marcar devuelto",
         EstadoEnvio.Extraviado => "Marcar extraviado",
-        _ => estado.ToString()
-    };
-
-    private static string EstadoClase(EstadoEnvio estado) => estado switch
-    {
-        EstadoEnvio.EnDeposito => "status-en-deposito",
-        EstadoEnvio.AsignadoARuta => "status-asignado-a-ruta",
-        EstadoEnvio.EnTransito => "status-en-transito",
-        EstadoEnvio.NoEntregado => "status-no-entregado",
-        EstadoEnvio.EnDevolucion => "status-en-devolucion",
-        _ => "status-" + estado.ToString().ToLowerInvariant()
-    };
-
-    private static string EstadoNombre(EstadoEnvio estado) => estado switch
-    {
-        EstadoEnvio.EnDeposito => "En depósito",
-        EstadoEnvio.AsignadoARuta => "Asignado a ruta",
-        EstadoEnvio.EnTransito => "En tránsito",
-        EstadoEnvio.NoEntregado => "No entregado",
-        EstadoEnvio.EnDevolucion => "En devolución",
         _ => estado.ToString()
     };
 }

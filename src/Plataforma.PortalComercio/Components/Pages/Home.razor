@@ -124,7 +124,7 @@
                                     <span class="small text-muted d-block">Número de seguimiento</span>
                                     <strong class="tracking-number">@envio.NumeroSeguimiento</strong>
                                 </div>
-                                <span class="status-badge @EstadoClase(envio.Estado)">@EstadoNombre(envio.Estado)</span>
+                                <span class="status-badge @EstadosVista.Clase(envio.Estado)">@EstadosVista.Nombre(envio.Estado)</span>
                             </div>
                             <h3 class="h6 mb-1">@envio.Destinatario</h3>
                             <p class="text-muted mb-0">@envio.DireccionEntrega</p>
@@ -233,26 +233,6 @@
 
     private static string Importe(decimal valor) =>
         valor.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("es-UY"));
-
-    private static string EstadoClase(EstadoEnvio estado) => estado switch
-    {
-        EstadoEnvio.EnDeposito => "status-en-deposito",
-        EstadoEnvio.AsignadoARuta => "status-asignado-a-ruta",
-        EstadoEnvio.EnTransito => "status-en-transito",
-        EstadoEnvio.NoEntregado => "status-no-entregado",
-        EstadoEnvio.EnDevolucion => "status-en-devolucion",
-        _ => "status-" + estado.ToString().ToLowerInvariant()
-    };
-
-    private static string EstadoNombre(EstadoEnvio estado) => estado switch
-    {
-        EstadoEnvio.EnDeposito => "En depósito",
-        EstadoEnvio.AsignadoARuta => "Asignado a ruta",
-        EstadoEnvio.EnTransito => "En tránsito",
-        EstadoEnvio.NoEntregado => "No entregado",
-        EstadoEnvio.EnDevolucion => "En devolución",
-        _ => estado.ToString()
-    };
 
     public class ModelForm
     {

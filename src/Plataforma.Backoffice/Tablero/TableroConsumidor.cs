@@ -9,15 +9,21 @@ using Plataforma.Backoffice;
 namespace Plataforma.Backoffice.Tablero;
 
 /// <summary>
-/// Lleva al tablero los eventos de la cola. Cada réplica del Backoffice declara SU PROPIA cola
-/// (exclusiva y temporal) enlazada al exchange: todas reciben todos los eventos y cada una los empuja
-/// a los navegadores conectados a ella. Así el tablero funciona con varias instancias sin backplane (letra 6.10),
-/// y el Backoffice recibe la información del worker solo por la cola (letra 6.1).
-/// Es intencionalmente por instancia: no es una tarea programada que deba correr una sola vez.
+/// Lleva al tablero los eventos de la cola (letra 6.10). Todas las réplicas del Backoffice consumen de UNA cola
+/// compartida: cada evento lo toma una sola réplica, y el backplane de Redis de SignalR lo hace llegar a todos
+/// los navegadores del operador, estén conectados a la réplica que estén. Antes cada réplica tenía su cola y,
+/// con el backplane, el navegador recibía cada evento una vez por réplica.
+/// Si una réplica cae, la otra sigue consumiendo. El Backoffice recibe los datos del worker solo por la cola (letra 6.1).
 /// </summary>
 public sealed class TableroConsumidor : BackgroundService
 {
     private static readonly TimeSpan EsperaReconexion = TimeSpan.FromSeconds(5);
+
+    /// <summary>Cola compartida por todas las réplicas del Backoffice.</summary>
+    public const string Cola = "plataforma.tablero";
+
+    /// <summary>Un aviso del tablero que nadie mostró en este tiempo ya no sirve: se descarta.</summary>
+    private const int VigenciaMensajeMs = 60_000;
 
     private readonly IHubContext<HubAvisosOperador> _hub;
     private readonly OpcionesRabbitMq _rabbit;
@@ -64,12 +70,14 @@ public sealed class TableroConsumidor : BackgroundService
 
         await canal.ExchangeDeclareAsync(_rabbit.Exchange, ExchangeType.Topic, durable: true, autoDelete: false,
             cancellationToken: stoppingToken);
-        // Cola con nombre del servidor, exclusiva y autodelete: desaparece cuando se apaga la réplica.
-        var cola = await canal.QueueDeclareAsync(string.Empty, durable: false, exclusive: true, autoDelete: true,
+        // Una cola para todas las réplicas (consumidores en competencia). Con vigencia: si el Backoffice
+        // está apagado no se acumulan notificaciones viejas para mostrar al volver.
+        await canal.QueueDeclareAsync(Cola, durable: true, exclusive: false, autoDelete: false,
+            arguments: new Dictionary<string, object?> { ["x-message-ttl"] = VigenciaMensajeMs },
             cancellationToken: stoppingToken);
-        await canal.QueueBindAsync(cola.QueueName, _rabbit.Exchange, TopologiaAvisos.RoutingEstadoCambiado,
+        await canal.QueueBindAsync(Cola, _rabbit.Exchange, TopologiaAvisos.RoutingEstadoCambiado,
             cancellationToken: stoppingToken);
-        await canal.QueueBindAsync(cola.QueueName, _rabbit.Exchange, TopologiaAvisos.RoutingResultadoAviso,
+        await canal.QueueBindAsync(Cola, _rabbit.Exchange, TopologiaAvisos.RoutingResultadoAviso,
             cancellationToken: stoppingToken);
 
         var consumidor = new AsyncEventingBasicConsumer(canal);
@@ -86,8 +94,8 @@ public sealed class TableroConsumidor : BackgroundService
             }
         };
 
-        await canal.BasicConsumeAsync(cola.QueueName, autoAck: true, consumidor, stoppingToken);
-        _logger.LogInformation("Tablero escuchando eventos en la cola {Cola}.", cola.QueueName);
+        await canal.BasicConsumeAsync(Cola, autoAck: true, consumidor, stoppingToken);
+        _logger.LogInformation("Tablero escuchando eventos en la cola {Cola}.", Cola);
 
         var cerrada = new TaskCompletionSource();
         conexion.ConnectionShutdownAsync += (_, _) =>

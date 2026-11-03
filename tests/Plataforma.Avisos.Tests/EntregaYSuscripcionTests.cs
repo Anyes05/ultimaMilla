@@ -22,6 +22,16 @@ public class EntregaYSuscripcionTests
     }
 
     [Fact]
+    public void SuscripcionV1_NoRecibeEstadosFueraDelCatalogoV1()
+    {
+        // RF 36: el comercio que integró v1 no puede recibir un estado que su sistema no conoce.
+        var sinTipos = Suscripcion();
+
+        Assert.False(sinTipos.Acepta("EntregadoParcialmente"));
+        Assert.False(sinTipos.Acepta("CualquierEstadoNuevo"));
+    }
+
+    [Fact]
     public void SuscripcionConTipos_FiltraPorEvento()
     {
         var suscripcion = Suscripcion("Entregado", "NoEntregado");

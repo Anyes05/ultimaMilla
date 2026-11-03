@@ -12,6 +12,7 @@ public static class EstadosVista
         nameof(EstadoEnvio.EnDeposito) => "En depósito",
         nameof(EstadoEnvio.AsignadoARuta) => "Asignado a ruta",
         nameof(EstadoEnvio.EnTransito) => "En tránsito",
+        nameof(EstadoEnvio.EntregadoParcialmente) => "Entregado parcialmente",
         nameof(EstadoEnvio.NoEntregado) => "No entregado",
         nameof(EstadoEnvio.EnDevolucion) => "En devolución",
         _ => estado
@@ -24,6 +25,7 @@ public static class EstadosVista
         nameof(EstadoEnvio.EnDeposito) => "status-en-deposito",
         nameof(EstadoEnvio.AsignadoARuta) => "status-asignado-a-ruta",
         nameof(EstadoEnvio.EnTransito) => "status-en-transito",
+        nameof(EstadoEnvio.EntregadoParcialmente) => "status-entregado-parcialmente",
         nameof(EstadoEnvio.NoEntregado) => "status-no-entregado",
         nameof(EstadoEnvio.EnDevolucion) => "status-en-devolucion",
         _ => "status-" + estado.ToLowerInvariant()

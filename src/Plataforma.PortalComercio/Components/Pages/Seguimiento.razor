@@ -1,0 +1,110 @@
+@page "/seguimiento"
+@page "/seguimiento/{Token}"
+@using Plataforma.Application
+@using Plataforma.Domain
+@inject ObtenerSeguimientoEnvio ObtenerSeguimiento
+
+@* Seguimiento público del destinatario (RF 25, letra 6.2): SSR estático, sin sesión y sin datos personales.
+   Se entra con el enlace que recibe el destinatario (/seguimiento/{token}) o con el número de seguimiento. *@
+
+<PageTitle>Seguimiento de envío</PageTitle>
+<HeadContent>
+    @* Un seguimiento no debe aparecer en buscadores. *@
+    <meta name="robots" content="noindex, nofollow" />
+</HeadContent>
+
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-7">
+        <div class="mb-4">
+            <p class="text-uppercase text-primary fw-semibold small mb-1">Seguimiento</p>
+            <h1 class="h2 fw-bold mb-1">¿Dónde está mi envío?</h1>
+            <p class="text-muted mb-0">Consultá el estado con el enlace que recibiste o con tu número de seguimiento.</p>
+        </div>
+
+        <form method="get" action="/seguimiento" class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <label class="form-label fw-semibold" for="numero">Número de seguimiento</label>
+                <div class="input-group">
+                    <input id="numero" name="numero" value="@Numero" class="form-control form-control-lg"
+                           placeholder="ENV-…" autocomplete="off" maxlength="64" />
+                    <button class="btn btn-primary" type="submit">Consultar</button>
+                </div>
+            </div>
+        </form>
+
+        @if (noEncontrado)
+        {
+            <div class="alert alert-warning" role="alert">
+                No encontramos un envío con ese seguimiento. Revisá el número o el enlace que recibiste.
+            </div>
+        }
+
+        @if (visible is not null)
+        {
+            var etapa = SeguimientoPublico.EtapaActual(visible.Estado);
+            <article class="card border-0 shadow-sm" aria-labelledby="estado-titulo">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                        <div>
+                            <span class="small text-muted d-block">Número de seguimiento</span>
+                            <strong class="tracking-number">@visible.NumeroSeguimiento</strong>
+                        </div>
+                        <span class="status-badge @EstadosVista.Clase(visible.Estado)">@EstadosVista.Nombre(visible.Estado)</span>
+                    </div>
+
+                    <h2 id="estado-titulo" class="h5 mb-4">@SeguimientoPublico.Descripcion(visible.Estado)</h2>
+
+                    @if (etapa >= 0)
+                    {
+                        <ol class="seguimiento-etapas" aria-label="Recorrido del envío">
+                            @for (var i = 0; i < SeguimientoPublico.Etapas.Count; i++)
+                            {
+                                var clase = i < etapa ? "completa" : i == etapa ? "actual" : "pendiente";
+                                <li class="seguimiento-etapa @clase" aria-current="@(i == etapa ? "step" : null)">
+                                    <span class="seguimiento-etapa__punto" aria-hidden="true"></span>
+                                    <span class="seguimiento-etapa__nombre">@SeguimientoPublico.Etapas[i].Nombre</span>
+                                </li>
+                            }
+                        </ol>
+                    }
+
+                    @if (visible.IntentosRealizados > 0)
+                    {
+                        <p class="small text-muted mt-4 mb-0">Intentos de entrega realizados: @visible.IntentosRealizados</p>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Token del enlace público (ruta /seguimiento/{token}).</summary>
+    [Parameter]
+    public string? Token { get; set; }
+
+    /// <summary>Compatibilidad con enlaces del formato anterior (/Seguimiento?token=...).</summary>
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? TokenConsulta { get; set; }
+
+    [SupplyParameterFromQuery(Name = "numero")]
+    public string? Numero { get; set; }
+
+    private SeguimientoVisible? visible;
+    private bool noEncontrado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var token = string.IsNullOrWhiteSpace(Token) ? TokenConsulta : Token;
+
+        // El caso de uso ya usa caché distribuido (seguimiento: lectura muy frecuente, cambia seguido).
+        if (!string.IsNullOrWhiteSpace(token))
+            visible = await ObtenerSeguimiento.PorTokenAsync(token);
+        else if (!string.IsNullOrWhiteSpace(Numero))
+            visible = await ObtenerSeguimiento.PorNumeroAsync(Numero);
+        else
+            return;
+
+        noEncontrado = visible is null;
+    }
+}

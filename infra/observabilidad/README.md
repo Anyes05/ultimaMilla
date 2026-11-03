@@ -53,13 +53,16 @@ Abrir `http://localhost:3000` mientras el comando permanece activo.
 | Métrica | Origen | Significado |
 |---|---|---|
 | `http_server_request_duration_seconds_*` | Backoffice, Portal | Latencia y códigos HTTP (media, p95, p99, errores) |
-| `plataforma_cache_aciertos_total`, `plataforma_cache_fallos_total` | Backoffice, Portal | Lecturas del caché por réplica (el tablero las suma) |
+| `plataforma_cache_lecturas_total{caso_uso, resultado}` | Backoffice, Portal | Lecturas del caché por caso de uso (`seguimiento`, `configuracion-operador`, `tarifas`) y resultado (`acierto`, `fallo`, `error` = caché no disponible, se leyó de la base) |
 | `plataforma_cola_mensajes{cola}` | Worker | Mensajes esperando en cada cola de avisos |
 | `plataforma_avisos_entregas{estado}` | Worker | Entregas de avisos por estado (`Fallido` = esperan reintento manual) |
 | `plataforma_avisos_intentos_total{resultado}` | Worker | Intentos: `entregado`, `reintento`, `fallido` |
 | `plataforma_avisos_duracion_seconds_*` | Worker | Tiempo de la llamada HTTP al comercio |
+| `plataforma_sincronizaciones_pendientes{operador}` | Backoffice | Envíos en la calle (asignados a ruta o en tránsito) cuyo resultado el repartidor todavía no sincronizó |
 
-Pendiente de definir (Ana y Álvaro): **sincronizaciones pendientes**. El tablero tiene el panel reservado.
+**Sincronizaciones pendientes:** el servidor no ve la cola local del teléfono; mide los resultados que todavía
+espera de los dispositivos (envíos asignados a ruta o en tránsito). Si la app llegara a informar su cola, se
+puede sumar como otra serie del mismo panel.
 
 ## Local (compose)
 

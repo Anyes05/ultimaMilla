@@ -12,6 +12,8 @@ builder.Services.AddHostedService<ConsumidorEnvioEstadoCambiado>();
 builder.Services.AddHostedService<ConsumidorEntregas>();
 builder.Services.AddHostedService<BarridoEntregasPendientes>();
 builder.Services.AddHostedService<MonitorColas>();
+// Salud para Kubernetes (sondas exec): /tmp/worker-vivo y /tmp/worker-listo.
+builder.Services.AddHostedService<LatidoWorker>();
 
 // Apagado controlado: da tiempo a terminar el mensaje en curso antes de cortar (SIGTERM de Kubernetes).
 builder.Services.Configure<HostOptions>(opciones => opciones.ShutdownTimeout = TimeSpan.FromSeconds(20));

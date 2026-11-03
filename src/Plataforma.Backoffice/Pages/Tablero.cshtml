@@ -88,11 +88,12 @@
         (() => {
             const nombres = {
                 EnDeposito: "En depósito", AsignadoARuta: "Asignado a ruta", EnTransito: "En tránsito",
-                NoEntregado: "No entregado", EnDevolucion: "En devolución"
+                EntregadoParcialmente: "Entregado parcialmente", NoEntregado: "No entregado", EnDevolucion: "En devolución"
             };
             const clases = {
                 EnDeposito: "status-en-deposito", AsignadoARuta: "status-asignado-a-ruta", EnTransito: "status-en-transito",
-                NoEntregado: "status-no-entregado", EnDevolucion: "status-en-devolucion"
+                EntregadoParcialmente: "status-entregado-parcialmente", NoEntregado: "status-no-entregado",
+                EnDevolucion: "status-en-devolucion"
             };
             const nombre = estado => nombres[estado] ?? estado;
             const clase = estado => clases[estado] ?? "status-" + estado.toLowerCase();
@@ -127,7 +128,17 @@
                 .withAutomaticReconnect()
                 .build();
 
+            // Segunda barrera contra repetidos (reconexión, reintentos): cada evento se muestra una sola vez.
+            const vistos = new Set();
+            function primeraVez(clave) {
+                if (vistos.has(clave)) return false;
+                vistos.add(clave);
+                if (vistos.size > 500) vistos.delete(vistos.values().next().value);
+                return true;
+            }
+
             conexion.on("estadoEnvioCambiado", e => {
+                if (!primeraVez("estado:" + e.eventId)) return;
                 const fila = document.querySelector(`tr[data-envio="${e.envioId}"]`);
                 const tracking = fila?.dataset.tracking ?? e.envioId.substring(0, 8);
                 if (fila) {
@@ -144,6 +155,7 @@
             });
 
             conexion.on("avisoResultado", a => {
+                if (!primeraVez(`aviso:${a.entregaId}:${a.intentos}:${a.estado}`)) return;
                 const fila = document.querySelector(`tr[data-envio="${a.envioId}"]`);
                 const tracking = fila?.dataset.tracking ?? a.envioId.substring(0, 8);
                 if (a.estado === "Entregado") sumar("#avisos-entregados", 1);

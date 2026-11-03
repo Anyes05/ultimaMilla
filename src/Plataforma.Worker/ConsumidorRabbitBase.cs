@@ -42,6 +42,8 @@ public abstract class ConsumidorRabbitBase : BackgroundService
             return;
         }
 
+        LatidoWorker.Informar(GetType().Name, escuchando: false);
+
         // RabbitMQ puede arrancar después que el worker (pod o compose): se reintenta hasta conectar.
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -55,6 +57,7 @@ public abstract class ConsumidorRabbitBase : BackgroundService
             }
             catch (Exception ex)
             {
+                LatidoWorker.Informar(GetType().Name, escuchando: false);
                 Logger.LogWarning(ex, "{Consumidor}: sin conexión con RabbitMQ en {Host}:{Port}; reintento en {Segundos}s.",
                     GetType().Name, Rabbit.Host, Rabbit.Port, EsperaReconexion.TotalSeconds);
                 await Task.Delay(EsperaReconexion, stoppingToken);
@@ -94,6 +97,7 @@ public abstract class ConsumidorRabbitBase : BackgroundService
 
         await canal.BasicConsumeAsync(Cola, autoAck: false, consumidor, stoppingToken);
         Logger.LogInformation("{Consumidor} escuchando la cola {Cola}.", GetType().Name, Cola);
+        LatidoWorker.Informar(GetType().Name, escuchando: true);
 
         var cerrada = new TaskCompletionSource();
         conexion.ConnectionShutdownAsync += (_, _) =>

@@ -224,7 +224,7 @@
     {
       "type": "stat",
       "title": "Aciertos del caché",
-      "description": "Aciertos / (aciertos + fallos), sumando todas las réplicas.",
+      "description": "Aciertos / lecturas totales, todas las réplicas y casos de uso. El detalle por caso de uso está abajo.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -242,7 +242,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(plataforma_cache_aciertos_total) / (sum(plataforma_cache_aciertos_total) + sum(plataforma_cache_fallos_total))",
+          "expr": "sum(plataforma_cache_lecturas_total{resultado=\"acierto\"}) / sum(plataforma_cache_lecturas_total)",
           "instant": false
         }
       ],
@@ -552,8 +552,8 @@
     },
     {
       "type": "timeseries",
-      "title": "Caché: aciertos y fallos",
-      "description": "Lecturas del caché distribuido por minuto.",
+      "title": "Caché: aciertos por caso de uso",
+      "description": "Relación de aciertos de cada caso de uso en los últimos 5 min (seguimiento, configuración del operador, tarifas).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -571,22 +571,13 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(plataforma_cache_aciertos_total[5m])) * 60",
-          "legendFormat": "aciertos/min"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(rate(plataforma_cache_fallos_total[5m])) * 60",
-          "legendFormat": "fallos/min"
+          "legendFormat": "{{caso_uso}}",
+          "expr": "sum by (caso_uso) (rate(plataforma_cache_lecturas_total{resultado=\"acierto\"}[5m])) / sum by (caso_uso) (rate(plataforma_cache_lecturas_total[5m]))"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "none"
+          "unit": "percentunit"
         },
         "overrides": []
       },
@@ -601,17 +592,83 @@
       }
     },
     {
-      "type": "text",
+      "type": "timeseries",
       "title": "Sincronizaciones pendientes",
+      "description": "Por operador: envíos en la calle (asignados a ruta o en tránsito) cuyo resultado el repartidor todavía no sincronizó. Baja cuando la app sincroniza entregas o intentos fallidos.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "gridPos": {
         "x": 0,
         "y": 29,
-        "w": 24,
-        "h": 3
+        "w": 12,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "{{operador}}",
+          "expr": "max by (operador) (plataforma_sincronizaciones_pendientes)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
       },
       "options": {
-        "mode": "markdown",
-        "content": "**Pendiente:** la métrica la define el equipo de la app móvil y la API de sincronización (Álvaro y Ana). Cuando exista `plataforma_sync_pendientes`, este panel se reemplaza por su valor."
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Caché no disponible (lecturas a la base)",
+      "description": "Lecturas que fueron directo a la base porque el caché no respondió. Con Redis caído el sistema sigue funcionando, más lento.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 29,
+        "w": 12,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "legendFormat": "{{caso_uso}}",
+          "expr": "sum by (caso_uso) (rate(plataforma_cache_lecturas_total{resultado=\"error\"}[5m])) * 60"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
       }
     }
   ]
