@@ -124,6 +124,12 @@ por LAN usar HTTPS con certificado confiable. No incorporar secretos backend.
 
 ## Evidencia, carga y sincronizacion automatica (29/10)
 
+Al guardar una entrega o intento fallido desde el formulario se obtiene una
+posicion GPS nueva automaticamente (precision alta, timeout de 20 segundos).
+No reutiliza una captura manual anterior. Si falla o no hay permisos, no guarda
+el comprobante y conserva el formulario para reintentar. No requiere Internet
+para solicitar GPS. El boton Capturar GPS permite comprobarlo antes de guardar.
+
 Los estados usan textos simples: Entrega registrada, En camino y Pendiente de
 carga. La sincronizacion se informa por separado para distinguir comprobantes
 pendientes o rechazados de los ya confirmados, sin etiquetas tecnicas.
