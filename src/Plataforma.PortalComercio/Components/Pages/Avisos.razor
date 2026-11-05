@@ -68,6 +68,22 @@
                         </div>
                     </div>
 
+                    @* RF 36: el contrato está versionado. v1 es el formato original y no cambia; v2 suma lo del cambio. *@
+                    <fieldset class="mb-3">
+                        <legend class="form-label fw-semibold fs-6">Formato del aviso</legend>
+                        <InputRadioGroup @bind-Value="Formulario!.VersionContrato">
+                            <div class="form-check">
+                                <InputRadio id="version-1" Value="ContratoAvisos.V1" class="form-check-input" />
+                                <label class="form-check-label" for="version-1"><strong>v1</strong>: el formato original. Tu integración actual sigue igual.</label>
+                            </div>
+                            <div class="form-check">
+                                <InputRadio id="version-2" Value="ContratoAvisos.V2" class="form-check-input" />
+                                <label class="form-check-label" for="version-2"><strong>v2</strong>: incluye el número de seguimiento y los envíos entregados en parte.</label>
+                            </div>
+                        </InputRadioGroup>
+                        <div class="form-text">Viaja en el encabezado <code>@ContratoAvisos.HeaderVersion</code>. Detalle de cada versión en el contrato de avisos.</div>
+                    </fieldset>
+
                     <fieldset class="mb-3">
                         <legend class="form-label fw-semibold fs-6">Eventos que querés recibir</legend>
                         <div class="row row-cols-2 row-cols-md-3 g-1">
@@ -78,12 +94,18 @@
                                     <div class="form-check">
                                         <InputCheckbox id="@($"tipo-{indice}")" @bind-Value="Formulario.Tipos[indice].Seleccionado" class="form-check-input" />
                                         <input type="hidden" name="Formulario.Tipos[@indice].Tipo" value="@Formulario.Tipos[indice].Tipo" />
-                                        <label class="form-check-label" for="@($"tipo-{indice}")">@TiposDeEvento.Nombre(Formulario.Tipos[indice].Tipo)</label>
+                                        <label class="form-check-label" for="@($"tipo-{indice}")">
+                                            @TiposDeEvento.Nombre(Formulario.Tipos[indice].Tipo)
+                                            @if (ContratoAvisos.AgregadosV2.Contains(Formulario.Tipos[indice].Tipo))
+                                            {
+                                                <span class="badge text-bg-light">solo v2</span>
+                                            }
+                                        </label>
                                     </div>
                                 </div>
                             }
                         </div>
-                        <div class="form-text">Si no marcás ninguno, recibís todos.</div>
+                        <div class="form-text">Si no marcás ninguno, recibís todos los de tu formato. Los marcados "solo v2" no se envían en v1.</div>
                     </fieldset>
 
                     <div class="form-check form-switch mb-4">
@@ -112,7 +134,7 @@
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>Fecha</th><th>Envío</th><th>Evento del envío</th><th>Aviso</th><th>Intentos</th><th>Detalle</th><th></th></tr>
+                        <tr><th>Fecha</th><th>Envío</th><th>Evento del envío</th><th>Aviso</th><th>Formato</th><th>Intentos</th><th>Detalle</th><th></th></tr>
                     </thead>
                     <tbody>
                         @foreach (var entrega in Entregas)
@@ -122,8 +144,16 @@
                                 <td><span class="tracking-number">@(Tracking.TryGetValue(entrega.EnvioId, out var numero) ? numero : entrega.EnvioId.ToString()[..8])</span></td>
                                 <td>@TiposDeEvento.Nombre(entrega.TipoEvento)</td>
                                 <td><span class="status-badge @ClaseEstado(entrega.Estado)">@NombreEstado(entrega.Estado)</span></td>
+                                <td><span class="badge text-bg-light">v@(entrega.VersionContrato)</span></td>
                                 <td>@entrega.Intentos</td>
-                                <td class="small text-muted">@(entrega.UltimoError ?? (entrega.UltimoCodigoHttp is int codigo ? $"HTTP {codigo}" : "—"))</td>
+                                <td class="small text-muted">
+                                    @(entrega.UltimoError ?? (entrega.UltimoCodigoHttp is int codigo ? $"HTTP {codigo}" : "—"))
+                                    @* El cuerpo exacto que recibió tu sistema (y que se firmó). *@
+                                    <details class="mt-1">
+                                        <summary>Ver mensaje</summary>
+                                        <pre class="aviso-mensaje">@MensajeLegible(entrega.Payload)</pre>
+                                    </details>
+                                </td>
                                 <td class="text-end">
                                     @if (entrega.Estado == EstadoEntrega.Fallido)
                                     {
@@ -138,7 +168,7 @@
                         }
                         @if (Entregas.Count == 0)
                         {
-                            <tr><td colspan="7" class="text-center text-muted py-5">Todavía no se enviaron avisos.</td></tr>
+                            <tr><td colspan="8" class="text-center text-muted py-5">Todavía no se enviaron avisos.</td></tr>
                         }
                     </tbody>
                 </table>
@@ -218,7 +248,8 @@
                 Formulario.Url,
                 Formulario.Secreto,
                 Formulario.Tipos.Where(t => t.Seleccionado).Select(t => t.Tipo),
-                Formulario.Activa);
+                Formulario.Activa,
+                versionContrato: Formulario.VersionContrato);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
@@ -238,6 +269,20 @@
 
         comercioId = comercio;
         return true;
+    }
+
+    // El cuerpo se guarda compacto; para leerlo en pantalla se indenta (no se modifica lo enviado).
+    private static string MensajeLegible(string payload)
+    {
+        try
+        {
+            using var documento = System.Text.Json.JsonDocument.Parse(payload);
+            return System.Text.Json.JsonSerializer.Serialize(documento.RootElement, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return payload;
+        }
     }
 
     private static string ClaseEstado(EstadoEntrega estado) => estado switch
@@ -265,10 +310,13 @@
 
         public bool Activa { get; set; } = true;
 
+        public int VersionContrato { get; set; } = ContratoAvisos.V1;
+
         public List<TipoSeleccion> Tipos { get; set; } = [];
 
+        // Se muestran los tipos de v2 (incluye los de v1); los "solo v2" se descartan al guardar si se elige v1.
         public static SuscripcionForm Vacio() =>
-            new() { Tipos = TiposDeEvento.Todos.Select(t => new TipoSeleccion { Tipo = t }).ToList() };
+            new() { Tipos = ContratoAvisos.Tipos(ContratoAvisos.V2).Select(t => new TipoSeleccion { Tipo = t }).ToList() };
 
         public static SuscripcionForm Nuevo()
         {
@@ -282,7 +330,8 @@
             {
                 Url = suscripcion.Url,
                 Activa = suscripcion.Activa,
-                Tipos = TiposDeEvento.Todos
+                VersionContrato = suscripcion.VersionContrato,
+                Tipos = ContratoAvisos.Tipos(ContratoAvisos.V2)
                     .Select(t => new TipoSeleccion { Tipo = t, Seleccionado = suscripcion.Tipos.Contains(t, StringComparer.OrdinalIgnoreCase) })
                     .ToList()
             };

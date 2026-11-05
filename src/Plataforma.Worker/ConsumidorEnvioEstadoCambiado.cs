@@ -67,8 +67,11 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
             .Where(s => s.Acepta(evento.EstadoNuevo))
             .ToList();
 
-        var payload = JsonAvisos.Serializar(new AvisoComercio(
-            evento.EventId, "EnvioEstadoCambiado", evento.Fecha, evento.EnvioId, evento.EstadoAnterior, evento.EstadoNuevo));
+        // Cada suscripción recibe el cuerpo de SU versión del contrato (RF 36): el mismo evento sale en v1 para un
+        // comercio y en v2 para otro. El número de seguimiento solo lo lleva v2; se busca si alguna lo necesita.
+        var numeroSeguimiento = suscripciones.Any(s => s.VersionContrato >= ContratoAvisos.V2)
+            ? await BuscarNumeroSeguimientoAsync(db, evento, stoppingToken)
+            : null;
 
         var nuevas = new List<EntregaAviso>();
         foreach (var suscripcion in suscripciones)
@@ -82,6 +85,7 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
                 continue;
             }
 
+            var payload = ContratoAvisos.Armar(suscripcion.VersionContrato, evento, numeroSeguimiento);
             var entrega = EntregaAviso.Crear(evento.EventId, suscripcion, evento.EnvioId, evento.EstadoNuevo, payload, DateTime.UtcNow);
             db.Entregas.Add(entrega);
             nuevas.Add(entrega);
@@ -117,6 +121,12 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
     /// TRANSITORIO: el contrato v1 no trae comercioId, así que se lee de la tabla Envios del núcleo
     /// (solo lectura, filtrando por operador). Cuando el evento incluya comercioId se deja de usar.
     /// </summary>
+    // Transitorio, como la búsqueda de comercio: el contrato v1 del evento interno no trae el número.
+    private static async Task<string?> BuscarNumeroSeguimientoAsync(AvisosDbContext db, EventoEstadoEnvio evento, CancellationToken ct) =>
+        await db.Database
+            .SqlQuery<string>($"""SELECT "NumeroSeguimiento" AS "Value" FROM public."Envios" WHERE "Id" = {evento.EnvioId} AND "OperadorId" = {evento.OperadorId}""")
+            .SingleOrDefaultAsync(ct);
+
     private static async Task<Guid?> BuscarComercioAsync(AvisosDbContext db, EventoEstadoEnvio evento, CancellationToken ct)
     {
         var comercio = await db.Database

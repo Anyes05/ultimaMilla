@@ -27,6 +27,12 @@ public sealed class EntregaAviso
     /// <summary>Cuerpo JSON exacto que se envía (y se firma) al comercio.</summary>
     public string Payload { get; private set; } = string.Empty;
 
+    /// <summary>
+    /// Versión del contrato con la que se armó el cuerpo. Se fija al crear: un reintento o reenvío sale igual
+    /// aunque el comercio haya cambiado de versión después (mismo EventId, mismo cuerpo).
+    /// </summary>
+    public int VersionContrato { get; private set; } = ContratoAvisos.V1;
+
     public EstadoEntrega Estado { get; private set; }
     public int Intentos { get; private set; }
     public int? UltimoCodigoHttp { get; private set; }
@@ -61,6 +67,7 @@ public sealed class EntregaAviso
             EnvioId = envioId,
             TipoEvento = tipoEvento,
             Payload = payload,
+            VersionContrato = suscripcion.VersionContrato,
             Estado = EstadoEntrega.Pendiente,
             CreadaEn = ahoraUtc,
             ActualizadaEn = ahoraUtc

@@ -15,7 +15,9 @@ public sealed record EntregaVista(
     string? UltimoError,
     DateTime CreadaEn,
     DateTime ActualizadaEn,
-    string Url);
+    string Url,
+    int VersionContrato = ContratoAvisos.V1,
+    string Payload = "");
 
 public sealed record ResumenAvisos(int Pendientes, int Entregados, int Fallidos);
 
@@ -51,7 +53,8 @@ public sealed class ServicioAvisos
         string? secreto,
         IEnumerable<string> tiposEvento,
         bool activa,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int versionContrato = ContratoAvisos.V1)
     {
         if (!_opciones.UrlPermitida(url?.Trim() ?? string.Empty))
             throw new ArgumentException("La URL debe empezar con https://.", nameof(url));
@@ -62,13 +65,13 @@ public sealed class ServicioAvisos
 
         if (suscripcion is null)
         {
-            suscripcion = SuscripcionAviso.Crear(operadorId, comercioId, url!, secreto ?? string.Empty, tiposEvento, activa, ahora);
+            suscripcion = SuscripcionAviso.Crear(operadorId, comercioId, url!, secreto ?? string.Empty, tiposEvento, activa, ahora, versionContrato);
             _db.Suscripciones.Add(suscripcion);
         }
         else
         {
             var secretoFinal = string.IsNullOrWhiteSpace(secreto) ? suscripcion.Secreto : secreto;
-            suscripcion.Actualizar(url!, secretoFinal, tiposEvento, activa, ahora);
+            suscripcion.Actualizar(url!, secretoFinal, tiposEvento, activa, ahora, versionContrato);
         }
 
         try
@@ -169,6 +172,8 @@ public sealed class ServicioAvisos
                     entrega.UltimoError,
                     entrega.CreadaEn,
                     entrega.ActualizadaEn,
-                    suscripcion.Url))
+                    suscripcion.Url,
+                    entrega.VersionContrato,
+                    entrega.Payload))
             .ToListAsync(cancellationToken);
 }

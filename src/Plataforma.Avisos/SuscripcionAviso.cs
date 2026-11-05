@@ -18,6 +18,13 @@ public sealed class SuscripcionAviso
     public string TiposEvento { get; private set; } = string.Empty;
 
     public bool Activa { get; private set; }
+
+    /// <summary>
+    /// Versión del contrato que recibe (RF 36): 1 = formato original (por defecto, así nadie que ya integró cambia),
+    /// 2 = sobre versionado con los estados y eventos del cambio. Ver <see cref="ContratoAvisos"/>.
+    /// </summary>
+    public int VersionContrato { get; private set; } = ContratoAvisos.V1;
+
     public DateTime CreadaEn { get; private set; }
     public DateTime ActualizadaEn { get; private set; }
 
@@ -35,7 +42,8 @@ public sealed class SuscripcionAviso
         string secreto,
         IEnumerable<string> tiposEvento,
         bool activa,
-        DateTime ahoraUtc)
+        DateTime ahoraUtc,
+        int versionContrato = ContratoAvisos.V1)
     {
         if (operadorId == Guid.Empty)
             throw new ArgumentException("La suscripción necesita un operador.", nameof(operadorId));
@@ -50,12 +58,21 @@ public sealed class SuscripcionAviso
             ComercioId = comercioId,
             CreadaEn = ahoraUtc
         };
-        suscripcion.Actualizar(url, secreto, tiposEvento, activa, ahoraUtc);
+        suscripcion.Actualizar(url, secreto, tiposEvento, activa, ahoraUtc, versionContrato);
         return suscripcion;
     }
 
-    public void Actualizar(string url, string secreto, IEnumerable<string> tiposEvento, bool activa, DateTime ahoraUtc)
+    public void Actualizar(
+        string url,
+        string secreto,
+        IEnumerable<string> tiposEvento,
+        bool activa,
+        DateTime ahoraUtc,
+        int versionContrato = ContratoAvisos.V1)
     {
+        if (!ContratoAvisos.EsValida(versionContrato))
+            throw new ArgumentException("La versión del aviso debe ser 1 o 2.", nameof(versionContrato));
+
         if (!Uri.TryCreate(url?.Trim(), UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
             throw new ArgumentException("La URL del aviso debe ser absoluta, http o https.", nameof(url));
@@ -65,7 +82,8 @@ public sealed class SuscripcionAviso
 
         Url = uri.ToString();
         Secreto = secreto.Trim();
-        TiposEvento = string.Join(',', NormalizarTipos(tiposEvento));
+        VersionContrato = versionContrato;
+        TiposEvento = string.Join(',', NormalizarTipos(tiposEvento, versionContrato));
         Activa = activa;
         ActualizadaEn = ahoraUtc;
     }
@@ -75,18 +93,18 @@ public sealed class SuscripcionAviso
 
     /// <summary>
     /// True si el aviso de este tipo (estado nuevo del envío) corresponde a la suscripción.
-    /// Sin tipos elegidos recibe todos los del catálogo v1, no cualquier estado: un estado nuevo
+    /// Sin tipos elegidos recibe todos los de SU versión, no cualquier estado: un estado nuevo
     /// (por ejemplo EntregadoParcialmente) no le llega a un comercio que integró el formato v1 (RF 36).
     /// </summary>
     public bool Acepta(string tipoEvento) =>
         Activa &&
-        TiposDeEvento.Todos.Contains(tipoEvento, StringComparer.OrdinalIgnoreCase) &&
+        ContratoAvisos.Tipos(VersionContrato).Contains(tipoEvento, StringComparer.OrdinalIgnoreCase) &&
         (Tipos.Count == 0 || Tipos.Contains(tipoEvento, StringComparer.OrdinalIgnoreCase));
 
-    private static IEnumerable<string> NormalizarTipos(IEnumerable<string> tipos) =>
+    private static IEnumerable<string> NormalizarTipos(IEnumerable<string> tipos, int versionContrato) =>
         (tipos ?? [])
             .Select(tipo => tipo.Trim())
-            .Where(tipo => TiposDeEvento.Todos.Contains(tipo, StringComparer.OrdinalIgnoreCase))
+            .Where(tipo => ContratoAvisos.Tipos(versionContrato).Contains(tipo, StringComparer.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(tipo => tipo, StringComparer.Ordinal);
 }
@@ -113,6 +131,7 @@ public static class TiposDeEvento
         "NoEntregado" => "No entregado",
         "Reprogramado" => "Reprogramado",
         "EnDevolucion" => "En devolución",
+        "EntregadoParcialmente" => "Entregado parcialmente",
         "Devuelto" => "Devuelto",
         "Extraviado" => "Extraviado",
         _ => tipo

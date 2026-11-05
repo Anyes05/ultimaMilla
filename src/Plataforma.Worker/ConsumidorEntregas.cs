@@ -144,6 +144,8 @@ public sealed class ConsumidorEntregas : ConsumidorRabbitBase
             Content = new StringContent(entrega.Payload, Encoding.UTF8, "application/json")
         };
         pedido.Headers.Add(FirmaAviso.HeaderEvento, entrega.EventId.ToString());
+        // Versión del cuerpo (RF 36), para que el comercio sepa qué formato recibe antes de leerlo.
+        pedido.Headers.Add(ContratoAvisos.HeaderVersion, entrega.VersionContrato.ToString(System.Globalization.CultureInfo.InvariantCulture));
         pedido.Headers.Add(FirmaAviso.HeaderTimestamp, timestamp.ToString(System.Globalization.CultureInfo.InvariantCulture));
         pedido.Headers.Add(FirmaAviso.HeaderFirma, FirmaAviso.Firmar(suscripcion.Secreto, timestamp, entrega.Payload));
 
