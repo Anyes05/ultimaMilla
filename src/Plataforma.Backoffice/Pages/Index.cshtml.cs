@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Plataforma.Application;
 using Plataforma.Domain;
 
@@ -55,7 +56,7 @@ public class IndexModel : PageModel
     public static bool PuedeTenerComprobante(EstadoEnvio estado) =>
         estado is EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente or EstadoEnvio.NoEntregado;
 
-    public async Task<IActionResult> OnPostCambiarEstadoAsync(Guid envioId, EstadoEnvio nuevoEstado)
+    public async Task<IActionResult> OnPostCambiarEstadoAsync(Guid envioId, EstadoEnvio nuevoEstado, int? version)
     {
         if (!AccesoActual.Intentar(User, out var acceso))
             return Challenge();
@@ -65,6 +66,13 @@ public class IndexModel : PageModel
         if (envio is null)
         {
             TempData["Error"] = "El envío no existe.";
+            return RedirectToPage();
+        }
+
+        // Concurrencia optimista: la pantalla quedó vieja porque otra persona cambió el envío después de cargarla.
+        if (version is int vista && vista != envio.Version)
+        {
+            TempData["Error"] = AvisoCambioConcurrente(envio);
             return RedirectToPage();
         }
 
@@ -90,10 +98,19 @@ public class IndexModel : PageModel
         {
             TempData["Error"] = TextosUsuario.Error(ex);
         }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Dos cambios a la vez sobre la misma versión: la base rechaza el segundo (Version es token de concurrencia).
+            TempData["Error"] = $"{envio.NumeroSeguimiento} lo cambió otra persona en este mismo momento. No se aplicó tu cambio; revisá el estado actual.";
+        }
 
         // PRG: evita reenviar el mismo cambio al refrescar o con doble clic.
         return RedirectToPage();
     }
+
+    private static string AvisoCambioConcurrente(Envio envio) =>
+        $"{envio.NumeroSeguimiento} cambió mientras lo mirabas: ahora está en {EstadosVista.Nombre(envio.Estado)}. " +
+        "No se aplicó tu cambio; revisá y volvé a intentar.";
 
     /// <summary>Solo los cambios válidos que además puede hacer el perfil del usuario.</summary>
     public IReadOnlyList<EstadoEnvio> DestinosDesde(EstadoEnvio estado) =>

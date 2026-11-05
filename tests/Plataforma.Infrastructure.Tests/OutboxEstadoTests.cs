@@ -101,6 +101,30 @@ public class OutboxEstadoTests
         Assert.Contains("\"estadoNuevo\":\"Entregado\"", json);
     }
 
+    [Fact]
+    public async Task DosCambiosSimultaneosDelMismoEnvio_ElSegundoSeRechaza()
+    {
+        // Dos personas cargan el envío en la misma versión; la que guarda segunda no puede pisar a la primera.
+        var db = $"concurrencia-{Guid.NewGuid():N}";
+        var envio = Envio.Admitir(DatosSemilla.OperadorNorteId, DatosSemilla.ComercioNorteId, "Ana Norte", "Calle Norte 1");
+        await using (var seed = CrearContexto(db, null))
+        {
+            seed.Envios.Add(envio);
+            await seed.SaveChangesAsync();
+        }
+
+        await using var primera = CrearContexto(db, DatosSemilla.OperadorNorteId);
+        await using var segunda = CrearContexto(db, DatosSemilla.OperadorNorteId);
+        var vistaPrimera = await primera.Envios.SingleAsync(e => e.Id == envio.Id);
+        var vistaSegunda = await segunda.Envios.SingleAsync(e => e.Id == envio.Id);
+
+        vistaPrimera.CambiarEstado(EstadoEnvio.EnDeposito);
+        await primera.SaveChangesAsync();
+        vistaSegunda.CambiarEstado(EstadoEnvio.EnDeposito);
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => segunda.SaveChangesAsync());
+    }
+
     private static PlataformaDbContext CrearContexto(string nombreDb, Guid? operadorId)
     {
         var operador = new OperadorActualFijo(operadorId);

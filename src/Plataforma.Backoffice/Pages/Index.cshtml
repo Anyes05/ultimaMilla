@@ -66,6 +66,8 @@
                                     <form method="post" asp-page-handler="CambiarEstado">
                                         <input type="hidden" name="envioId" value="@envio.Id" />
                                         <input type="hidden" name="nuevoEstado" value="@destino.ToString()" />
+                                        @* La versión que vio esta persona: si otro lo cambió antes, el servidor no lo pisa. *@
+                                        <input type="hidden" name="version" value="@envio.Version" />
                                         <button class="btn btn-sm btn-outline-primary" type="submit">
                                             @EstadoTexto(destino)
                                         </button>

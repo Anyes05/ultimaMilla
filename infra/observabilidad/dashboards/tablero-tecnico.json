@@ -33,7 +33,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_sum{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m]))",
+          "expr": "sum(rate(http_server_request_duration_seconds_sum{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m]))",
           "instant": false
         }
       ],
@@ -83,7 +83,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m])))",
           "instant": false
         }
       ],
@@ -133,7 +133,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m])))",
           "instant": false
         }
       ],
@@ -183,7 +183,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\",http_response_status_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m]))",
+          "expr": "(sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\",http_response_status_code=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m]))",
           "instant": false
         }
       ],
@@ -348,7 +348,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_server_request_duration_seconds_sum{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m]))",
+          "expr": "sum(rate(http_server_request_duration_seconds_sum{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m]))",
           "legendFormat": "media"
         },
         {
@@ -357,7 +357,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m])))",
           "legendFormat": "p95"
         },
         {
@@ -366,7 +366,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_request_duration_seconds_bucket{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m])))",
           "legendFormat": "p99"
         }
       ],
@@ -407,7 +407,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (job, instance) (rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\"}[5m]))",
+          "expr": "sum by (job, instance) (rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\"}[5m]))",
           "legendFormat": "{{job}} {{instance}}"
         }
       ],
@@ -530,7 +530,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (job) (rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/api/receptor-prueba/.*\",http_response_status_code=~\"5..\"}[5m]))",
+          "expr": "sum by (job) (rate(http_server_request_duration_seconds_count{http_route!~\"/live|/ready|/hubs/.*|/api/receptor-prueba/.*\",http_response_status_code=~\"5..\"}[5m]))",
           "legendFormat": "{{job}}"
         }
       ],

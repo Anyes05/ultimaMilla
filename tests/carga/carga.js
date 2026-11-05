@@ -2,6 +2,8 @@
 //
 // Local (compose):  docker run --rm -i --network ultimamilla_default -v ${PWD}/tests/carga:/carga grafana/k6 run -e PERFIL=humo -e BACKOFFICE=http://backoffice:8080 /carga/carga.js
 // Remoto (EKS):     k6 run -e PERFIL=carga -e BACKOFFICE=https://backoffice.tallernet.cloud-ip.cc -e API=https://api.tallernet.cloud-ip.cc tests/carga/carga.js
+// HPA (09/11):      igual con -e PERFIL=hpa (carga sostenida para que el autoescalado agregue réplicas).
+// Evidencia:        -e RESULTADO=<archivo>.json guarda el resumen con métricas y umbrales.
 // TOKENS es opcional: sin él, el seguimiento se consulta por número (tomado de Monitoreo).
 //
 // No modifica datos: lee seguimiento y pantallas, y sincroniza comprobantes de envíos que no están en la ruta,
@@ -11,19 +13,24 @@ import http from 'k6/http';
 import { check, group, sleep } from 'k6';
 import { Trend } from 'k6/metrics';
 import { uuidv4 } from 'https://jslib.k6.io/k6-utils/1.4.0/index.js';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 
 const BACKOFFICE = __ENV.BACKOFFICE || 'http://localhost:8080';
 const API = __ENV.API || BACKOFFICE;
 const PERFIL = __ENV.PERFIL || 'humo';
 const CLAVE = __ENV.CLAVE || 'Demo123!';
 const USUARIO_BACKOFFICE = __ENV.USUARIO_BACKOFFICE || 'norte.despachador';
-const REPARTIDORES = (__ENV.REPARTIDORES || 'alvaro@demo.test').split(',').map((r) => r.trim()).filter(Boolean);
+// Los dos repartidores de la semilla (Norte y Sur): la sincronización simultánea es de repartidores distintos,
+// de operadores distintos, y no del mismo usuario repetido.
+const REPARTIDORES = (__ENV.REPARTIDORES || 'alvaro@demo.test,sur.repartidor').split(',').map((r) => r.trim()).filter(Boolean);
 const TOKENS = (__ENV.TOKENS || '').split(',').map((t) => t.trim()).filter(Boolean);
 const COMPROBANTES_POR_LOTE = Number(__ENV.LOTE || 20);
+const RESULTADO = __ENV.RESULTADO || '';
 
 const duracionSync = new Trend('sincronizacion_duracion', true);
 
-// Perfiles: "humo" valida el script en minutos; "carga" es la corrida que se informa (rampa + meseta + pico de sync).
+// Perfiles: "humo" valida el script en minutos; "carga" es la corrida que se informa (rampa + meseta + pico de sync);
+// "hpa" sostiene más carga durante más tiempo para que el autoescalado tenga tiempo de reaccionar y se vea.
 const perfiles = {
   humo: {
     seguimiento: { tasa: 5, rampa: '20s', meseta: '40s' },
@@ -35,8 +42,14 @@ const perfiles = {
     backoffice: { usuarios: 10, duracion: '8m' },
     sync: { repartidores: 30, inicio: '4m' },
   },
+  hpa: {
+    seguimiento: { tasa: 120, rampa: '3m', meseta: '10m' },
+    backoffice: { usuarios: 20, duracion: '14m' },
+    sync: { repartidores: 30, inicio: '7m' },
+  },
 };
 const p = perfiles[PERFIL];
+if (!p) throw new Error(`PERFIL desconocido: ${PERFIL} (usar humo, carga o hpa).`);
 
 export const options = {
   scenarios: {
@@ -80,6 +93,8 @@ export const options = {
     'http_req_failed{escenario:sincronizacion}': ['rate<0.01'],
     sincronizacion_duracion: ['p(95)<2000'],
     checks: ['rate>0.99'],
+    // Corte de seguridad: corre contra el ambiente real. Si más del 10 % falla durante 30 s, se detiene.
+    http_req_failed: [{ threshold: 'rate<0.10', abortOnFail: true, delayAbortEval: '30s' }],
   },
 };
 
@@ -162,4 +177,11 @@ export function sincronizacion(datos) {
     'sincronizacion 200': (x) => x.status === 200,
     'comprobantes rechazados sin escribir': (x) => x.status === 200 && x.json('rechazados').length === COMPROBANTES_POR_LOTE,
   });
+}
+
+// Resumen en pantalla y, si se pide, en un archivo para la evidencia (umbrales ✓/✗ y métricas por escenario).
+export function handleSummary(datos) {
+  const salida = { stdout: textSummary(datos, { indent: ' ', enableColors: true }) };
+  if (RESULTADO) salida[RESULTADO] = JSON.stringify({ perfil: PERFIL, fecha: new Date().toISOString(), ...datos }, null, 2);
+  return salida;
 }
