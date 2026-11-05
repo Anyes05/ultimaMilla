@@ -138,7 +138,10 @@ Los estados usan textos simples: Entrega registrada, En camino y Pendiente de
 carga. La sincronizacion se informa por separado para distinguir comprobantes
 pendientes o rechazados de los ya confirmados, sin etiquetas tecnicas.
 La pantalla de ruta prioriza resumen y tarjetas de envios, con Actualizar ruta
-y Sincronizar siempre accesibles al pie. Los reintentos y tokens se agrupan en
+y Sincronizar siempre accesibles al pie, y tarjetas compactas sin renglones
+vacios. Los botones del pie se apilan en ventanas
+menores de 380 unidades; el contenido limita su ancho a 760 en pantallas grandes.
+Los reintentos y tokens se agrupan en
 Opciones de sincronizacion y dispositivo dentro de la lista desplazable.
 Solo se muestra la accion de carga o entrega que permite el estado del envio.
 No hay interruptor de conexion en la interfaz: para probar offline se usa el

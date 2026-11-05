@@ -8,7 +8,7 @@
              HideSoftInputOnTapped="True"
              SafeAreaEdges="All"
              Title="Ruta del dia">
-    <Grid Padding="16,8">
+    <Grid Padding="12,8" MaximumWidthRequest="760" HorizontalOptions="Fill">
       <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12" IsVisible="{Binding MostrarRuta}">
         <VerticalStackLayout Spacing="8">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
@@ -65,15 +65,27 @@
             </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:Envio">
-                    <Border Padding="16" Margin="0,6">
-                        <VerticalStackLayout Spacing="8">
+                    <Border Padding="12" Margin="0,4">
+                        <VerticalStackLayout Spacing="5">
                             <Label Text="{Binding NumeroSeguimiento}" FontAttributes="Bold" FontSize="18"
                                    TextColor="{AppThemeBinding Light={StaticResource Tertiary}, Dark={StaticResource PrimaryDark}}" />
                             <Label Text="{Binding Destinatario}" FontAttributes="Bold" FontSize="16" />
                             <Label Text="{Binding Direccion}" Style="{StaticResource MutedLabel}" FontSize="14" />
                             <Label Text="{Binding EstadoServidorTexto}" Style="{StaticResource EnvioStatusLabel}" />
-                            <Label Text="{Binding EstadoLocalTexto}" FontAttributes="Bold" />
-                            <Label Text="{Binding ComprobanteTexto}" Style="{StaticResource MutedLabel}" />
+                            <Label Text="{Binding EstadoLocalTexto}" FontAttributes="Bold" LineBreakMode="WordWrap">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding EstadoLocalTexto}" Value="">
+                                        <Setter Property="IsVisible" Value="False" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                            <Label Text="{Binding ComprobanteTexto}" Style="{StaticResource MutedLabel}" LineBreakMode="WordWrap">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding ComprobanteTexto}" Value="">
+                                        <Setter Property="IsVisible" Value="False" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
                             <Button Text="Escanear carga" IsVisible="{Binding PuedeCargar}" IsEnabled="{Binding PuedeCargar}"
                                     Clicked="EscanearCarga" CommandParameter="{Binding .}" />
                             <Button Text="Registrar entrega" IsVisible="{Binding PuedeEntregar}" IsEnabled="{Binding PuedeEntregar}"
@@ -86,9 +98,35 @@
         </CollectionView>
         <VerticalStackLayout Grid.Row="3" Spacing="8">
             <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" />
-            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                <Button Text="Actualizar ruta" Command="{Binding DescargarRutaCommand}" Style="{StaticResource SecondaryButton}" />
-                <Button Grid.Column="1" Text="Sincronizar" Command="{Binding SincronizarCommand}" />
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+                <VisualStateManager.VisualStateGroups>
+                    <VisualStateGroup>
+                        <VisualState x:Name="Estrecha">
+                            <VisualState.StateTriggers>
+                                <AdaptiveTrigger MinWindowWidth="0" />
+                            </VisualState.StateTriggers>
+                            <VisualState.Setters>
+                                <Setter TargetName="ActualizarRutaBoton" Property="Grid.ColumnSpan" Value="2" />
+                                <Setter TargetName="SincronizarBoton" Property="Grid.Row" Value="1" />
+                                <Setter TargetName="SincronizarBoton" Property="Grid.Column" Value="0" />
+                                <Setter TargetName="SincronizarBoton" Property="Grid.ColumnSpan" Value="2" />
+                            </VisualState.Setters>
+                        </VisualState>
+                        <VisualState x:Name="Amplia">
+                            <VisualState.StateTriggers>
+                                <AdaptiveTrigger MinWindowWidth="380" />
+                            </VisualState.StateTriggers>
+                            <VisualState.Setters>
+                                <Setter TargetName="ActualizarRutaBoton" Property="Grid.ColumnSpan" Value="1" />
+                                <Setter TargetName="SincronizarBoton" Property="Grid.Row" Value="0" />
+                                <Setter TargetName="SincronizarBoton" Property="Grid.Column" Value="1" />
+                                <Setter TargetName="SincronizarBoton" Property="Grid.ColumnSpan" Value="1" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateManager.VisualStateGroups>
+                <Button x:Name="ActualizarRutaBoton" Text="Actualizar ruta" Command="{Binding DescargarRutaCommand}" Style="{StaticResource SecondaryButton}" />
+                <Button x:Name="SincronizarBoton" Grid.Column="1" Text="Sincronizar" Command="{Binding SincronizarCommand}" />
             </Grid>
         </VerticalStackLayout>
       </Grid>
