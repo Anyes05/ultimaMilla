@@ -71,6 +71,18 @@ depuracion MAUI activa.
 
 ## Contratos y configuracion por ambiente
 
+Cada solicitud HTTP de la app crea una Activity W3C y envia traceparent.
+Si hay una operacion padre, conserva su TraceId con un SpanId nuevo y propaga
+tracestate. No agrega credenciales, coordenadas ni evidencia a las etiquetas.
+Esto permite continuar la correlacion en ASP.NET, outbox y RabbitMQ; no instala
+un exportador OTLP en el telefono ni certifica una traza completa en produccion.
+
+El contrato vigente de Identity es [identidad v1](../../docs/contratos/identidad.md):
+ASP.NET Identity como almacen de usuarios, login HTTP y JWT Bearer existentes.
+El acuerdo cerrado indica que OIDC, redirect y PKCE NO aplican en v1.
+No se inventan endpoints de autorizacion ni clientId, y no se cambia el login.
+Una futura migracion OIDC requiere un acuerdo separado con el equipo.
+
 La app inicia en **API real**, usando HTTPS y los
 [contratos aceptados v1](../../contracts/repartidor/README.md).
 La URL base por defecto esta configurada en `MauiProgram.cs`:

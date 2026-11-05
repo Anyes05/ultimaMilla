@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Text;
 using Plataforma.Mobile.Data;
 using Plataforma.Mobile.Models;
@@ -21,6 +22,39 @@ public sealed partial class RepartidorHttpTests : IDisposable
         data = new RepartidorLocalData(Path.Combine(directory, "api.db"));
         http = new HttpClient(handler) { BaseAddress = new Uri("https://api.example.test/") };
         service = new RepartidorHttpService(http, data, tokens);
+    }
+
+    [Fact]
+    public async Task SolicitudesSinPadreCreanTraceparentW3C()
+    {
+        await Login();
+        Assert.Equal(2, handler.Trazas.Count);
+        foreach (var traza in handler.Trazas)
+        {
+            Assert.True(ActivityContext.TryParse(traza.Parent, traza.State, out var context));
+            Assert.NotEqual(default, context.TraceId);
+            Assert.NotEqual(default, context.SpanId);
+        }
+    }
+
+    [Fact]
+    public async Task SincronizacionContinuaTrazaSinReutilizarSpanNiFiltrarCredenciales()
+    {
+        await Login();
+        using var padre = new Activity("Prueba").SetIdFormat(ActivityIdFormat.W3C).Start();
+        padre.TraceStateString = "prueba=valor";
+        var envio = service.ObtenerRuta().Envios[0];
+        service.RegistrarEntrega(envio.Id, "Receptor", "");
+        handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
+            [new AplicadoContrato(envio.Id, EstadoEnvio.Entregado, 0)], [])));
+        await service.SincronizarAsync();
+        var traza = handler.Trazas.Last();
+        Assert.True(ActivityContext.TryParse(traza.Parent, traza.State, out var contexto));
+        Assert.Equal(padre.TraceId, contexto.TraceId);
+        Assert.NotEqual(padre.SpanId, contexto.SpanId);
+        Assert.Equal("prueba=valor", traza.State);
+        Assert.Same(padre, Activity.Current);
+        Assert.DoesNotContain(tokens.Value!, traza.Parent);
     }
 
     [Fact]
@@ -238,11 +272,14 @@ public sealed partial class RepartidorHttpTests : IDisposable
     {
         public Queue<HttpResponseMessage> Respuestas { get; } = new();
         public List<(string Path, string Body, string? Authorization)> Requests { get; } = [];
+        public List<(string Parent, string? State)> Trazas { get; } = [];
         public Exception? Error { get; set; }
         public Task? Espera { get; set; }
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             if (Espera is not null) await Espera;
+            Trazas.Add((request.Headers.GetValues("traceparent").Single(),
+                request.Headers.TryGetValues("tracestate", out var estados) ? estados.Single() : null));
             Requests.Add((request.RequestUri!.AbsolutePath,
                 request.Content is null ? "" : await request.Content.ReadAsStringAsync(cancellationToken),
                 request.Headers.Authorization?.ToString()));

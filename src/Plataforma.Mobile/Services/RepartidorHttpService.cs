@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using Plataforma.Mobile.Data;
@@ -263,13 +264,31 @@ public sealed class RepartidorHttpService(
     {
         if (endpoint is not null && request.RequestUri is { IsAbsoluteUri: false } relativa)
             request.RequestUri = new Uri(endpoint, relativa);
-        try { return await http.SendAsync(request); }
+        using var actividad = new Activity("Plataforma.Mobile.Solicitud")
+            .SetIdFormat(ActivityIdFormat.W3C)
+            .Start();
+        actividad.SetTag("http.request.method", request.Method.Method);
+        request.Headers.Remove("traceparent");
+        request.Headers.Remove("tracestate");
+        request.Headers.Add("traceparent", actividad.Id!);
+        if (!string.IsNullOrWhiteSpace(actividad.TraceStateString))
+            request.Headers.Add("tracestate", actividad.TraceStateString);
+        try
+        {
+            var response = await http.SendAsync(request);
+            actividad.SetTag("http.response.status_code", (int)response.StatusCode);
+            if (!response.IsSuccessStatusCode)
+                actividad.SetStatus(ActivityStatusCode.Error);
+            return response;
+        }
         catch (HttpRequestException ex)
         {
+            actividad.SetStatus(ActivityStatusCode.Error);
             throw new InvalidOperationException("No pudimos conectar. Comprueba Internet e intentalo de nuevo. Tus comprobantes siguen guardados.", ex);
         }
         catch (TaskCanceledException ex)
         {
+            actividad.SetStatus(ActivityStatusCode.Error);
             throw new InvalidOperationException("La respuesta esta tardando demasiado. Intentalo de nuevo en unos momentos; tus comprobantes siguen guardados.", ex);
         }
     }
