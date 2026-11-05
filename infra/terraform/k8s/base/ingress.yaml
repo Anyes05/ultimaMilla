@@ -36,8 +36,6 @@ spec:
                 name: backoffice
                 port:
                   name: http
-    # Seguimiento público en Blazor (Portal), validado en AWS el 03/11. Vuelta atrás hasta después del 12/11:
-    # volver a "backoffice" acá; su página /Seguimiento sigue disponible.
     - host: tracking.tallernet.cloud-ip.cc
       http:
         paths:
@@ -45,6 +43,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: portal
+                name: backoffice
                 port:
                   name: http
