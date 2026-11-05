@@ -32,6 +32,8 @@ public sealed class AvisosDbContext : DbContext
             entidad.Property(suscripcion => suscripcion.Url).HasMaxLength(500).IsRequired();
             entidad.Property(suscripcion => suscripcion.Secreto).HasMaxLength(200).IsRequired();
             entidad.Property(suscripcion => suscripcion.TiposEvento).HasMaxLength(300).IsRequired();
+            // Las suscripciones que ya existían quedan en v1 (RF 36: el cambio no puede afectarlas).
+            entidad.Property(suscripcion => suscripcion.VersionContrato).HasDefaultValue(ContratoAvisos.V1);
             entidad.Ignore(suscripcion => suscripcion.Tipos);
             entidad.HasIndex(suscripcion => new { suscripcion.OperadorId, suscripcion.ComercioId });
             if (esNpgsql)
@@ -46,6 +48,7 @@ public sealed class AvisosDbContext : DbContext
             entidad.HasKey(entrega => entrega.Id);
             entidad.Property(entrega => entrega.TipoEvento).HasMaxLength(50).IsRequired();
             entidad.Property(entrega => entrega.Payload).IsRequired();
+            entidad.Property(entrega => entrega.VersionContrato).HasDefaultValue(ContratoAvisos.V1);
             entidad.Property(entrega => entrega.UltimoError).HasMaxLength(500);
             entidad.Property(entrega => entrega.Estado).HasConversion<string>().HasMaxLength(20);
 

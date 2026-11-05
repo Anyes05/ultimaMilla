@@ -455,3 +455,81 @@ Usuario demo de repartidor Norte: `alvaro@demo.test` / `Demo123!` (solo ambiente
 - Dispositivos: [`contracts/repartidor/dispositivos.request.json`](../contracts/repartidor/dispositivos.request.json).
 - **Caso real Backoffice:** en Monitoreo, al cambiar un estado se muestra el `EventId` de outbox. Equivalente API: `POST /api/envios/{id}/estado` con `{ "nuevoEstado": "EnDeposito" }` → responde `eventId`.
 - Fuera del backend Ana (Nadia/Joel): worker de avisos a comercios, SignalR, DLQ avanzada, webhooks.
+- Avisos a comercios (webhooks firmados): contrato versionado aparte, v1 y v2, en la [sección 10](#10-avisos-a-comercios-letra-69-rf-36).
+
+---
+
+## 10. Avisos a comercios (letra 6.9, RF 36)
+
+**Dueña:** Nadia.
+**Código:** `src/Plataforma.Avisos/ContratoAvisos.cs` (versiones), `FirmaAviso.cs` (firma), `Worker/ConsumidorEntregas.cs` (envío).
+
+### 10.1 Por qué está versionado
+
+- **Letra 6.9**: los avisos son una "suscripción configurable por comercio y por tipo de evento", firmados, con reintentos, DLQ e historial.
+- **Cambio de requerimientos, RF 36**: "como los sistemas de los comercios ya reciben avisos con el formato actual, el cambio no puede afectarlos, por lo que el contrato de los avisos deberá versionarse".
+- El cambio de requerimientos (sección 2.3) se tiene que incorporar sin reescribir lo existente.
+
+Por eso **v1 queda congelado**: no se le agregan campos ni tipos de evento. Lo nuevo va en **v2**. Cada suscripción elige su versión. Las suscripciones creadas antes del cambio quedan en v1, porque la migración pone 1 por defecto.
+
+### 10.2 Pedido HTTP (igual en todas las versiones)
+
+`POST` a la URL de la suscripción, con `Content-Type: application/json` y estos encabezados:
+
+| Encabezado | Valor |
+|---|---|
+| `X-Plataforma-Evento` | `eventId` (sirve para idempotencia en el comercio) |
+| `X-Plataforma-Version` | `1` o `2`: la versión del cuerpo. Es nuevo, y un receptor v1 lo puede ignorar. |
+| `X-Plataforma-Timestamp` | segundos Unix |
+| `X-Plataforma-Firma` | `sha256=` + HMAC-SHA256(secreto, `"{timestamp}.{cuerpo}"`) en hexadecimal |
+
+- **Éxito:** cualquier respuesta 2xx.
+- **Fallo:** cualquier otra respuesta, o un timeout. Se reintenta a los 5, 15 y 45 s. Después la entrega queda "fallida" y se puede reintentar a mano desde el Portal.
+- **Duplicados:** el mismo `eventId` puede llegar más de una vez y el comercio debe descartarlo.
+
+### 10.3 Cuerpo v1 (formato original, sin cambios)
+
+```json
+{
+  "eventId": "6f1c…",
+  "tipo": "EnvioEstadoCambiado",
+  "fecha": "2026-11-03T15:04:05+00:00",
+  "envioId": "a2b4…",
+  "estadoAnterior": "EnTransito",
+  "estadoNuevo": "Entregado"
+}
+```
+
+Tipos de evento (estados) que recibe: `EnDeposito`, `AsignadoARuta`, `EnTransito`, `Entregado`, `NoEntregado`, `Reprogramado`, `EnDevolucion`, `Devuelto`, `Extraviado`. Un estado que no está en esta lista **nunca** se envía a una suscripción v1.
+
+### 10.4 Cuerpo v2
+
+```json
+{
+  "version": 2,
+  "eventId": "6f1c…",
+  "tipo": "EnvioEstadoCambiado",
+  "fecha": "2026-11-03T15:04:05+00:00",
+  "envio": {
+    "id": "a2b4…",
+    "numeroSeguimiento": "ENV-E57E…",
+    "estadoAnterior": "EnTransito",
+    "estadoNuevo": "EntregadoParcialmente"
+  }
+}
+```
+
+Diferencias con v1:
+
+- **`version`** viaja en el cuerpo, además de en el encabezado.
+- **Datos del envío agrupados en `envio`**: así los eventos de bulto o de retiro pueden sumar su propio objeto sin romper el formato.
+- **`numeroSeguimiento`**: es el número que el comercio le muestra a su cliente. Puede llegar `null` si todavía no está asignado.
+- **Tipos de evento**: todos los de v1, más `EntregadoParcialmente` (envíos de varios bultos, RF del cambio).
+
+**Pendiente:** cuando el backend publique los eventos de bulto y de retiro, se agregan a v2 como nuevos valores de `tipo`. Los comercios v2 deben ignorar los `tipo` que no conocen.
+
+### 10.5 Cómo elige la versión el comercio
+
+En el Portal, en Avisos → "Formato del aviso", se elige v1 o v2. Si se elige v1, los tipos marcados "solo v2" se descartan al guardar. El historial muestra, para cada aviso, con qué versión se armó y el cuerpo exacto que se envió y firmó ("Ver mensaje").
+
+Cada aviso guarda su propia versión (`EntregaAviso.VersionContrato`). Si el comercio cambia de versión, los reintentos de avisos viejos se envían con el cuerpo original, que es el que se firmó.
