@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Plataforma.Application;
 using Plataforma.Domain;
 
@@ -16,4 +17,10 @@ public sealed class PruebaDeEntregaRepositorio : IPruebaDeEntregaRepositorio
     {
         await _context.PruebasDeEntrega.AddAsync(prueba, cancellationToken);
     }
+
+    public Task<List<PruebaDeEntrega>> ListarPorEnvioAsync(Guid operadorId, Guid envioId, CancellationToken cancellationToken = default) =>
+        _context.PruebasDeEntrega.AsNoTracking()
+            .Where(prueba => prueba.OperadorId == operadorId && prueba.EnvioId == envioId)
+            .OrderBy(prueba => prueba.Fecha)
+            .ToListAsync(cancellationToken);
 }

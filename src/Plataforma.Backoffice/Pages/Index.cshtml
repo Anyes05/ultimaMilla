@@ -54,6 +54,10 @@
                     <td>@envio.DireccionEntrega</td>
                     <td><span class="status-badge @EstadosVista.Clase(envio.Estado)">@EstadosVista.Nombre(envio.Estado)</span></td>
                     <td class="text-end">
+                        @if (IndexModel.PuedeTenerComprobante(envio.Estado))
+                        {
+                            <a class="btn btn-sm btn-outline-secondary mb-1" asp-page="/Comprobante" asp-route-envioId="@envio.Id">Comprobante</a>
+                        }
                         @if (Model.DestinosDesde(envio.Estado).Count > 0)
                         {
                             <div class="d-flex justify-content-end gap-2 flex-wrap">
@@ -69,7 +73,7 @@
                                 }
                             </div>
                         }
-                        else
+                        else if (!IndexModel.PuedeTenerComprobante(envio.Estado))
                         {
                             <span class="text-muted small">Sin acciones</span>
                         }
