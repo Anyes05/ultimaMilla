@@ -152,7 +152,7 @@ public sealed class RepartidorHttpService(
         {
             var entrega = envio.Entrega ?? throw new InvalidOperationException("Comprobante local incompleto.");
             return new EntregaContrato(entrega.Id, envio.Id, entrega.Estado,
-                entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha,
+                entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha.ToUniversalTime(),
                 entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado);
         }).ToArray();
         using var request = new HttpRequestMessage(HttpMethod.Post, "api/repartidor/sincronizacion")

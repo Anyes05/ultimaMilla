@@ -40,6 +40,12 @@ public partial class RutaViewModel(
     [ObservableProperty]
     private bool ocupado;
 
+    [ObservableProperty]
+    private bool mostrarOpciones;
+
+    [RelayCommand]
+    private void AlternarOpciones() => MostrarOpciones = !MostrarOpciones;
+
     public bool HaySeleccion => EnvioSeleccionado is not null;
     public bool PantallaActiva { get; set; }
     public string? Foto { get; set; }
@@ -51,7 +57,7 @@ public partial class RutaViewModel(
     [ObservableProperty]
     private string tokenDispositivo = string.Empty;
     public bool MostrarRuta => !HaySeleccion;
-    public string ModoTexto => "API: servidor configurado";
+    public string ModoTexto => "Tu ruta de reparto";
 
     partial void OnConexionSimuladaChanged(bool value) => repartidor.ConexionSimulada = value;
 
@@ -114,7 +120,7 @@ public partial class RutaViewModel(
                     Foto, Firma, Latitud, Longitud));
             CancelarEntrega();
             ActualizarRuta();
-            Mensaje = "Entrega pendiente guardada en SQLite. Se conserva al cerrar la app.";
+            Mensaje = "Comprobante guardado. Pendiente de sincronizar.";
         });
     }
 
@@ -126,7 +132,7 @@ public partial class RutaViewModel(
             repartidor.RegistrarEvento(new EntregaPendiente(Guid.NewGuid(), envio.Id, "", "",
                 DateTimeOffset.Now, EstadoEnvio.EnTransito, CodigoEscaneado: codigo));
             ActualizarRuta();
-            Mensaje = "Carga guardada. Sincroniza antes de entregar: se requiere confirmacion del servidor.";
+            Mensaje = "Carga guardada. Sincroniza para habilitar la entrega.";
         });
     }
 
@@ -170,8 +176,8 @@ public partial class RutaViewModel(
         {
             var resultado = await repartidor.SincronizarAsync();
             ActualizarRuta();
-            Mensaje = $"API: {resultado.Aplicadas} aceptadas, {resultado.Rechazadas} rechazadas; " +
-                      $"{resultado.Pendientes} sin resolver. Los rechazos conservan el comprobante local.";
+            Mensaje = $"{resultado.Aplicadas} registros sincronizados, {resultado.Rechazadas} rechazados; " +
+                      $"{resultado.Pendientes} por resolver. Tus comprobantes se conservan.";
         }
 
         catch (InvalidOperationException ex)
@@ -209,12 +215,6 @@ public partial class RutaViewModel(
             Mensaje = ex.Message;
         }
         finally { Ocupado = false; }
-    }
-
-    [RelayCommand]
-    private async Task VolverAccesoAsync()
-    {
-        if (!Ocupado) await navigation.MostrarLoginAsync();
     }
 
     [RelayCommand]

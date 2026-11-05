@@ -33,14 +33,27 @@ public sealed record Envio(
     string? MotivoRechazo,
     IReadOnlyList<EntregaPendiente>? Historial = null)
 {
-    public string EstadoServidorTexto => $"Estado conocido del servidor: {Estado}";
+    public string EstadoServidorTexto => Estado switch
+    {
+        EstadoEnvio.Entregado => "Entrega registrada",
+        EstadoEnvio.EnTransito => "En camino",
+        EstadoEnvio.AsignadoARuta => "Pendiente de carga",
+        EstadoEnvio.NoEntregado => "Intento fallido registrado",
+        EstadoEnvio.EnDeposito => "En deposito",
+        EstadoEnvio.EnDevolucion => "En devolucion",
+        EstadoEnvio.Admitido => "Recibido",
+        EstadoEnvio.Extraviado => "Extraviado",
+        EstadoEnvio.Reprogramado => "Reprogramado",
+        EstadoEnvio.Devuelto => "Devuelto",
+        _ => "Estado no disponible"
+    };
 
     public string EstadoLocalTexto => Sincronizacion switch
     {
-        EstadoSincronizacion.Pendiente => "Entrega guardada en SQLite: pendiente",
-        EstadoSincronizacion.Sincronizado => "Entrega aceptada por el servidor",
-        EstadoSincronizacion.Rechazado => $"Rechazada: {MotivoRechazo} Datos locales conservados.",
-        _ => "Sin entrega local"
+        EstadoSincronizacion.Pendiente => "Registro pendiente de sincronizar",
+        EstadoSincronizacion.Sincronizado => "Sincronizado",
+        EstadoSincronizacion.Rechazado => $"Registro rechazado: {MotivoRechazo}. Comprobante conservado.",
+        _ => string.Empty
     };
 
     public string ComprobanteTexto => Entrega is null

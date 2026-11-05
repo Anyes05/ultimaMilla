@@ -16,7 +16,6 @@
                 <Border Padding="20">
                   <VerticalStackLayout Spacing="12">
                 <Label Text="{Binding ModoTexto}" Style="{StaticResource MutedLabel}" />
-                <Button Text="Configurar servidor HTTPS / Compose" Clicked="ConfigurarServidor" Style="{StaticResource SecondaryButton}" />
                 <Label Text="Usuario" FontAttributes="Bold" />
                 <Entry x:Name="UsuarioEntry" Text="{Binding Usuario}" Placeholder="alvaro@demo.test"
                        AutomationId="LoginUsuario" />
@@ -26,16 +25,11 @@
                        AutomationId="LoginClave" />
                 <Button Text="Ingresar" Command="{Binding IngresarCommand}"
                         AutomationId="LoginIngresar" />
-                <Button Text="Continuar sesion guardada (sin red)"
-                        Style="{StaticResource SecondaryButton}"
-                        Command="{Binding ContinuarSesionCommand}" AutomationId="LoginContinuar" />
                 <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" />
                 <Label Text="{Binding Mensaje}" AutomationId="LoginMensaje"
                        SemanticProperties.Description="{Binding Mensaje}" />
                   </VerticalStackLayout>
                 </Border>
-                <Label Text="Ruta y cola cifradas AES-GCM; clave y token en almacenamiento seguro. No es SQLCipher de archivo completo." Style="{StaticResource MutedLabel}" />
-                <Label Text="Contrato JSON aceptado en contracts/repartidor (v1)." Style="{StaticResource MutedLabel}" />
             </VerticalStackLayout>
         </ScrollView>
     </Grid>

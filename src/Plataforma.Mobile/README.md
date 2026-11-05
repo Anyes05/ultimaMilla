@@ -109,15 +109,31 @@ ni rechazos. Si no hay rutas se muestra una lista vacia; tras despachar desde
 Backoffice hay que pulsar ese boton. Varias rutas del mismo dia/operador se
 presentan juntas sin descartar envios. No se mezclan dias diferentes.
 
-En acceso, **Configurar servidor HTTPS / Compose** persiste la URL en
-Preferences (`repartidor.api.url`). Requiere cerrar sesion sin pendientes para
-no enviar evidencia de un servidor a otro. HTTPS mantiene validacion TLS.
+El acceso ya no muestra configuracion del servidor ni el boton de continuar
+sesion. Al iniciar, una sesion local guardada abre directamente la ruta,
+incluso sin red; cerrar sesion impide esa restauracion en el siguiente inicio.
+Si falla la lectura local se muestra el error en acceso sin borrar datos.
+Esto no renueva el JWT: una sesion vencida requiere autenticarse de nuevo.
+Se conserva la URL previamente configurada en Preferences (`repartidor.api.url`)
+para no cambiar de servidor los comprobantes existentes; en instalaciones nuevas
+se utiliza la URL HTTPS por defecto. HTTPS mantiene validacion TLS.
 Para Compose en emulador usar `http://10.0.2.2:PUERTO/` con el puerto publicado
 del Backoffice; para adb reverse, `http://localhost:PUERTO/`.
 Android solo permite HTTP a localhost, 127.0.0.1 y 10.0.2.2; en dispositivo fisico
 por LAN usar HTTPS con certificado confiable. No incorporar secretos backend.
 
 ## Evidencia, carga y sincronizacion automatica (29/10)
+
+Los estados usan textos simples: Entrega registrada, En camino y Pendiente de
+carga. La sincronizacion se informa por separado para distinguir comprobantes
+pendientes o rechazados de los ya confirmados, sin etiquetas tecnicas.
+La pantalla de ruta prioriza resumen y tarjetas de envios, con Actualizar ruta
+y Sincronizar siempre accesibles al pie. Los reintentos y tokens se agrupan en
+Opciones de sincronizacion y dispositivo dentro de la lista desplazable.
+Solo se muestra la accion de carga o entrega que permite el estado del envio.
+No hay interruptor de conexion en la interfaz: para probar offline se usa el
+modo avion del dispositivo. Cerrar sesion reemplaza Volver al acceso y conserva
+el bloqueo si existen pendientes o rechazos; no es una salida que omita ese control.
 
 - **Escanear carga** abre ZXing con permiso de camara; valida el codigo exacto
   del envio AsignadoARuta y guarda un evento durable hacia EnTransito. Incluye
@@ -138,7 +154,7 @@ por LAN usar HTTPS con certificado confiable. No incorporar secretos backend.
   El backend debe aceptar el evento antes de marcarlo como sincronizado.
 - Con la pantalla de ruta activa, auto-sync al volver Internet, activar/reanudar
   ventana y cada 45 segundos con Internet. No corre con app cerrada ni garantiza
-  background Android; no usa WorkManager. Respeta Permitir conexion,
+  background Android; no usa WorkManager. Respeta la disponibilidad de Internet,
   no interrumpe formulario ni captura. Manual y automatico comparten guards;
   el servicio impide registro/descarga/login/logout concurrentes durante await.
 - Maximo 100 envios por lote. Timeouts/respuestas invalidas conservan los mismos
@@ -151,6 +167,11 @@ por LAN usar HTTPS con certificado confiable. No incorporar secretos backend.
   real ni recibe notificaciones. No registrar valores ficticios en produccion.
 
 ## Cifrado local
+
+Al sincronizar por HTTP, FechaDispositivo se normaliza a UTC para compatibilidad
+con PostgreSQL. Se conserva el mismo instante, el eventoId y la hora con offset
+del comprobante local. Tambien se aplica a pendientes guardados antes de esta
+correccion: no se necesita borrar la cola ni volver a registrar las entregas.
 
 El payload JSON de EstadoDemo Id=1 esta cifrado AES-256-GCM, nonce aleatorio y
 autenticacion de version/fila. Clave generada en SecureStorage, nunca hardcodeada.
@@ -168,7 +189,7 @@ probar todo en net10 sin dependencias MAUI.
 
 - Login HTTP/Bearer y login simulado, descarga JSON y conservacion de ruta SQLite.
 - Registrar entrega sin conexion simulada y conservarla tras cerrar el proceso.
-- Continuar la sesion guardada sin red; permite trabajar sobre datos previamente
+- Restaurar automaticamente la sesion guardada sin red; permite trabajar sobre datos previamente
   descargados, no autentica ante el servidor ni renueva el token.
 - Sincronizar un lote construido desde la cola SQLite, incluido un lote vacio.
 - DEMO-001: aceptar entrega si el servidor doble sigue EnTransito.

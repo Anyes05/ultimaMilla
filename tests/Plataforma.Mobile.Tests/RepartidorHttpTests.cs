@@ -76,6 +76,38 @@ public sealed partial class RepartidorHttpTests : IDisposable
     }
 
     [Theory]
+    [InlineData(-3)]
+    [InlineData(0)]
+    [InlineData(5)]
+    public async Task PendienteExistenteSeEnviaEnUtcSinModificarComprobante(int offsetHoras)
+    {
+        await Login();
+        var envio = service.ObtenerRuta().Envios[0];
+        var comprobante = new EntregaPendiente(Guid.NewGuid(), envio.Id, "Receptor", "Puerta",
+            new DateTimeOffset(2026, 11, 5, 10, 26, 0, TimeSpan.FromHours(offsetHoras)));
+        service.RegistrarEvento(comprobante);
+        var reopened = new RepartidorHttpService(http,
+            new RepartidorLocalData(Path.Combine(directory, "api.db")), tokens);
+        handler.Respuestas.Enqueue(new HttpResponseMessage(HttpStatusCode.InternalServerError));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => reopened.SincronizarAsync());
+        var enviado = Assert.Single(ContratosRepartidor.Leer<SincronizacionSolicitud>(
+            handler.Requests.Last().Body).Eventos);
+        Assert.Equal(TimeSpan.Zero, enviado.FechaDispositivo.Offset);
+        Assert.Equal(comprobante.Fecha.UtcDateTime, enviado.FechaDispositivo.UtcDateTime);
+        Assert.Equal(comprobante.Id, enviado.EventoId);
+        Assert.Equal(comprobante, reopened.ObtenerRuta().Envios[0].Entrega);
+        Assert.Equal(comprobante.Fecha.Offset, reopened.ObtenerRuta().Envios[0].Entrega!.Fecha.Offset);
+
+        handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
+            [new AplicadoContrato(envio.Id, EstadoEnvio.Entregado, 0)], [])));
+        Assert.Equal(new ResultadoSincronizacion(1, 0, 0), await reopened.SincronizarAsync());
+        var reintentado = Assert.Single(ContratosRepartidor.Leer<SincronizacionSolicitud>(
+            handler.Requests.Last().Body).Eventos);
+        Assert.Equal(enviado, reintentado);
+        Assert.Equal(comprobante, reopened.ObtenerRuta().Envios[0].Entrega);
+    }
+
+    [Theory]
     [InlineData(401)]
     [InlineData(403)]
     [InlineData(500)]
