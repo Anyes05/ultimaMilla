@@ -124,6 +124,10 @@ por LAN usar HTTPS con certificado confiable. No incorporar secretos backend.
 
 ## Evidencia, carga y sincronizacion automatica (29/10)
 
+La ruta no muestra el aviso fijo de guardado local ni el resumen numerico tras
+sincronizar. Se mantienen los errores y avisos de rechazo que requieren atencion.
+
+El boton se encuentra al pie de la pantalla junto a Actualizar ruta y Sincronizar.
 Empezar recorrido muestra una parada a la vez en el orden de la lista actual,
 sin optimizacion geografica. Solo incluye envios que permiten carga o entrega.
 Guardar correctamente una entrega o intento avanza a la siguiente; un error o

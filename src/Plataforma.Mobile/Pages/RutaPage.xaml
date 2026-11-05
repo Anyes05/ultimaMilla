@@ -18,8 +18,6 @@
             </Grid>
             <Label Text="{Binding Titulo}" Style="{StaticResource HeadingLabel}" FontSize="22" />
             <Label Text="{Binding Resumen}" AutomationId="RutaResumen" FontAttributes="Bold" />
-            <Button Text="Empezar recorrido" Command="{Binding EmpezarRecorridoCommand}"
-                    IsVisible="{Binding MostrarListaDiaria}" />
             <VerticalStackLayout IsVisible="{Binding RecorridoActivo}" Spacing="6">
                 <Label Text="{Binding ProgresoRecorrido}" Style="{StaticResource SectionLabel}" />
                 <Button Text="Siguiente parada" Command="{Binding SiguienteParadaCommand}" Style="{StaticResource SecondaryButton}" />
@@ -28,8 +26,6 @@
                     <Button Grid.Column="1" Text="Pausar recorrido" Command="{Binding PausarRecorridoCommand}" Style="{StaticResource SecondaryButton}" />
                 </Grid>
             </VerticalStackLayout>
-            <Label Text="Tus comprobantes se guardan en el dispositivo y se sincronizan al recuperar Internet."
-                   Style="{StaticResource MutedLabel}" />
         </VerticalStackLayout>
         <Label Grid.Row="1" Text="{Binding Mensaje}" AutomationId="RutaMensaje"
                SemanticProperties.Description="{Binding Mensaje}">
@@ -108,6 +104,8 @@
         </CollectionView>
         <VerticalStackLayout Grid.Row="3" Spacing="8">
             <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" />
+            <Button Text="Empezar recorrido" Command="{Binding EmpezarRecorridoCommand}"
+                    IsVisible="{Binding MostrarListaDiaria}" />
             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="6">
                 <VisualStateManager.VisualStateGroups>
                     <VisualStateGroup>

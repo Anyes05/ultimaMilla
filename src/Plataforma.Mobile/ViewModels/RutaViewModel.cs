@@ -263,8 +263,9 @@ public partial class RutaViewModel(
         {
             var resultado = await repartidor.SincronizarAsync();
             ActualizarRuta();
-            Mensaje = $"{resultado.Aplicadas} registros sincronizados, {resultado.Rechazadas} rechazados; " +
-                      $"{resultado.Pendientes} por resolver. Tus comprobantes se conservan.";
+            Mensaje = resultado.Rechazadas > 0
+                ? "Hay registros rechazados. Revisa el motivo en cada envio; los comprobantes se conservan."
+                : string.Empty;
         }
 
         catch (InvalidOperationException ex)
