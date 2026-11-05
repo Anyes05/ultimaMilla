@@ -22,7 +22,7 @@ public partial class LoginViewModel(
     [ObservableProperty]
     private bool ocupado;
 
-    public string ModoTexto => "API: servidor configurado (HTTPS por defecto)";
+    public string ModoTexto => "Acceso a tu jornada de reparto";
 
     [RelayCommand]
     private async Task ContinuarSesionAsync()
@@ -69,7 +69,7 @@ public partial class LoginViewModel(
         {
             if (!await repartidor.IniciarSesionAsync(Usuario, Clave))
             {
-                Mensaje = "Usuario o clave incorrectos.";
+                Mensaje = "No pudimos ingresar con esos datos. Revisa tu usuario y clave e intentalo de nuevo.";
                 return;
             }
 

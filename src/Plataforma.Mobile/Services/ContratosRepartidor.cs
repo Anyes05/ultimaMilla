@@ -46,11 +46,11 @@ public static class ContratosRepartidor
         try
         {
             return JsonSerializer.Deserialize<T>(json, Options)
-                ?? throw new InvalidOperationException("El contrato JSON no puede ser null.");
+                ?? throw new InvalidOperationException("No recibimos la informacion esperada. Intentalo de nuevo o contacta al operador.");
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException("El JSON no cumple la propuesta de contrato del repartidor.", ex);
+            throw new InvalidOperationException("No pudimos interpretar la respuesta. Tus datos no se borraron. Intentalo de nuevo o contacta al operador.", ex);
         }
     }
 

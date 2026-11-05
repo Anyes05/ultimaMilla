@@ -124,11 +124,15 @@ por LAN usar HTTPS con certificado confiable. No incorporar secretos backend.
 
 ## Evidencia, carga y sincronizacion automatica (29/10)
 
+Los errores visibles de conexion, acceso, sincronizacion, almacenamiento,
+camara y GPS usan mensajes orientados al repartidor con el siguiente paso.
+Los codigos HTTP y excepciones se mantienen en el diagnostico, no en pantalla.
+
 Al guardar una entrega o intento fallido desde el formulario se obtiene una
 posicion GPS nueva automaticamente (precision alta, timeout de 20 segundos).
 No reutiliza una captura manual anterior. Si falla o no hay permisos, no guarda
 el comprobante y conserva el formulario para reintentar. No requiere Internet
-para solicitar GPS. El boton Capturar GPS permite comprobarlo antes de guardar.
+para solicitar GPS. No hay boton de captura manual de GPS.
 
 Los estados usan textos simples: Entrega registrada, En camino y Pendiente de
 carga. La sincronizacion se informa por separado para distinguir comprobantes
@@ -155,7 +159,9 @@ el bloqueo si existen pendientes o rechazos; no es una salida que omita ese cont
   permisos/timeout y hora de guardado del dispositivo con offset. Cancelar foto
   no inventa evidencia. Foto/GPS fallidos muestran mensaje y permiten reintentar.
   Evidencias son opcionales conforme al contrato; no son firma legal ni GPS
-  certificado. La foto no normaliza orientacion EXIF; previsualizacion pendiente.
+  certificado. La foto no normaliza orientacion EXIF. La imagen JPEG adjunta se
+  previsualiza debajo de Tomar foto; se limpia al cambiar de envio, cancelar el
+  formulario o iniciar una nueva captura.
 - **Intento fallido** guarda NoEntregado y exige motivo en Observaciones.
   El backend debe aceptar el evento antes de marcarlo como sincronizado.
 - Con la pantalla de ruta activa, auto-sync al volver Internet, activar/reanudar

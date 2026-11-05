@@ -151,7 +151,7 @@ public sealed class RecorridoDemoTests : IDisposable
         Assert.True(service.HaySesion);
         vm.ConexionSimulada = true;
         vm.SincronizarCommand.Execute(null);
-        Assert.Contains("1 aceptadas", vm.Mensaje);
+        Assert.Contains("1 registros sincronizados", vm.Mensaje);
         await vm.CerrarSesionCommand.ExecuteAsync(null);
         Assert.Equal(1, navigation.Logins);
         Assert.False(service.HaySesion);
@@ -237,7 +237,7 @@ public sealed class RecorridoDemoTests : IDisposable
         var data = new RepartidorLocalData(Path.Combine(directory, "carpeta-inexistente", "demo.db"));
         var service = new RepartidorDemoService(data);
         var error = Assert.Throws<InvalidOperationException>(() => service.IniciarSesion("alvaro@demo.test", "Demo123!"));
-        Assert.Contains("SQLite", error.Message);
+        Assert.Contains("No pudimos abrir tus datos guardados", error.Message);
     }
 
     [Fact]
@@ -246,7 +246,7 @@ public sealed class RecorridoDemoTests : IDisposable
         var path = Path.Combine(directory, "demo.db");
         File.WriteAllText(path, "no es una base SQLite");
         var error = Assert.Throws<InvalidOperationException>(() => CrearServicio().ObtenerRuta());
-        Assert.Contains("SQLite", error.Message);
+        Assert.Contains("No pudimos abrir tus datos guardados", error.Message);
         Assert.Equal("no es una base SQLite", File.ReadAllText(path));
     }
 

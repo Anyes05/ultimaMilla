@@ -112,9 +112,10 @@
                     </Grid>
                     <Label Text="EVIDENCIA OPCIONAL" Style="{StaticResource SectionLabel}" />
                     <Button Text="Tomar foto" Clicked="TomarFoto" Style="{StaticResource SecondaryButton}" />
+                    <Image x:Name="VistaPreviaFoto" IsVisible="False" HeightRequest="220"
+                           Aspect="AspectFit" SemanticProperties.Description="Foto adjunta al comprobante" />
                     <Label Text="La ubicacion se captura automaticamente al guardar. Activa el GPS y permite el acceso a tu ubicacion."
                            Style="{StaticResource MutedLabel}" />
-                    <Button Text="Capturar GPS" Clicked="CapturarGps" Style="{StaticResource SecondaryButton}" />
                     <Label Text="Firma del receptor" FontAttributes="Bold" />
                     <Label Text="Dibuja en el recuadro. La hora se registra al guardar." Style="{StaticResource MutedLabel}" />
                     <GraphicsView x:Name="LienzoFirma" HeightRequest="180" BackgroundColor="White"

@@ -29,14 +29,14 @@ public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? ci
 
             var cifrado = json.StartsWith("aesgcm1:", StringComparison.Ordinal);
             if (cifrado)
-                json = (cipher ?? throw new InvalidOperationException("Falta la clave segura; no se modifico la base.")).Descifrar(json);
+                json = (cipher ?? throw new InvalidOperationException("No podemos acceder a tus datos protegidos. No borres la app; solicita ayuda al operador.")).Descifrar(json);
             var estado = JsonSerializer.Deserialize<EstadoLocalDemo>(json, JsonOptions)
-                ?? throw new InvalidOperationException("La base local contiene datos vacios.");
+                ?? throw new InvalidOperationException("No pudimos recuperar tus datos guardados. No borres la app; solicita ayuda al operador.");
             if (estado.EstadosServidor is null
                 || (estado.HaySesion && estado.Ruta is null)
                 || (estado.Ruta is not null && (estado.Ruta.Envios is null
                     || estado.Ruta.Envios.Any(envio => !estado.EstadosServidor.ContainsKey(envio.Id)))))
-                throw new InvalidOperationException("La ruta local esta incompleta. No se reemplazaron los datos.");
+                throw new InvalidOperationException("Tu ruta guardada esta incompleta. No se reemplazo; solicita ayuda al operador.");
             if (!cifrado && cipher is not null)
             {
                 Guardar(estado);
@@ -48,15 +48,15 @@ public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? ci
         }
         catch (SqliteException ex)
         {
-            throw new InvalidOperationException("No se pudo leer SQLite. Los datos locales no se reiniciaron.", ex);
+            throw new InvalidOperationException("No pudimos abrir tus datos guardados. No borres la app; solicita ayuda al operador.", ex);
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException("La ruta guardada no tiene un formato valido. No se descartaron los datos.", ex);
+            throw new InvalidOperationException("No pudimos recuperar la ruta guardada. No borramos tus datos; solicita ayuda al operador.", ex);
         }
         catch (System.Security.Cryptography.CryptographicException ex)
         {
-            throw new InvalidOperationException("No se pudo descifrar la base. No se reiniciaron ni borraron los datos.", ex);
+            throw new InvalidOperationException("No pudimos desbloquear tus datos protegidos. No reinstales la app ni borres sus datos; solicita ayuda al operador.", ex);
         }
     }
 
@@ -76,18 +76,18 @@ public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? ci
             var json = JsonSerializer.Serialize(estado, JsonOptions);
             var payload = cipher?.Cifrar(json) ?? json;
             if (cipher is not null && cipher.Descifrar(payload) != json)
-                throw new InvalidOperationException("No se valido el cifrado; snapshot anterior conservado.");
+                throw new InvalidOperationException("No pudimos proteger los nuevos datos. Se conservo el registro anterior; solicita ayuda al operador antes de continuar.");
             command.Parameters.AddWithValue("$datos", payload);
             command.ExecuteNonQuery();
             transaction.Commit();
         }
         catch (SqliteException ex)
         {
-            throw new InvalidOperationException("No se pudo guardar en SQLite. La operacion no se confirmo.", ex);
+            throw new InvalidOperationException("No pudimos guardar el registro en el telefono. Comprueba el espacio disponible y vuelve a intentar antes de salir.", ex);
         }
         catch (System.Security.Cryptography.CryptographicException ex)
         {
-            throw new InvalidOperationException("No se pudo cifrar el snapshot. La operacion no se confirmo.", ex);
+            throw new InvalidOperationException("No pudimos proteger ni guardar el registro. No salgas del formulario; solicita ayuda al operador.", ex);
         }
     }
 

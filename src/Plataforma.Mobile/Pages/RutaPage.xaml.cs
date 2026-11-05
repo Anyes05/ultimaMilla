@@ -1,6 +1,7 @@
 using Plataforma.Mobile.ViewModels;
 using Plataforma.Mobile.Models;
 using ZXing.Net.Maui.Controls;
+using Microsoft.Extensions.Logging;
 
 namespace Plataforma.Mobile.Pages;
 
@@ -8,9 +9,11 @@ public partial class RutaPage : ContentPage
 {
     private readonly RutaViewModel viewModel;
     private readonly FirmaDrawable firma = new();
+    private readonly ILogger<RutaPage> logger;
 
-    public RutaPage(RutaViewModel viewModel)
+    public RutaPage(RutaViewModel viewModel, ILogger<RutaPage> logger)
     {
+        this.logger = logger;
         this.viewModel = viewModel;
         BindingContext = viewModel;
         InitializeComponent();
@@ -51,10 +54,10 @@ public partial class RutaPage : ContentPage
         }
     }
 
-    private async void CapturarGps(object? sender, EventArgs e)
+    private void LimpiarVistaPreviaFoto()
     {
-        if (viewModel.Ocupado) return;
-        await ObtenerGpsAsync();
+        VistaPreviaFoto.Source = null;
+        VistaPreviaFoto.IsVisible = false;
     }
 
     private async Task<bool> ObtenerGpsAsync()
@@ -75,7 +78,14 @@ public partial class RutaPage : ContentPage
         catch (Exception ex) when (ex is FeatureNotSupportedException or FeatureNotEnabledException
             or PermissionException or TimeoutException or OperationCanceledException or InvalidOperationException)
         {
-            EstadoEvidencia.Text = $"No se guardo el comprobante: {ex.Message}. Activa la ubicacion y sus permisos y vuelve a guardar. El formulario se conserva.";
+            logger.LogWarning(ex, "No se pudo capturar ubicacion para el comprobante");
+            EstadoEvidencia.Text = ex switch
+            {
+                PermissionException => "Permite el acceso a la ubicacion en Ajustes y vuelve a guardar. Tu formulario se conserva.",
+                FeatureNotEnabledException => "Activa la ubicacion del telefono y vuelve a guardar. Tu formulario se conserva.",
+                FeatureNotSupportedException => "Este dispositivo no permite obtener la ubicacion. Contacta al operador; el comprobante no se guardo.",
+                _ => "No pudimos obtener tu ubicacion. Busca un lugar con mejor senal GPS y vuelve a guardar. Tu formulario se conserva."
+            };
             return false;
         }
         finally { viewModel.Ocupado = false; }
@@ -86,6 +96,7 @@ public partial class RutaPage : ContentPage
         if (viewModel.Ocupado) return;
         viewModel.Ocupado = true;
         viewModel.Foto = null;
+        LimpiarVistaPreviaFoto();
         EstadoEvidencia.Text = "Sin foto adjunta.";
         try
         {
@@ -113,12 +124,21 @@ public partial class RutaPage : ContentPage
             }
             if (jpeg is null) throw new InvalidOperationException("La foto no se pudo comprimir a 512 KiB. Repite con menor detalle.");
             viewModel.Foto = Convert.ToBase64String(jpeg);
+            var imagen = jpeg;
+            VistaPreviaFoto.Source = ImageSource.FromStream(() => new MemoryStream(imagen, writable: false));
+            VistaPreviaFoto.IsVisible = true;
             EstadoEvidencia.Text = $"JPEG adjunto: {jpeg.Length / 1024} KiB";
 #else
             throw new InvalidOperationException("Compresion JPEG implementada en Android; esta plataforma aun no esta validada.");
 #endif
         }
-        catch (Exception ex) { EstadoEvidencia.Text = $"Foto no adjuntada: {ex.Message}"; }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudo capturar o procesar la foto");
+            EstadoEvidencia.Text = ex is PermissionException
+                ? "Permite el acceso a la camara en Ajustes y vuelve a tomar la foto."
+                : "No pudimos adjuntar la foto. Vuelve a tomarla; el resto del formulario se conserva.";
+        }
         finally { viewModel.Ocupado = false; }
     }
 
@@ -167,7 +187,12 @@ public partial class RutaPage : ContentPage
             page.Disappearing += (_, _) => { camera.IsDetecting = false; viewModel.Ocupado = false; };
             await Navigation.PushModalAsync(page);
         }
-        catch (Exception ex) { viewModel.Ocupado = false; viewModel.Mensaje = $"No se pudo escanear: {ex.Message}"; }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudo abrir o completar el escaneo");
+            viewModel.Ocupado = false;
+            viewModel.Mensaje = "No pudimos completar el escaneo. Revisa el permiso de camara y vuelve a intentarlo. No se registro la carga.";
+        }
     }
 
     protected override void OnAppearing()
@@ -188,6 +213,7 @@ public partial class RutaPage : ContentPage
     private void CambioSeleccion(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(RutaViewModel.EnvioSeleccionado)) return;
+        LimpiarVistaPreviaFoto();
         BorrarFirma(null, EventArgs.Empty);
         EstadoEvidencia.Text = "";
     }

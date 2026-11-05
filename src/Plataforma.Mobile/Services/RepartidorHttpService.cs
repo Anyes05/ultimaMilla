@@ -76,7 +76,7 @@ public sealed class RepartidorHttpService(
             throw new InvalidOperationException("Resuelve las entregas pendientes o rechazadas antes de reemplazar la ruta. No se borraron datos.");
         var token = await tokens.LeerAsync();
         if (string.IsNullOrWhiteSpace(token))
-            throw new InvalidOperationException("Inicia sesion con la API para descargar la ruta.");
+            throw new InvalidOperationException("Inicia sesion para actualizar tu ruta. Tus comprobantes siguen guardados.");
         using var request = new HttpRequestMessage(HttpMethod.Get, "api/repartidor/rutas/hoy");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var response = await EnviarAsync(request);
@@ -112,7 +112,7 @@ public sealed class RepartidorHttpService(
         var sesion = ContratosRepartidor.Leer<LoginRespuesta>(await response.Content.ReadAsStringAsync());
         if (sesion.Rol != "repartidor" || string.IsNullOrWhiteSpace(sesion.Token)
             || sesion.RepartidorId == Guid.Empty || sesion.OperadorId == Guid.Empty)
-            throw new InvalidOperationException("La API no devolvio una sesion de repartidor valida.");
+            throw new InvalidOperationException("No pudimos verificar tu cuenta. Intenta ingresar otra vez. Si continua, contacta al operador.");
 
         var estado = data.Leer();
         if (estado.Ruta is not null &&
@@ -143,14 +143,14 @@ public sealed class RepartidorHttpService(
         var ruta = ObtenerRuta();
         var token = await tokens.LeerAsync();
         if (string.IsNullOrWhiteSpace(token))
-            throw new InvalidOperationException("Inicia sesion con la API para sincronizar. La cola sigue guardada.");
+            throw new InvalidOperationException("Inicia sesion para sincronizar. Tus comprobantes siguen guardados.");
         var pendientes = ruta.Envios.Where(envio =>
             envio.Sincronizacion == EstadoSincronizacion.Pendiente).Take(100).ToArray();
         if (pendientes.Length == 0)
             return new ResultadoSincronizacion(0, 0, ruta.Envios.Count(e => e.Sincronizacion == EstadoSincronizacion.Rechazado));
         var eventos = pendientes.Select(envio =>
         {
-            var entrega = envio.Entrega ?? throw new InvalidOperationException("Comprobante local incompleto.");
+            var entrega = envio.Entrega ?? throw new InvalidOperationException("Hay un comprobante incompleto. No borres los datos; solicita ayuda al operador.");
             return new EntregaContrato(entrega.Id, envio.Id, entrega.Estado,
                 entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha.ToUniversalTime(),
                 entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado);
@@ -165,14 +165,14 @@ public sealed class RepartidorHttpService(
         var resultado = ContratosRepartidor.Leer<SincronizacionRespuesta>(await response.Content.ReadAsStringAsync());
         if (resultado.Aplicados is null || resultado.Rechazados is null ||
             resultado.Aplicados.Any(item => item is null) || resultado.Rechazados.Any(item => item is null))
-            throw new InvalidOperationException("Respuesta de sincronizacion incompleta. Cola conservada.");
+            throw new InvalidOperationException("No pudimos confirmar todos los registros. Tus comprobantes siguen guardados; vuelve a sincronizar.");
         var ids = resultado.Aplicados.Select(item => item.EnvioId)
             .Concat(resultado.Rechazados.Select(item => item.EnvioId)).ToArray();
         if (ids.Distinct().Count() != ids.Length ||
             !ids.ToHashSet().SetEquals(pendientes.Select(envio => envio.Id)) ||
             resultado.Aplicados.Any(item => eventos.SingleOrDefault(e => e.EnvioId == item.EnvioId)?.Estado != item.Estado) ||
             resultado.Rechazados.Any(item => string.IsNullOrWhiteSpace(item.Motivo)))
-            throw new InvalidOperationException("Respuesta de sincronizacion inconsistente. Cola conservada.");
+            throw new InvalidOperationException("La confirmacion recibida no coincide con tus registros. No se marcaron como sincronizados; contacta al operador si vuelve a ocurrir.");
         var estado = data.Leer();
         var envios = estado.Ruta!.Envios.Select(envio =>
         {
@@ -211,7 +211,7 @@ public sealed class RepartidorHttpService(
     public Task RegistrarDispositivoAsync(string token, string plataforma)
     {
         if (plataforma is not ("android" or "ios" or "web"))
-            throw new InvalidOperationException("Plataforma de dispositivo invalida.");
+            throw new InvalidOperationException("No se reconoce el tipo de dispositivo. Solicita ayuda al operador.");
         return DispositivoAsync(HttpMethod.Post, token, plataforma);
     }
 
@@ -222,10 +222,10 @@ public sealed class RepartidorHttpService(
         using var operacion = ExigirOperacion();
         ExigirConexion();
         if (string.IsNullOrWhiteSpace(token))
-            throw new InvalidOperationException("Ingresa el token del dispositivo.");
+            throw new InvalidOperationException("Escribe el codigo del dispositivo antes de registrarlo o eliminarlo.");
         var jwt = await tokens.LeerAsync();
         if (string.IsNullOrWhiteSpace(jwt))
-            throw new InvalidOperationException("Inicia sesion en la API.");
+            throw new InvalidOperationException("Inicia sesion para gestionar este dispositivo.");
         using var request = new HttpRequestMessage(method, method == HttpMethod.Post
             ? "api/repartidor/dispositivos" : $"api/repartidor/dispositivos/{Uri.EscapeDataString(token)}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
@@ -241,13 +241,13 @@ public sealed class RepartidorHttpService(
             return new Ruta(Guid.Empty, DateOnly.FromDateTime(DateTime.UtcNow), "Sin rutas asignadas", []);
         if (rutas.Any(ruta => ruta is null || ruta.Id == Guid.Empty || ruta.Fecha == default ||
             ruta.Operador is null || string.IsNullOrWhiteSpace(ruta.Operador.Nombre) || ruta.Envios is null))
-            throw new InvalidOperationException("La API devolvio rutas incompletas.");
+            throw new InvalidOperationException("La ruta recibida esta incompleta. Intenta actualizarla de nuevo; si continua, avisa al operador.");
         if (rutas.Any(ruta => ruta.Fecha != rutas[0].Fecha || ruta.Operador != rutas[0].Operador))
-            throw new InvalidOperationException("Las rutas recibidas no corresponden al mismo dia y operador.");
+            throw new InvalidOperationException("Las rutas recibidas no corresponden a una misma jornada. Solicita al operador que revise tu asignacion.");
         var envios = rutas.SelectMany(ruta => ruta.Envios).ToArray();
         if (envios.Any(envio => envio is null || envio.Id == Guid.Empty) ||
             envios.Select(envio => envio.Id).Distinct().Count() != envios.Length)
-            throw new InvalidOperationException("La API devolvio envios incompletos o duplicados.");
+            throw new InvalidOperationException("La ruta contiene envios incompletos o repetidos. Solicita al operador que revise tu asignacion.");
         return new Ruta(rutas[0].Id, rutas[0].Fecha, rutas[0].Operador.Nombre,
             envios.Select(envio => new Envio(envio.Id, envio.NumeroSeguimiento, envio.Destinatario,
                 envio.DireccionEntrega, envio.Estado, null, EstadoSincronizacion.SinCambios, null)).ToArray());
@@ -256,7 +256,7 @@ public sealed class RepartidorHttpService(
     private void ExigirConexion()
     {
         if (!ConexionSimulada)
-            throw new InvalidOperationException("Conexion desactivada. Los datos siguen guardados en SQLite.");
+            throw new InvalidOperationException("La conexion esta desactivada. Tus comprobantes siguen guardados.");
     }
 
     private async Task<HttpResponseMessage> EnviarAsync(HttpRequestMessage request)
@@ -266,11 +266,11 @@ public sealed class RepartidorHttpService(
         try { return await http.SendAsync(request); }
         catch (HttpRequestException ex)
         {
-            throw new InvalidOperationException("No se pudo contactar la API. Cola conservada; reintenta o usa el modo demo explicitamente.", ex);
+            throw new InvalidOperationException("No pudimos conectar. Comprueba Internet e intentalo de nuevo. Tus comprobantes siguen guardados.", ex);
         }
         catch (TaskCanceledException ex)
         {
-            throw new InvalidOperationException("La API excedio el tiempo de espera. Cola conservada.", ex);
+            throw new InvalidOperationException("La respuesta esta tardando demasiado. Intentalo de nuevo en unos momentos; tus comprobantes siguen guardados.", ex);
         }
     }
 
@@ -282,9 +282,14 @@ public sealed class RepartidorHttpService(
         if (!response.IsSuccessStatusCode)
             throw new InvalidOperationException(response.StatusCode switch
             {
-                HttpStatusCode.Unauthorized => "Sesion vencida o invalida. Vuelve al acceso e inicia sesion; la cola se conserva.",
-                HttpStatusCode.Forbidden => "La API no permite esta operacion para tu usuario.",
-                _ => $"La API respondio HTTP {(int)response.StatusCode}. No se confirmo la operacion; datos locales conservados."
-            });
+                HttpStatusCode.Unauthorized => "Tu sesion vencio y necesitas identificarte de nuevo. Si no puedes volver al acceso, solicita ayuda al operador. No borres los datos: tus comprobantes siguen guardados.",
+                HttpStatusCode.Forbidden => "Tu cuenta no tiene permiso para esta accion. Contacta al operador; tus comprobantes siguen guardados.",
+                HttpStatusCode.BadRequest => "No pudimos aceptar los datos enviados. Revisa la informacion y, si vuelve a ocurrir, contacta al operador. Tus comprobantes siguen guardados.",
+                HttpStatusCode.NotFound => "No encontramos la informacion solicitada. Intenta actualizar tu ruta o consulta al operador.",
+                HttpStatusCode.Conflict => "El registro cambio mientras trabajabas. Actualiza la informacion cuando no tengas pendientes o pide ayuda al operador. Tus comprobantes siguen guardados.",
+                HttpStatusCode.RequestEntityTooLarge => "Los comprobantes enviados ocupan demasiado espacio. No se confirmo la operacion; tus datos siguen guardados. Solicita ayuda al operador.",
+                HttpStatusCode.TooManyRequests => "Hay demasiadas solicitudes en este momento. Espera un poco y vuelve a intentar. Tus comprobantes siguen guardados.",
+                _ => "No pudimos confirmar la operacion por un problema del servicio. Intentalo mas tarde; tus comprobantes siguen guardados."
+            }, new HttpRequestException($"Respuesta HTTP {(int)response.StatusCode}.", null, response.StatusCode));
     }
 }
