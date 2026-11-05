@@ -38,8 +38,10 @@ public partial class RutaPage : ContentPage
         LienzoFirma.Invalidate();
     }
 
-    private void GuardarEvidencia(object? sender, EventArgs e)
+    private async void GuardarEvidencia(object? sender, EventArgs e)
     {
+        if (viewModel.Ocupado || !viewModel.HaySeleccion) return;
+        if (!await ObtenerGpsAsync()) return;
         viewModel.Firma = firma.Exportar();
         viewModel.GuardarEntregaCommand.Execute(null);
         if (!viewModel.HaySeleccion)
@@ -52,8 +54,14 @@ public partial class RutaPage : ContentPage
     private async void CapturarGps(object? sender, EventArgs e)
     {
         if (viewModel.Ocupado) return;
+        await ObtenerGpsAsync();
+    }
+
+    private async Task<bool> ObtenerGpsAsync()
+    {
         viewModel.Ocupado = true;
         viewModel.Latitud = viewModel.Longitud = null;
+        EstadoEvidencia.Text = "Obteniendo ubicacion. Espera antes de guardar.";
         try
         {
             var location = await Geolocation.Default.GetLocationAsync(
@@ -62,8 +70,14 @@ public partial class RutaPage : ContentPage
             viewModel.Latitud = location.Latitude;
             viewModel.Longitud = location.Longitude;
             EstadoEvidencia.Text = $"GPS {location.Latitude:F5}, {location.Longitude:F5}; hora {location.Timestamp:HH:mm:ss}";
+            return true;
         }
-        catch (Exception ex) { EstadoEvidencia.Text = $"GPS no capturado: {ex.Message}. Puedes reintentar; no se invento una posicion."; }
+        catch (Exception ex) when (ex is FeatureNotSupportedException or FeatureNotEnabledException
+            or PermissionException or TimeoutException or OperationCanceledException or InvalidOperationException)
+        {
+            EstadoEvidencia.Text = $"No se guardo el comprobante: {ex.Message}. Activa la ubicacion y sus permisos y vuelve a guardar. El formulario se conserva.";
+            return false;
+        }
         finally { viewModel.Ocupado = false; }
     }
 

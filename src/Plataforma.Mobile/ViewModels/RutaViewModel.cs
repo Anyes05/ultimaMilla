@@ -250,6 +250,7 @@ public partial class RutaViewModel(
             Envios.Add(envio);
 
         Resumen = $"{Envios.Count} envios | " +
+                  $"{Envios.Count(item => item.Estado == EstadoEnvio.Entregado)} entregados | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Pendiente)} pendientes | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Rechazado)} rechazados";
     }
