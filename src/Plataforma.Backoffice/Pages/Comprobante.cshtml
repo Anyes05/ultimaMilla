@@ -1,0 +1,95 @@
+@page
+@model ComprobanteModel
+@{
+    ViewData["Title"] = "Comprobante de entrega";
+    var envio = Model.Envio!;
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div class="min-w-0">
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @EstadosVista.ColorMarca(Model.Operador)">Operación</p>
+        <h1 class="display-6 fw-bold mb-1">Comprobante de entrega</h1>
+        <p class="text-muted mb-0">
+            <span class="tracking-number">@envio.NumeroSeguimiento</span> · @envio.Destinatario · @envio.DireccionEntrega
+            <span class="status-badge @EstadosVista.Clase(envio.Estado) ms-1">@EstadosVista.Nombre(envio.Estado)</span>
+        </p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-page="/Index">Volver a Monitoreo</a>
+</div>
+
+@if (envio.Comprobantes.Count == 0)
+{
+    <div class="alert alert-light border">El repartidor todavía no sincronizó ningún comprobante para este envío.</div>
+}
+
+@foreach (var comprobante in envio.Comprobantes)
+{
+    <section class="card mb-4">
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-5">
+                    <h2 class="h6 text-muted">Foto</h2>
+                    @if (comprobante.FotoBase64 is not null)
+                    {
+                        <img class="img-fluid rounded border" alt="Foto de la entrega" src="data:image/jpeg;base64,@comprobante.FotoBase64" />
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-0">Sin foto.</p>
+                    }
+                </div>
+                <div class="col-md-7">
+                    <dl class="row mb-3">
+                        <dt class="col-sm-4">Recibió</dt>
+                        <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(comprobante.NombreReceptor) ? "—" : comprobante.NombreReceptor)</dd>
+                        <dt class="col-sm-4">Hora del dispositivo</dt>
+                        <dd class="col-sm-8">@comprobante.FechaDispositivo.ToString("dd/MM/yyyy HH:mm") (UTC@(comprobante.FechaDispositivo.Offset >= TimeSpan.Zero ? "+" : "-")@comprobante.FechaDispositivo.Offset.ToString(@"hh\:mm"))</dd>
+                        <dt class="col-sm-4">Repartidor</dt>
+                        <dd class="col-sm-8">@comprobante.Usuario</dd>
+                        <dt class="col-sm-4">Ubicación</dt>
+                        <dd class="col-sm-8">
+                            @if (comprobante.Latitud is decimal latitud && comprobante.Longitud is decimal longitud)
+                            {
+                                <span>@latitud, @longitud</span>
+                                <a class="ms-2" href="@ComprobanteModel.EnlaceMapa(latitud, longitud)" target="_blank" rel="noopener noreferrer">Ver en el mapa</a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">Sin ubicación</span>
+                            }
+                        </dd>
+                        @if (!string.IsNullOrWhiteSpace(comprobante.CodigoEscaneado))
+                        {
+                            <dt class="col-sm-4">Código escaneado</dt>
+                            <dd class="col-sm-8"><span class="tracking-number">@comprobante.CodigoEscaneado</span></dd>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(comprobante.Observaciones))
+                        {
+                            <dt class="col-sm-4">Observaciones</dt>
+                            <dd class="col-sm-8">@comprobante.Observaciones</dd>
+                        }
+                    </dl>
+
+                    <h2 class="h6 text-muted">Firma</h2>
+                    @if (comprobante.Firma.Count > 0)
+                    {
+                        @* La firma llega como trazos del dedo; se redibuja tal cual se firmó en el teléfono. *@
+                        <svg class="border rounded bg-white w-100" style="max-width: 24rem; height: 10rem"
+                             viewBox="@ComprobanteModel.CajaFirma(comprobante.Firma)" preserveAspectRatio="xMidYMid meet"
+                             role="img" aria-label="Firma del receptor">
+                            @foreach (var trazo in comprobante.Firma)
+                            {
+                                <polyline points="@ComprobanteModel.PuntosTrazo(trazo)" fill="none" stroke="#0f172a"
+                                          stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                            }
+                        </svg>
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-0">Sin firma.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+}

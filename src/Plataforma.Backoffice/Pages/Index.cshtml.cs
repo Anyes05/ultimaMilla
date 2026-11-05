@@ -51,6 +51,10 @@ public class IndexModel : PageModel
         await CargarAsync();
     }
 
+    /// <summary>Estados a los que se llega sincronizando desde la app, que es la que registra la prueba de entrega.</summary>
+    public static bool PuedeTenerComprobante(EstadoEnvio estado) =>
+        estado is EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente or EstadoEnvio.NoEntregado;
+
     public async Task<IActionResult> OnPostCambiarEstadoAsync(Guid envioId, EstadoEnvio nuevoEstado)
     {
         if (!AccesoActual.Intentar(User, out var acceso))

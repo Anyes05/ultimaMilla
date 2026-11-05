@@ -70,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<ObtenerRutasDeHoy>();
         services.AddScoped<SincronizarEntregas>();
         services.AddScoped<ObtenerSeguimientoEnvio>();
+        services.AddScoped<ObtenerComprobantesEnvio>();
         services.AddScoped<RegistrarDispositivoRepartidor>();
         services.AddScoped<QuitarDispositivoRepartidor>();
 
