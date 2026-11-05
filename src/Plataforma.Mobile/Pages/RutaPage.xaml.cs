@@ -226,6 +226,11 @@ public partial class RutaPage : ContentPage
             return true;
         }
 
+        if (viewModel.RecorridoActivo)
+        {
+            viewModel.PausarRecorridoCommand.Execute(null);
+            return true;
+        }
         return base.OnBackButtonPressed();
     }
 }

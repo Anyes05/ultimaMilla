@@ -124,6 +124,15 @@ por LAN usar HTTPS con certificado confiable. No incorporar secretos backend.
 
 ## Evidencia, carga y sincronizacion automatica (29/10)
 
+Empezar recorrido muestra una parada a la vez en el orden de la lista actual,
+sin optimizacion geografica. Solo incluye envios que permiten carga o entrega.
+Guardar correctamente una entrega o intento avanza a la siguiente; un error o
+cancelar no avanza. Funciona con guardado offline sin esperar sincronizacion.
+Anterior permite consultar la parada previa sin duplicar registros. Pausar
+recorrido devuelve la lista diaria; Empezar reconstruye las paradas disponibles.
+Al terminar vuelve a la lista, conservando pendientes y rechazos. Cargar un
+envio no avanza: debe confirmarse la carga antes de registrar su entrega.
+
 Los errores visibles de conexion, acceso, sincronizacion, almacenamiento,
 camara y GPS usan mensajes orientados al repartidor con el siguiente paso.
 Los codigos HTTP y excepciones se mantienen en el diagnostico, no en pantalla.

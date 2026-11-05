@@ -18,6 +18,16 @@
             </Grid>
             <Label Text="{Binding Titulo}" Style="{StaticResource HeadingLabel}" FontSize="22" />
             <Label Text="{Binding Resumen}" AutomationId="RutaResumen" FontAttributes="Bold" />
+            <Button Text="Empezar recorrido" Command="{Binding EmpezarRecorridoCommand}"
+                    IsVisible="{Binding MostrarListaDiaria}" />
+            <VerticalStackLayout IsVisible="{Binding RecorridoActivo}" Spacing="6">
+                <Label Text="{Binding ProgresoRecorrido}" Style="{StaticResource SectionLabel}" />
+                <Button Text="Siguiente parada" Command="{Binding SiguienteParadaCommand}" Style="{StaticResource SecondaryButton}" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <Button Text="Anterior" Command="{Binding ParadaAnteriorCommand}" Style="{StaticResource SecondaryButton}" />
+                    <Button Grid.Column="1" Text="Pausar recorrido" Command="{Binding PausarRecorridoCommand}" Style="{StaticResource SecondaryButton}" />
+                </Grid>
+            </VerticalStackLayout>
             <Label Text="Tus comprobantes se guardan en el dispositivo y se sincronizan al recuperar Internet."
                    Style="{StaticResource MutedLabel}" />
         </VerticalStackLayout>
@@ -29,7 +39,7 @@
                 </DataTrigger>
             </Label.Triggers>
         </Label>
-        <CollectionView Grid.Row="2" ItemsSource="{Binding Envios}" SelectionMode="None">
+        <CollectionView Grid.Row="2" ItemsSource="{Binding EnviosVisibles}" SelectionMode="None" ItemSizingStrategy="MeasureAllItems">
             <CollectionView.EmptyView>
                 <Border Padding="24" Margin="0,8">
                     <VerticalStackLayout Spacing="8">
@@ -40,7 +50,7 @@
                 </Border>
             </CollectionView.EmptyView>
             <CollectionView.Footer>
-                <VerticalStackLayout Spacing="12" Padding="0,12">
+                <VerticalStackLayout Spacing="12" Padding="0,12" IsVisible="{Binding MostrarListaDiaria}">
                     <Button Text="Opciones de sincronizacion y dispositivo"
                             Command="{Binding AlternarOpcionesCommand}" Style="{StaticResource SecondaryButton}" />
                     <Border Padding="16" IsVisible="{Binding MostrarOpciones}">

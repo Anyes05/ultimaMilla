@@ -13,6 +13,92 @@ public partial class RutaViewModel(
     ILogger<RutaViewModel> logger) : ObservableObject
 {
     public ObservableCollection<Envio> Envios { get; } = new();
+    public ObservableCollection<Envio> EnviosVisibles { get; } = new();
+    private Guid[] recorrido = [];
+    private int paradaActual;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MostrarListaDiaria))]
+    private bool recorridoActivo;
+
+    [ObservableProperty]
+    private string progresoRecorrido = string.Empty;
+
+    public bool MostrarListaDiaria => !RecorridoActivo;
+
+    [RelayCommand]
+    private void EmpezarRecorrido()
+    {
+        if (Ocupado || HaySeleccion) return;
+        recorrido = Envios.Where(e => e.PuedeEntregar || e.PuedeCargar).Select(e => e.Id).ToArray();
+        if (recorrido.Length == 0)
+        {
+            Mensaje = "No hay nuevas entregas disponibles. Revisa los pendientes de sincronizar.";
+            return;
+        }
+        paradaActual = 0;
+        RecorridoActivo = true;
+        Mensaje = string.Empty;
+        ActualizarVisibles();
+    }
+
+    [RelayCommand]
+    private void PausarRecorrido()
+    {
+        if (Ocupado || HaySeleccion) return;
+        RecorridoActivo = false;
+        ActualizarVisibles();
+        Mensaje = "Recorrido pausado. Tus registros siguen guardados.";
+    }
+
+    [RelayCommand]
+    private void ParadaAnterior()
+    {
+        if (Ocupado || HaySeleccion || !RecorridoActivo) return;
+        if (paradaActual > 0) paradaActual--;
+        ActualizarVisibles();
+    }
+
+    private void ActualizarVisibles()
+    {
+        EnviosVisibles.Clear();
+        if (!RecorridoActivo)
+        {
+            foreach (var envio in Envios) EnviosVisibles.Add(envio);
+            return;
+        }
+        var actual = Envios.SingleOrDefault(e => e.Id == recorrido[paradaActual]);
+        if (actual is not null) EnviosVisibles.Add(actual);
+        ProgresoRecorrido = $"Parada {paradaActual + 1} de {recorrido.Length}";
+    }
+
+    private void AvanzarRecorrido()
+    {
+        if (!RecorridoActivo) return;
+        var siguiente = Enumerable.Range(paradaActual + 1, recorrido.Length - paradaActual - 1)
+            .FirstOrDefault(i => Envios.Any(e => e.Id == recorrido[i] && (e.PuedeEntregar || e.PuedeCargar)), -1);
+        if (siguiente >= 0)
+        {
+            paradaActual = siguiente;
+            ActualizarVisibles();
+            return;
+        }
+        RecorridoActivo = false;
+        ActualizarVisibles();
+        Mensaje = "Recorrido completado. Revisa y sincroniza los comprobantes pendientes.";
+    }
+
+    [RelayCommand]
+    private void SiguienteParada()
+    {
+        if (Ocupado || HaySeleccion || !RecorridoActivo) return;
+        if (EnviosVisibles.Any(e => e.PuedeEntregar || e.PuedeCargar))
+        {
+            Mensaje = "Registra la entrega o el intento antes de continuar. Puedes pausar para volver a la lista.";
+            return;
+        }
+        AvanzarRecorrido();
+    }
 
     [ObservableProperty]
     private string titulo = "Ruta del dia";
@@ -121,6 +207,7 @@ public partial class RutaViewModel(
             CancelarEntrega();
             ActualizarRuta();
             Mensaje = "Comprobante guardado. Pendiente de sincronizar.";
+            AvanzarRecorrido();
         });
     }
 
@@ -201,6 +288,11 @@ public partial class RutaViewModel(
     private async Task DescargarRutaAsync()
     {
         if (Ocupado) return;
+        if (RecorridoActivo)
+        {
+            Mensaje = "Pausa el recorrido antes de actualizar la ruta.";
+            return;
+        }
         Ocupado = true;
         Mensaje = string.Empty;
         try
@@ -226,6 +318,7 @@ public partial class RutaViewModel(
         try
         {
             repartidor.CerrarSesion();
+            RecorridoActivo = false;
             Envios.Clear();
             CancelarEntrega();
             await navigation.MostrarLoginAsync();
@@ -253,6 +346,7 @@ public partial class RutaViewModel(
                   $"{Envios.Count(item => item.Estado == EstadoEnvio.Entregado)} entregados | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Pendiente)} pendientes | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Rechazado)} rechazados";
+        ActualizarVisibles();
     }
 
     private void Ejecutar(Action accion)

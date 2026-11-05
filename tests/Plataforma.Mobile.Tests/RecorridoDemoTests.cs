@@ -159,6 +159,60 @@ public sealed class RecorridoDemoTests : IDisposable
     }
 
     [Fact]
+    public void RecorridoAvanzaSoloTrasGuardarYVuelveAListaAlFinal()
+    {
+        var service = CrearSesion();
+        var vm = new RutaViewModel(service, new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
+        vm.CargarCommand.Execute(null);
+        Assert.Equal(vm.Envios.Count, vm.EnviosVisibles.Count);
+        vm.ConexionSimulada = false;
+        vm.EmpezarRecorridoCommand.Execute(null);
+        Assert.True(vm.RecorridoActivo);
+        var primero = Assert.Single(vm.EnviosVisibles);
+        vm.SeleccionarEntregaCommand.Execute(primero);
+        vm.GuardarEntregaCommand.Execute(null);
+        Assert.True(vm.HaySeleccion);
+        Assert.Equal(primero.Id, Assert.Single(vm.EnviosVisibles).Id);
+        vm.CancelarEntregaCommand.Execute(null);
+        Assert.True(vm.RecorridoActivo);
+        for (var i = 0; i < vm.Envios.Count; i++)
+        {
+            var actual = Assert.Single(vm.EnviosVisibles);
+            vm.SeleccionarEntregaCommand.Execute(actual);
+            vm.NombreReceptor = "Receptor";
+            vm.IntentoFallido = i == 1;
+            vm.Observaciones = i == 1 ? "Destinatario ausente" : "";
+            vm.GuardarEntregaCommand.Execute(null);
+        }
+        Assert.False(vm.RecorridoActivo);
+        Assert.Equal(vm.Envios.Count, vm.EnviosVisibles.Count);
+        Assert.All(vm.Envios, e => Assert.Equal(EstadoSincronizacion.Pendiente, e.Sincronizacion));
+    }
+
+    [Fact]
+    public void RecorridoPermiteAnteriorYPausaSinDuplicarNiPerderComprobantes()
+    {
+        var vm = new RutaViewModel(CrearSesion(), new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
+        vm.CargarCommand.Execute(null);
+        vm.EmpezarRecorridoCommand.Execute(null);
+        var primero = Assert.Single(vm.EnviosVisibles);
+        vm.SeleccionarEntregaCommand.Execute(primero);
+        vm.NombreReceptor = "Receptor";
+        vm.GuardarEntregaCommand.Execute(null);
+        var segundo = Assert.Single(vm.EnviosVisibles);
+        Assert.NotEqual(primero.Id, segundo.Id);
+        vm.ParadaAnteriorCommand.Execute(null);
+        Assert.Equal(primero.Id, Assert.Single(vm.EnviosVisibles).Id);
+        Assert.False(vm.EnviosVisibles[0].PuedeEntregar);
+        vm.SiguienteParadaCommand.Execute(null);
+        Assert.Equal(segundo.Id, Assert.Single(vm.EnviosVisibles).Id);
+        vm.PausarRecorridoCommand.Execute(null);
+        Assert.Equal(vm.Envios.Count, vm.EnviosVisibles.Count);
+        vm.EmpezarRecorridoCommand.Execute(null);
+        Assert.Equal(segundo.Id, Assert.Single(vm.EnviosVisibles).Id);
+    }
+
+    [Fact]
     public void CerrarSesionSinCambiosPermiteNuevaDemoLimpia()
     {
         var service = CrearSesion();
