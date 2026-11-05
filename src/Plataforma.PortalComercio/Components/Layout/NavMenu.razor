@@ -1,6 +1,6 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center gap-2" href="">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="/#nuevo-envio">
             <span class="brand-mark" style="--operator-color: @ColorMarcaCss" aria-hidden="true"></span>
             <span>
                 <span class="d-block">Portal Comercio</span>
@@ -18,7 +18,8 @@
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
     <nav class="nav flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">Nuevo envío</NavLink>
+            @* Mismo documento que "Mis envíos": con el ancla, vuelve al formulario aunque la lista esté abajo. *@
+            <NavLink class="nav-link" href="/#nuevo-envio" Match="NavLinkMatch.All">Nuevo envío</NavLink>
         </div>
         <div class="nav-item px-3">
             <a class="nav-link" href="/#mis-envios">Mis envíos</a>
