@@ -10,7 +10,8 @@ public sealed record EstadoLocalDemo(
     IReadOnlyDictionary<Guid, EstadoEnvio> EstadosServidor,
     Guid? RepartidorId = null,
     Guid? OperadorId = null,
-    IReadOnlyList<EntregaPendiente>? ComprobantesConfirmados = null);
+    IReadOnlyList<EntregaPendiente>? ComprobantesConfirmados = null,
+    bool RequiereAutenticacion = false);
 
 public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? cipher = null)
 {

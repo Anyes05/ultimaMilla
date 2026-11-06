@@ -53,7 +53,8 @@ public sealed class RepartidorHttpService(
         local.ReintentarRechazados();
     }
     public bool ModoDemo { get => false; set { if (value) throw new InvalidOperationException("Selecciona el servicio demo."); } }
-    public bool HaySesion => local.HaySesion;
+    public bool HaySesion => local.HaySesion && !RequiereAutenticacion;
+    public bool RequiereAutenticacion => data.Leer().RequiereAutenticacion;
     public bool ConexionSimulada { get; set; } = true;
     public bool IniciarSesion(string usuario, string clave) =>
         throw new InvalidOperationException("El acceso HTTP requiere IniciarSesionAsync.");
@@ -101,7 +102,8 @@ public sealed class RepartidorHttpService(
     public async Task<bool> IniciarSesionAsync(string usuario, string clave)
     {
         using var operacion = ExigirOperacion();
-        ExigirConexion();
+        if (!ConexionSimulada)
+            throw new InvalidOperationException("Comprueba tu conexion antes de iniciar sesion.");
         using var login = new HttpRequestMessage(HttpMethod.Post, "api/repartidor/login")
         {
             Content = Json(new LoginSolicitud(usuario, clave))
@@ -133,7 +135,7 @@ public sealed class RepartidorHttpService(
                 sesion.RepartidorId, sesion.OperadorId);
         }
         await tokens.GuardarAsync(sesion.Token);
-        data.Guardar(estado with { HaySesion = true });
+        data.Guardar(estado with { HaySesion = true, RequiereAutenticacion = false });
         return true;
     }
 
@@ -256,6 +258,8 @@ public sealed class RepartidorHttpService(
 
     private void ExigirConexion()
     {
+        if (RequiereAutenticacion)
+            throw new SesionRepartidorVencidaException();
         if (!ConexionSimulada)
             throw new InvalidOperationException("La conexion esta desactivada. Tus comprobantes siguen guardados.");
     }
@@ -276,6 +280,14 @@ public sealed class RepartidorHttpService(
         try
         {
             var response = await http.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.Unauthorized && request.Headers.Authorization is not null)
+            {
+                response.Dispose();
+                var estado = data.Leer();
+                data.Guardar(estado with { RequiereAutenticacion = true });
+                actividad.SetStatus(ActivityStatusCode.Error);
+                throw new SesionRepartidorVencidaException();
+            }
             actividad.SetTag("http.response.status_code", (int)response.StatusCode);
             if (!response.IsSuccessStatusCode)
                 actividad.SetStatus(ActivityStatusCode.Error);

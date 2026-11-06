@@ -71,6 +71,13 @@ depuracion MAUI activa.
 
 ## Contratos y configuracion por ambiente
 
+Ante HTTP 401 en una solicitud autenticada se conserva la ruta, evidencia e
+identificadores y se marca que hace falta autenticar de nuevo. La app muestra
+acceso sin ejecutar Cerrar sesion ni borrar la cola. Tampoco restaura esa sesion
+como valida tras reiniciar ni reintenta automaticamente hasta ingresar de nuevo.
+El login de la misma cuenta conserva pendientes y desbloquea la sincronizacion;
+otra cuenta/operador no puede reemplazar esa ruta. HTTP 403 no invalida la sesion.
+
 Cada solicitud HTTP de la app crea una Activity W3C y envia traceparent.
 Si hay una operacion padre, conserva su TraceId con un SpanId nuevo y propaga
 tracestate. No agrega credenciales, coordenadas ni evidencia a las etiquetas.

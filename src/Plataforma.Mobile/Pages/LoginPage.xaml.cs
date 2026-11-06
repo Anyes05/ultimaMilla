@@ -10,6 +10,12 @@ public partial class LoginPage : ContentPage
         InitializeComponent();
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        ((LoginViewModel)BindingContext).PrepararAcceso();
+    }
+
     protected override async void OnDisappearing()
     {
         base.OnDisappearing();
