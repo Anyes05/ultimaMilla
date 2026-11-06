@@ -2,8 +2,12 @@ using Plataforma.Mobile.Models;
 
 namespace Plataforma.Mobile.Services;
 
+public sealed class SesionRepartidorVencidaException() : InvalidOperationException(
+    "Tu sesion ya no es valida. Ingresa de nuevo con la misma cuenta. Tus comprobantes siguen guardados.");
+
 public interface IRepartidorService
 {
+    bool RequiereAutenticacion => false;
     void RegistrarEvento(EntregaPendiente evento) => throw new InvalidOperationException("Operacion no disponible.");
     void ReintentarRechazados() => throw new InvalidOperationException("Operacion no disponible.");
     Task RegistrarDispositivoAsync(string token, string plataforma) => throw new InvalidOperationException("Solo disponible en API.");

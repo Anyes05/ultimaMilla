@@ -24,6 +24,20 @@ public partial class LoginViewModel(
 
     public string ModoTexto => "Acceso a tu jornada de reparto";
 
+    public void PrepararAcceso()
+    {
+        try
+        {
+            if (repartidor.RequiereAutenticacion)
+                Mensaje = "Tu sesion ya no es valida. Ingresa con la misma cuenta para enviar tus comprobantes pendientes. No se borraron tus datos.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "No se pudo consultar la sesion guardada");
+            Mensaje = ex.Message;
+        }
+    }
+
     [RelayCommand]
     private async Task ContinuarSesionAsync()
     {

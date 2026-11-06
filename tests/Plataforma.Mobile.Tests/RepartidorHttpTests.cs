@@ -58,6 +58,45 @@ public sealed partial class RepartidorHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task ViewModelAbreAccesoUnaVezYDetieneAutosyncTras401()
+    {
+        await Login();
+        service.RegistrarEntrega(service.ObtenerRuta().Envios[0].Id, "Receptor", "");
+        var navigation = new NavegacionSesion();
+        var vm = new Plataforma.Mobile.ViewModels.RutaViewModel(service, navigation,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Plataforma.Mobile.ViewModels.RutaViewModel>.Instance);
+        vm.PantallaActiva = true;
+        vm.CargarCommand.Execute(null);
+        handler.Respuestas.Enqueue(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        await vm.SincronizarCommand.ExecuteAsync(null);
+        Assert.Equal(1, navigation.Accesos);
+        Assert.False(vm.Ocupado);
+        var cantidad = handler.Requests.Count;
+        await vm.AutoSincronizarAsync();
+        Assert.Equal(cantidad, handler.Requests.Count);
+        Assert.Equal(1, navigation.Accesos);
+        Assert.NotNull(service.ObtenerRuta().Envios[0].Entrega);
+    }
+
+    [Fact]
+    public async Task PermisoDenegadoNoInvalidaSesion()
+    {
+        await Login();
+        service.RegistrarEntrega(service.ObtenerRuta().Envios[0].Id, "Receptor", "");
+        handler.Respuestas.Enqueue(new HttpResponseMessage(HttpStatusCode.Forbidden));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SincronizarAsync());
+        Assert.True(service.HaySesion);
+        Assert.False(service.RequiereAutenticacion);
+    }
+
+    private sealed class NavegacionSesion : INavigationService
+    {
+        public int Accesos { get; private set; }
+        public Task MostrarLoginAsync() { Accesos++; return Task.CompletedTask; }
+        public Task MostrarRutaAsync() => Task.CompletedTask;
+    }
+
+    [Fact]
     public async Task LoginUsaContratoBearerYDescargaSinGuardarTokenEnSQLite()
     {
         await Login();
@@ -150,8 +189,38 @@ public sealed partial class RepartidorHttpTests : IDisposable
         await Login();
         service.RegistrarEntrega(service.ObtenerRuta().Envios[0].Id, "Receptor", "");
         handler.Respuestas.Enqueue(new HttpResponseMessage((HttpStatusCode)status));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.SincronizarAsync());
+        await Assert.ThrowsAnyAsync<InvalidOperationException>(() => service.SincronizarAsync());
         Assert.Equal(EstadoSincronizacion.Pendiente, service.ObtenerRuta().Envios[0].Sincronizacion);
+    }
+
+    [Fact]
+    public async Task SesionInvalidaPersisteYReloginConservaPendienteSinDescargarOtraRuta()
+    {
+        await Login();
+        var envio = service.ObtenerRuta().Envios[0];
+        service.RegistrarEntrega(envio.Id, "Receptor", "");
+        var comprobante = service.ObtenerRuta().Envios[0].Entrega;
+        handler.Respuestas.Enqueue(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        await Assert.ThrowsAsync<SesionRepartidorVencidaException>(() => service.SincronizarAsync());
+        Assert.False(service.HaySesion);
+        Assert.True(service.RequiereAutenticacion);
+        var reopened = new RepartidorHttpService(http,
+            new RepartidorLocalData(Path.Combine(directory, "api.db")), tokens);
+        Assert.False(reopened.HaySesion);
+        var cantidad = handler.Requests.Count;
+        await Assert.ThrowsAsync<SesionRepartidorVencidaException>(() => reopened.DescargarRutaAsync());
+        Assert.Equal(cantidad, handler.Requests.Count);
+        handler.Respuestas.Enqueue(Ejemplo("login.response.json"));
+        Assert.True(await reopened.IniciarSesionAsync("alvaro@demo.test", "Demo123!"));
+        Assert.Equal(cantidad + 1, handler.Requests.Count);
+        Assert.True(reopened.HaySesion);
+        Assert.False(reopened.RequiereAutenticacion);
+        Assert.Equal(comprobante, reopened.ObtenerRuta().Envios[0].Entrega);
+        handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
+            [new AplicadoContrato(envio.Id, EstadoEnvio.Entregado, 0)], [])));
+        await reopened.SincronizarAsync();
+        Assert.Equal(comprobante!.Id,
+            ContratosRepartidor.Leer<SincronizacionSolicitud>(handler.Requests.Last().Body).Eventos[0].EventoId);
     }
 
     [Fact]

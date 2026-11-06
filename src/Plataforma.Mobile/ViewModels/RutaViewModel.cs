@@ -249,6 +249,7 @@ public partial class RutaViewModel(
             else await repartidor.RegistrarDispositivoAsync(TokenDispositivo, "android");
             Mensaje = borrar ? "Token eliminado." : "Token registrado. No implica recepcion FCM.";
         }
+        catch (SesionRepartidorVencidaException ex) { await PedirAutenticacionAsync(ex); }
         catch (InvalidOperationException ex) { Mensaje = ex.Message; }
         finally { Ocupado = false; }
     }
@@ -268,6 +269,10 @@ public partial class RutaViewModel(
                 : string.Empty;
         }
 
+        catch (SesionRepartidorVencidaException ex)
+        {
+            await PedirAutenticacionAsync(ex);
+        }
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "No se pudo sincronizar la cola");
@@ -301,6 +306,10 @@ public partial class RutaViewModel(
             await repartidor.DescargarRutaAsync();
             ActualizarRuta();
             Mensaje = "Ruta actualizada.";
+        }
+        catch (SesionRepartidorVencidaException ex)
+        {
+            await PedirAutenticacionAsync(ex);
         }
         catch (InvalidOperationException ex)
         {
@@ -348,6 +357,14 @@ public partial class RutaViewModel(
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Pendiente)} pendientes | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Rechazado)} rechazados";
         ActualizarVisibles();
+    }
+
+    private async Task PedirAutenticacionAsync(SesionRepartidorVencidaException ex)
+    {
+        logger.LogWarning(ex, "Se requiere reautenticacion; comprobantes conservados");
+        Mensaje = ex.Message;
+        RecorridoActivo = false;
+        await navigation.MostrarLoginAsync();
     }
 
     private void Ejecutar(Action accion)
