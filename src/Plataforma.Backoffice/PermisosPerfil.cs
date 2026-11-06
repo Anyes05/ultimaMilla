@@ -48,11 +48,17 @@ public static class PermisosPerfil
     {
         // El administrador corrige cualquier transición válida (incluidas las automáticas 10 y 11 y las del
         // repartidor, para cuando la app no puede registrarlas). La validez la sigue controlando TransicionesEnvio.
-        Roles.Administrador => true,
+        // Asignar a ruta y salir a reparto, igual que el despachador, solo desde Despacho: necesitan una ruta.
+        Roles.Administrador => !RequiereRuta(desde, hacia),
         Roles.Despachador => Despachador.Contains((desde, hacia)),
         Roles.OperarioDeposito => OperarioDeposito.Contains((desde, hacia)),
         _ => false
     };
+
+    /// <summary>3 y 12 (asignar a ruta) y la salida de la ruta (AsignadoARuta → EnTransito) las hace Despacho.</summary>
+    private static bool RequiereRuta(EstadoEnvio desde, EstadoEnvio hacia) =>
+        hacia == EstadoEnvio.AsignadoARuta
+        || (desde == EstadoEnvio.AsignadoARuta && hacia == EstadoEnvio.EnTransito);
 
     /// <summary>Perfiles que pueden entrar al Backoffice. El comercio usa el Portal y el repartidor la app.</summary>
     public static bool PuedeEntrarAlBackoffice(RolUsuario rol) =>
