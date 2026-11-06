@@ -228,9 +228,14 @@ public partial class RutaViewModel(
         try
         {
             if (!PantallaActiva || Ocupado || HaySeleccion || !repartidor.HaySesion || !ConexionSimulada) return;
-            await SincronizarAsync();
+            if (!repartidor.ObtenerRuta().Envios.Any(e => e.Sincronizacion == EstadoSincronizacion.Pendiente)) return;
+            await SincronizarColaAsync(automatica: true);
         }
-        catch (InvalidOperationException ex) { Mensaje = ex.Message; }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "No se pudo iniciar la sincronizacion automatica");
+            Mensaje = ex.Message;
+        }
     }
 
     [RelayCommand]
@@ -255,18 +260,25 @@ public partial class RutaViewModel(
     }
 
     [RelayCommand]
-    private async Task SincronizarAsync()
+    private Task SincronizarAsync() => SincronizarColaAsync(automatica: false);
+
+    private async Task SincronizarColaAsync(bool automatica)
     {
-        if (Ocupado) return;
+        if (Ocupado)
+        {
+            if (!automatica) Mensaje = "Hay una operacion en curso. Espera a que termine antes de sincronizar.";
+            return;
+        }
         Ocupado = true;
-        Mensaje = string.Empty;
+        var mensajeAnterior = Mensaje;
+        Mensaje = "Sincronizando comprobantes...";
         try
         {
             var resultado = await repartidor.SincronizarAsync();
             ActualizarRuta();
             Mensaje = resultado.Rechazadas > 0
                 ? "Hay registros rechazados. Revisa el motivo en cada envio; los comprobantes se conservan."
-                : string.Empty;
+                : automatica ? mensajeAnterior : "Sincronizacion completada.";
         }
 
         catch (SesionRepartidorVencidaException ex)
@@ -293,14 +305,18 @@ public partial class RutaViewModel(
     [RelayCommand]
     private async Task DescargarRutaAsync()
     {
-        if (Ocupado) return;
+        if (Ocupado)
+        {
+            Mensaje = "Hay una operacion en curso. Cuando termine la rueda, vuelve a pulsar Actualizar ruta.";
+            return;
+        }
         if (RecorridoActivo)
         {
             Mensaje = "Pausa el recorrido antes de actualizar la ruta.";
             return;
         }
         Ocupado = true;
-        Mensaje = string.Empty;
+        Mensaje = "Consultando la ruta en el servidor...";
         try
         {
             await repartidor.DescargarRutaAsync();

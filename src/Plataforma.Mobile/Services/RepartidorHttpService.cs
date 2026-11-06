@@ -76,7 +76,7 @@ public sealed class RepartidorHttpService(
         if (estado.Ruta!.Envios.Any(envio =>
             envio.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado))
             throw new InvalidOperationException("Resuelve las entregas pendientes o rechazadas antes de reemplazar la ruta. No se borraron datos.");
-        var token = await tokens.LeerAsync();
+        var token = await LeerTokenAsync();
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Inicia sesion para actualizar tu ruta. Tus comprobantes siguen guardados.");
         using var request = new HttpRequestMessage(HttpMethod.Get, "api/repartidor/rutas/hoy");
@@ -144,7 +144,7 @@ public sealed class RepartidorHttpService(
         using var operacion = ExigirOperacion();
         ExigirConexion();
         var ruta = ObtenerRuta();
-        var token = await tokens.LeerAsync();
+        var token = await LeerTokenAsync();
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Inicia sesion para sincronizar. Tus comprobantes siguen guardados.");
         var pendientes = ruta.Envios.Where(envio =>
@@ -226,7 +226,7 @@ public sealed class RepartidorHttpService(
         ExigirConexion();
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Escribe el codigo del dispositivo antes de registrarlo o eliminarlo.");
-        var jwt = await tokens.LeerAsync();
+        var jwt = await LeerTokenAsync();
         if (string.IsNullOrWhiteSpace(jwt))
             throw new InvalidOperationException("Inicia sesion para gestionar este dispositivo.");
         using var request = new HttpRequestMessage(method, method == HttpMethod.Post
@@ -236,6 +236,19 @@ public sealed class RepartidorHttpService(
         using var response = await EnviarAsync(request);
         if (method == HttpMethod.Delete && response.StatusCode == HttpStatusCode.NotFound) return;
         ExigirExito(response);
+    }
+
+    private async Task<string?> LeerTokenAsync()
+    {
+        try
+        {
+            return await tokens.LeerAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        }
+        catch (TimeoutException ex)
+        {
+            throw new InvalidOperationException(
+                "El telefono no responde al leer la sesion segura. Vuelve a intentar; no borres los datos de la app.", ex);
+        }
     }
 
     private static Ruta ConvertirRutas(RutaContrato[] rutas)

@@ -24,6 +24,106 @@ public sealed partial class RepartidorHttpTests : IDisposable
         service = new RepartidorHttpService(http, data, tokens);
     }
 
+    private Plataforma.Mobile.ViewModels.RutaViewModel CrearRutaViewModel()
+    {
+        var vm = new Plataforma.Mobile.ViewModels.RutaViewModel(service, new NavegacionSesion(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<Plataforma.Mobile.ViewModels.RutaViewModel>.Instance);
+        vm.PantallaActiva = true;
+        vm.CargarCommand.Execute(null);
+        return vm;
+    }
+
+    [Fact]
+    public async Task ActualizarRutaIncorporaDosEnviosDespachados()
+    {
+        await Login();
+        var vm = CrearRutaViewModel();
+        var ruta = ContratosRepartidor.Leer<RutaContrato[]>(ContratosRepartidor.LeerEjemplo("rutas-hoy.response.json"))[0];
+        var nuevos = new[] {
+            ruta.Envios[0] with { Id = Guid.NewGuid(), NumeroSeguimiento = "NUEVO-1" },
+            ruta.Envios[0] with { Id = Guid.NewGuid(), NumeroSeguimiento = "NUEVO-2" }
+        };
+        handler.Respuestas.Enqueue(Ok(new[] { ruta with { Envios = ruta.Envios.Concat(nuevos).ToArray() } }));
+
+        await vm.DescargarRutaCommand.ExecuteAsync(null);
+
+        Assert.Equal("/api/repartidor/rutas/hoy", handler.Requests.Last().Path);
+        Assert.Equal(5, vm.EnviosVisibles.Count);
+        Assert.All(nuevos, nuevo => Assert.Contains(vm.EnviosVisibles, e => e.Id == nuevo.Id));
+        Assert.Equal("Ruta actualizada.", vm.Mensaje);
+        Assert.False(vm.Ocupado);
+    }
+
+    [Fact]
+    public async Task AutosyncSinPendientesNoBorraResultadoDeActualizarRuta()
+    {
+        await Login();
+        var vm = CrearRutaViewModel();
+        vm.Mensaje = "Ruta actualizada.";
+        var solicitudes = handler.Requests.Count;
+        await vm.AutoSincronizarAsync();
+        Assert.Equal(solicitudes, handler.Requests.Count);
+        Assert.Equal("Ruta actualizada.", vm.Mensaje);
+        Assert.False(vm.Ocupado);
+    }
+
+    [Fact]
+    public async Task ActualizarDuranteSincronizacionInformaBloqueoYPermiteReintentar()
+    {
+        await Login();
+        service.RegistrarEntrega(service.ObtenerRuta().Envios[0].Id, "Receptor", "");
+        var vm = CrearRutaViewModel();
+        var liberar = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        handler.Espera = liberar.Task;
+        handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
+            [new AplicadoContrato(vm.Envios[0].Id, EstadoEnvio.Entregado, 0)], [])));
+        var sincronizacion = vm.AutoSincronizarAsync();
+        Assert.True(vm.Ocupado);
+        await vm.DescargarRutaCommand.ExecuteAsync(null);
+        Assert.Contains("operacion en curso", vm.Mensaje);
+        liberar.SetResult();
+        await sincronizacion;
+        handler.Respuestas.Enqueue(Ejemplo("rutas-hoy.response.json"));
+        await vm.DescargarRutaCommand.ExecuteAsync(null);
+        Assert.Equal("Ruta actualizada.", vm.Mensaje);
+        Assert.False(vm.Ocupado);
+    }
+
+    [Fact]
+    public async Task TokenQueNoRespondeLiberaActualizacionSinPerderDatos()
+    {
+        await Login();
+        var vm = CrearRutaViewModel();
+        var rutaAnterior = service.ObtenerRuta();
+        var liberar = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        tokens.Lectura = liberar.Task;
+        try
+        {
+            await vm.DescargarRutaCommand.ExecuteAsync(null).WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.False(vm.Ocupado);
+            Assert.Contains("sesion segura", vm.Mensaje);
+            Assert.Equal(ContratosRepartidor.Escribir(rutaAnterior),
+                ContratosRepartidor.Escribir(service.ObtenerRuta()));
+            tokens.Lectura = null;
+            handler.Respuestas.Enqueue(Ejemplo("rutas-hoy.response.json"));
+            await vm.DescargarRutaCommand.ExecuteAsync(null);
+            Assert.Equal("Ruta actualizada.", vm.Mensaje);
+        }
+        finally { liberar.TrySetResult(tokens.Value); }
+    }
+
+    [Fact]
+    public async Task ActualizacionSinRedMuestraErrorYLiberaBotones()
+    {
+        await Login();
+        var vm = CrearRutaViewModel();
+        handler.Error = new HttpRequestException("Sin red");
+        await vm.DescargarRutaCommand.ExecuteAsync(null);
+        Assert.False(vm.Ocupado);
+        Assert.Contains("Comprueba Internet", vm.Mensaje);
+        Assert.Equal(3, vm.EnviosVisibles.Count);
+    }
+
     [Fact]
     public async Task SolicitudesSinPadreCreanTraceparentW3C()
     {
@@ -332,7 +432,8 @@ public sealed partial class RepartidorHttpTests : IDisposable
     private sealed class Tokens : ITokenRepartidor
     {
         public string? Value { get; private set; }
-        public Task<string?> LeerAsync() => Task.FromResult(Value);
+        public Task<string?>? Lectura { get; set; }
+        public Task<string?> LeerAsync() => Lectura ?? Task.FromResult(Value);
         public Task GuardarAsync(string token) { Value = token; return Task.CompletedTask; }
         public void Borrar() => Value = null;
     }

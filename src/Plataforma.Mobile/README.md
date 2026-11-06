@@ -71,6 +71,13 @@ depuracion MAUI activa.
 
 ## Contratos y configuracion por ambiente
 
+Actualizar ruta muestra el progreso y avisa si otra operacion impide la consulta.
+La sincronizacion automatica no se ejecuta con la cola vacia ni borra el aviso
+anterior al completarse. La lectura del token seguro tiene un limite de 10 segundos:
+si el almacenamiento no responde, se libera la operacion y se muestra el error
+sin borrar la sesion ni los comprobantes. La solicitud HTTP mantiene su limite de
+30 segundos. No se fuerza el desbloqueo mientras una escritura sigue en curso.
+
 Ante HTTP 401 en una solicitud autenticada se conserva la ruta, evidencia e
 identificadores y se marca que hace falta autenticar de nuevo. La app muestra
 acceso sin ejecutar Cerrar sesion ni borrar la cola. Tampoco restaura esa sesion
