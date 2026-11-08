@@ -78,9 +78,9 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $rdsPassword = ConvertTo-PlainText (Read-Host -Prompt "Contrasena maestra de PostgreSQL" -AsSecureString)
 $jwtKey = ConvertTo-PlainText (Read-Host -Prompt "Clave JWT de produccion" -AsSecureString)
 $avisoSigningKey = ConvertTo-PlainText (Read-Host -Prompt "Clave de firma HMAC para avisos" -AsSecureString)
-$mongoConnectionStringBase64 = (& kubectl -n $Namespace get secret tallernet-application-secrets `
-    -o "jsonpath={.data.Mongo__ConnectionString}" 2>$null).Trim()
-if ($LASTEXITCODE -ne 0) {
+$mongoConnectionStringBase64 = & kubectl -n $Namespace get secret tallernet-application-secrets `
+    -o "jsonpath={.data.Mongo__ConnectionString}" 2>$null
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($mongoConnectionStringBase64)) {
     $mongoConnectionStringBase64 = ""
 }
 if ([string]::IsNullOrWhiteSpace($mongoConnectionStringBase64)) {
@@ -89,7 +89,7 @@ if ([string]::IsNullOrWhiteSpace($mongoConnectionStringBase64)) {
 }
 
 try {
-    $connectionString = "Host=$rdsEndpoint;Port=5432;Database=tallernet;Username=tallernet_admin;Password=$rdsPassword"
+    $connectionString = "Host=$rdsEndpoint;Port=5432;Database=tallernet;Username=tallernet_admin;Password=$rdsPassword;SSL Mode=Require"
     $secretManifest = [ordered]@{
         apiVersion = "v1"
         kind       = "Secret"
