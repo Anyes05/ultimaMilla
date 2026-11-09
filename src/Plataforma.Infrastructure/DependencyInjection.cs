@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<ConfiguracionOperador>();
         services.AddScoped<CalcularTarifa>();
         services.AddScoped<GestionTarifas>();
+        services.AddScoped<GestionReglasOperativas>();
         services.AddScoped<AdmitirEnvio>();
         services.AddScoped<RegistrarOutboxEstado>();
         services.AddScoped<PublicarOutboxPendientes>();

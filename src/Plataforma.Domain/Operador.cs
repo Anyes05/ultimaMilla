@@ -49,6 +49,14 @@ public class Operador
         };
     }
 
+    public void CambiarMaximoIntentos(int maximoIntentos)
+    {
+        if (maximoIntentos < 1)
+            throw new ArgumentOutOfRangeException(nameof(maximoIntentos), "El máximo de intentos debe ser al menos 1.");
+
+        MaximoIntentos = maximoIntentos;
+    }
+
     /// <summary>Día de operación según la zona del operador (no UTC del servidor).</summary>
     public DateOnly DiaActual(DateTime? utcAhora = null)
     {

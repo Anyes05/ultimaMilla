@@ -9,4 +9,17 @@ public interface IReglaOperativaRepositorio
         Guid operadorId,
         DateTime instanteUtc,
         CancellationToken cancellationToken = default);
+
+    Task<ReglaOperativa?> ObtenerVigenteParaEditarAsync(
+        Guid operadorId,
+        DateTime instanteUtc,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ReglaOperativa>> ListarVersionesAsync(
+        Guid operadorId,
+        CancellationToken cancellationToken = default);
+
+    Task AgregarAsync(ReglaOperativa regla, CancellationToken cancellationToken = default);
+
+    Task GuardarAsync(CancellationToken cancellationToken = default);
 }

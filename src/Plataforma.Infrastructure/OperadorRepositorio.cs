@@ -15,4 +15,7 @@ public sealed class OperadorRepositorio : IOperadorRepositorio
 
     public Task<Operador?> ObtenerAsync(Guid operadorId, CancellationToken cancellationToken = default) =>
         _context.Operadores.AsNoTracking().FirstOrDefaultAsync(operador => operador.Id == operadorId, cancellationToken);
+
+    public Task<Operador?> ObtenerParaEditarAsync(Guid operadorId, CancellationToken cancellationToken = default) =>
+        _context.Operadores.FirstOrDefaultAsync(operador => operador.Id == operadorId, cancellationToken);
 }

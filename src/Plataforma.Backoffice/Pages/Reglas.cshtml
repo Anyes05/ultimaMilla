@@ -1,0 +1,128 @@
+@page
+@model ReglasModel
+@{
+    ViewData["Title"] = "Reglas operativas";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @Model.ColorMarcaCss">Administración</p>
+        <h1 class="display-6 fw-bold mb-1">Reglas operativas</h1>
+        <p class="text-muted mb-0">Cómo opera <strong>@Model.Operador?.Nombre</strong>. Los cambios rigen al publicarlos, sin nuevo despliegue.</p>
+    </div>
+    <form method="post" action="/logout">
+        <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+    </form>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Publicar nueva versión</h2>
+    </div>
+    <div class="card-body p-4">
+        <p class="small text-muted">
+            Publicar crea una versión nueva y cierra la anterior: un envío procesado bajo una regla anterior conserva su tratamiento.
+        </p>
+        <form method="post">
+            <div asp-validation-summary="All" class="text-danger"></div>
+            <div class="row g-3">
+                <div class="col-sm-6 col-lg-4">
+                    <label class="form-label fw-semibold" asp-for="Nueva.MaximoIntentos">Máximo de intentos de entrega</label>
+                    <input class="form-control" asp-for="Nueva.MaximoIntentos" type="number" min="1" max="10" />
+                </div>
+                <div class="col-sm-6 col-lg-4">
+                    <label class="form-label fw-semibold" asp-for="Nueva.PlazoEntregaHoras">Plazo de entrega comprometido (horas)</label>
+                    <input class="form-control" asp-for="Nueva.PlazoEntregaHoras" type="number" min="1" max="720" />
+                </div>
+                <div class="col-sm-6 col-lg-4">
+                    <label class="form-label fw-semibold" asp-for="Nueva.PlazoReprogramacionHoras">Plazo para pedir otra visita (horas)</label>
+                    <input class="form-control" asp-for="Nueva.PlazoReprogramacionHoras" type="number" min="0" max="720" />
+                </div>
+                <div class="col-sm-6 col-lg-4">
+                    <label class="form-label fw-semibold" asp-for="Nueva.PoliticaBultosPendientes">Bultos pendientes</label>
+                    <select class="form-select" asp-for="Nueva.PoliticaBultosPendientes" asp-items="ReglasModel.Politicas"></select>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-4 mt-3">
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Nueva.ExigeFirma" />
+                    <label class="form-check-label" asp-for="Nueva.ExigeFirma">Exige firma</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Nueva.ExigeFoto" />
+                    <label class="form-check-label" asp-for="Nueva.ExigeFoto">Exige foto</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" asp-for="Nueva.AdmiteEntregaParcial" />
+                    <label class="form-check-label" asp-for="Nueva.AdmiteEntregaParcial">Admite entrega parcial</label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Publicar nueva versión</button>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Historial de versiones</h2>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Desde</th>
+                        <th>Hasta</th>
+                        <th>Intentos</th>
+                        <th>Plazo entrega</th>
+                        <th>Plazo otra visita</th>
+                        <th>Prueba exigida</th>
+                        <th>Parcial</th>
+                        <th>Bultos pendientes</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Versiones.Count == 0)
+                {
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-5">Todavía no hay versiones publicadas.</td>
+                    </tr>
+                }
+                @foreach (var version in Model.Versiones)
+                {
+                    <tr>
+                        <td>@Model.HoraOperador(version.VigenciaDesde)</td>
+                        <td>@(version.VigenciaHasta.Year >= 9999 ? "—" : Model.HoraOperador(version.VigenciaHasta))</td>
+                        <td>@version.MaximoIntentos</td>
+                        <td>@version.PlazoEntregaHoras h</td>
+                        <td>@version.PlazoReprogramacionHoras h</td>
+                        <td>@(version.ExigeFirma ? "Firma" : "")@(version.ExigeFirma && version.ExigeFoto ? " y " : "")@(version.ExigeFoto ? "Foto" : "")@(version.ExigeFirma || version.ExigeFoto ? "" : "—")</td>
+                        <td>@(version.AdmiteEntregaParcial ? "Sí" : "No")</td>
+                        <td>@ReglasModel.NombrePolitica(version.PoliticaBultosPendientes)</td>
+                        <td>
+                            @if (ReglasModel.EsVigente(version))
+                            {
+                                <span class="status-badge status-en-transito">Vigente</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Histórica</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

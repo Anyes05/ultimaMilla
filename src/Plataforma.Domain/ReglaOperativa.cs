@@ -21,6 +21,18 @@ public class ReglaOperativa
     }
 
     /// <summary>
+    /// Termina esta versión al publicarse otra. Sigue activa para su período: un envío procesado bajo ella
+    /// conserva su tratamiento (letra 6.6).
+    /// </summary>
+    public void CerrarVigencia(DateTime hastaUtc)
+    {
+        if (hastaUtc < VigenciaDesde)
+            throw new ArgumentException("La vigencia hasta no puede ser anterior al desde.");
+
+        VigenciaHasta = hastaUtc;
+    }
+
+    /// <summary>
     /// RF 26: el destinatario puede pedir otra visita después de un intento fallido, si quedan intentos
     /// y todavía está dentro del plazo de reprogramación del operador.
     /// </summary>
