@@ -58,7 +58,7 @@
                         </div>
                         <div class="col-sm-4">
                             <label class="form-label fw-semibold" for="peso">Peso total (kg)</label>
-                            <InputNumber id="peso" @bind-Value="Formulario!.PesoKg" class="form-control" step="0.1" min="0" />
+                            <InputNumber id="peso" @bind-Value="Formulario!.PesoKg" class="form-control" step="any" min="0.001" max="1000" />
                             <ValidationMessage For="() => Formulario!.PesoKg" />
                         </div>
                         <div class="col-sm-4">
@@ -250,9 +250,16 @@
         public string Direccion { get; set; } = string.Empty;
 
         [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "El email no es válido.")]
-        public string? Email { get; set; }
+        public string? Email
+        {
+            get => email;
+            // Es opcional: vacío llega como "" y [EmailAddress] solo deja pasar null.
+            set => email = string.IsNullOrWhiteSpace(value) ? null : value;
+        }
 
-        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "1000", ErrorMessage = "El peso debe estar entre 0 y 1000 kg.")]
+        private string? email;
+
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "1000", MinimumIsExclusive = true, ErrorMessage = "El peso debe ser mayor que 0 y de hasta 1000 kg.")]
         public decimal PesoKg { get; set; }
 
         [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "500", ErrorMessage = "La distancia debe estar entre 0 y 500 km.")]

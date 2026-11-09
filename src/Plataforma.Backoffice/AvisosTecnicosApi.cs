@@ -29,7 +29,7 @@ public static class AvisosTecnicosApi
             AvisoRecibido? aviso;
             try
             {
-                aviso = System.Text.Json.JsonSerializer.Deserialize<AvisoRecibido>(json, JsonAvisos.Opciones);
+                aviso = ContratoAvisos.Leer(json);
             }
             catch (System.Text.Json.JsonException)
             {

@@ -46,6 +46,20 @@ public class ContratoAvisosTests
         Assert.Equal("Entregado", envio.GetProperty("estadoNuevo").GetString());
     }
 
+    [Theory]
+    [InlineData(ContratoAvisos.V1)]
+    [InlineData(ContratoAvisos.V2)]
+    public void Leer_EntiendeLasDosVersiones(int version)
+    {
+        var aviso = ContratoAvisos.Leer(ContratoAvisos.Armar(version, Evento, "ENV-123"));
+
+        Assert.NotNull(aviso);
+        Assert.Equal(Evento.EventId, aviso.EventId);
+        Assert.Equal(Evento.EnvioId, aviso.EnvioId);
+        Assert.Equal("EnTransito", aviso.EstadoAnterior);
+        Assert.Equal("Entregado", aviso.EstadoNuevo);
+    }
+
     [Fact]
     public void EntregaParcial_SoloLlegaAV2()
     {

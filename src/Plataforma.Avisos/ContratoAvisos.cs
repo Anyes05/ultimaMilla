@@ -41,6 +41,15 @@ public static class ContratoAvisos
             // v1: el mismo registro y los mismos campos de siempre. No cambiar.
             : JsonAvisos.Serializar(new AvisoComercio(
                 evento.EventId, "EnvioEstadoCambiado", evento.Fecha, evento.EnvioId, evento.EstadoAnterior, evento.EstadoNuevo));
+
+    /// <summary>Lee un cuerpo de cualquier versión, como el sistema de un comercio. Lo usa el receptor de prueba.</summary>
+    public static AvisoComercio? Leer(string json)
+    {
+        var v2 = System.Text.Json.JsonSerializer.Deserialize<AvisoComercioV2>(json, JsonAvisos.Opciones);
+        return v2?.Envio is { } envio
+            ? new AvisoComercio(v2.EventId, v2.Tipo, v2.Fecha, envio.Id, envio.EstadoAnterior, envio.EstadoNuevo)
+            : System.Text.Json.JsonSerializer.Deserialize<AvisoComercio>(json, JsonAvisos.Opciones);
+    }
 }
 
 /// <summary>Aviso v2: sobre versionado. Los eventos de bulto y de retiro se suman como otros "tipo".</summary>
