@@ -206,6 +206,35 @@ h1:focus {
     font-weight: 600;
 }
 
+/* Seguimiento público: marca del operador e historial de eventos. */
+.seguimiento-marca {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.seguimiento-marca__color {
+    border-radius: 50%;
+    display: inline-block;
+    height: 0.75rem;
+    width: 0.75rem;
+}
+
+.seguimiento-historial {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.seguimiento-historial li {
+    border-top: 1px solid #e9ecef;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+}
+
 /* Celular: el número de seguimiento (ENV- y 32 caracteres, sin espacios) puede cortarse en cualquier carácter,
    así no empuja el estado fuera de la pantalla; el badge del estado nunca se achica. */
 .tracking-number {

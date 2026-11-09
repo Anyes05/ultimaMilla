@@ -64,6 +64,14 @@ public static class SeguimientoPublico
     private static string IpCliente(HttpContext contexto) =>
         contexto.Connection.RemoteIpAddress?.ToString() ?? "sin-ip";
 
+    /// <summary>Color de la marca del operador (RF 5).</summary>
+    public static string ColorMarcaCss(string colorMarca) => colorMarca switch
+    {
+        "azul" => "#0d6efd",
+        "verde" => "#198754",
+        _ => "#4f46e5"
+    };
+
     /// <summary>Etapas del recorrido normal que ve el destinatario.</summary>
     public static readonly IReadOnlyList<(string Nombre, EstadoEnvio[] Estados)> Etapas =
     [

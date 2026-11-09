@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IDispositivoRepositorio, DispositivoRepositorio>();
         services.AddScoped<IEventoSincronizacionRepositorio, EventoSincronizacionRepositorio>();
         services.AddScoped<IHistorialEstadoRepositorio, HistorialEstadoRepositorio>();
+        services.AddScoped<IReglaOperativaRepositorio, ReglaOperativaRepositorio>();
         services.AddScoped<IVerificadorClave, HashClave>();
         services.AddScoped<IEmisorToken, EmisorTokenJwt>();
         services.AddSingleton<ProtectorLoginRepartidor>();
@@ -70,6 +71,8 @@ public static class DependencyInjection
         services.AddScoped<ObtenerRutasDeHoy>();
         services.AddScoped<SincronizarEntregas>();
         services.AddScoped<ObtenerSeguimientoEnvio>();
+        services.AddScoped<ObtenerDetalleSeguimiento>();
+        services.AddScoped<SolicitarReprogramacion>();
         services.AddScoped<ObtenerComprobantesEnvio>();
         services.AddScoped<RegistrarDispositivoRepartidor>();
         services.AddScoped<QuitarDispositivoRepartidor>();

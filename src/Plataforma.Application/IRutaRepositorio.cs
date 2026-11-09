@@ -4,6 +4,8 @@ namespace Plataforma.Application;
 
 public interface IRutaRepositorio
 {
+    Task<Ruta?> ObtenerAsync(Guid operadorId, Guid rutaId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Ruta>> ObtenerDeHoyAsync(
         Guid operadorId,
         Guid repartidorId,

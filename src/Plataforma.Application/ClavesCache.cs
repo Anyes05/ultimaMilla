@@ -9,4 +9,10 @@ public static class ClavesCache
 
     public static string SeguimientoPorNumero(string numeroSeguimiento) =>
         $"seguimiento:num:{numeroSeguimiento}";
+
+    public static string DetalleSeguimiento(string tokenSeguimientoPublico) =>
+        $"seguimiento:detalle:{tokenSeguimientoPublico}";
+
+    public static string DetalleSeguimientoPorNumero(string numeroSeguimiento) =>
+        $"seguimiento:detalle:num:{numeroSeguimiento}";
 }

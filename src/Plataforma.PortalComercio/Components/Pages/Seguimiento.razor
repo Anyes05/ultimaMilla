@@ -2,7 +2,10 @@
 @page "/seguimiento/{Token}"
 @using Plataforma.Application
 @using Plataforma.Domain
-@inject ObtenerSeguimientoEnvio ObtenerSeguimiento
+@using Microsoft.EntityFrameworkCore
+@inject ObtenerDetalleSeguimiento ObtenerSeguimiento
+@inject SolicitarReprogramacion Reprogramacion
+@inject NavigationManager Navegacion
 
 @* Seguimiento público del destinatario (RF 25, letra 6.2): SSR estático, sin sesión y sin datos personales.
    Se entra con el enlace que recibe el destinatario (/seguimiento/{token}) o con el número de seguimiento. *@
@@ -39,11 +42,25 @@
             </div>
         }
 
+        @if (Reprogramada)
+        {
+            <div class="alert alert-success" role="alert">Listo: pedimos otra visita para tu envío.</div>
+        }
+
+        @if (mensajeError is not null)
+        {
+            <div class="alert alert-warning" role="alert">@mensajeError</div>
+        }
+
         @if (visible is not null)
         {
             var etapa = SeguimientoPublico.EtapaActual(visible.Estado);
             <article class="card border-0 shadow-sm" aria-labelledby="estado-titulo">
                 <div class="card-body p-4">
+                    <p class="seguimiento-marca small fw-semibold mb-3">
+                        <span class="seguimiento-marca__color" style="background: @SeguimientoPublico.ColorMarcaCss(visible.ColorMarca)" aria-hidden="true"></span>
+                        @visible.Operador
+                    </p>
                     <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                         <div class="min-w-0">
                             <span class="small text-muted d-block">Número de seguimiento</span>
@@ -68,9 +85,53 @@
                         </ol>
                     }
 
+                    @if (visible.FechaPrevista is DateOnly fechaPrevista)
+                    {
+                        <p class="mt-4 mb-0">Entrega prevista: <strong>@fechaPrevista.ToString("dd/MM/yyyy")</strong></p>
+                    }
+                    else if (visible.EstimadaAntesDeUtc is DateTime antesDe)
+                    {
+                        <p class="mt-4 mb-0">Entrega estimada antes del <strong>@HoraLocal(antesDe)</strong></p>
+                    }
+
+                    @if (visible.BultosTotal > 1)
+                    {
+                        <p class="small mt-3 mb-0">@visible.BultosEntregados de @visible.BultosTotal bultos entregados.</p>
+                    }
+
                     @if (visible.IntentosRealizados > 0)
                     {
-                        <p class="small text-muted mt-4 mb-0">Intentos de entrega realizados: @visible.IntentosRealizados</p>
+                        <p class="small text-muted mt-3 mb-0">Intentos de entrega realizados: @visible.IntentosRealizados</p>
+                    }
+
+                    @* El formulario se dibuja siempre con enlace: si no, repetir el pedido desde una pestaña vieja da un 400 sin explicación. *@
+                    @if (TokenActual is not null)
+                    {
+                        <form method="post" class="mt-4" @onsubmit="PedirOtraVisita" @formname="reprogramar-envio">
+                            <AntiforgeryToken />
+                            @if (visible.PuedeReprogramar)
+                            {
+                                <button type="submit" class="btn btn-primary w-100">Pedir otra visita</button>
+                            }
+                        </form>
+                    }
+                    else if (visible.PuedeReprogramar)
+                    {
+                        <p class="small text-muted mt-4 mb-0">Para pedir otra visita, abrí el enlace que recibiste.</p>
+                    }
+
+                    @if (visible.Historial.Count > 0)
+                    {
+                        <h3 class="h6 mt-4 mb-2">Historial</h3>
+                        <ol class="seguimiento-historial small">
+                            @foreach (var evento in visible.Historial.OrderByDescending(item => item.Fecha))
+                            {
+                                <li>
+                                    <span>@EstadosVista.Nombre(evento.Estado)</span>
+                                    <span class="text-muted">@HoraLocal(evento.Fecha)</span>
+                                </li>
+                            }
+                        </ol>
                     }
                 </div>
             </article>
@@ -90,15 +151,21 @@
     [SupplyParameterFromQuery(Name = "numero")]
     public string? Numero { get; set; }
 
-    private SeguimientoVisible? visible;
+    [SupplyParameterFromQuery(Name = "reprogramada")]
+    public bool Reprogramada { get; set; }
+
+    private DetalleSeguimiento? visible;
     private bool noEncontrado;
+    private string? mensajeError;
+
+    private string? TokenActual => string.IsNullOrWhiteSpace(Token)
+        ? string.IsNullOrWhiteSpace(TokenConsulta) ? null : TokenConsulta
+        : Token;
 
     protected override async Task OnInitializedAsync()
     {
-        var token = string.IsNullOrWhiteSpace(Token) ? TokenConsulta : Token;
-
         // El caso de uso ya usa caché distribuido (seguimiento: lectura muy frecuente, cambia seguido).
-        if (!string.IsNullOrWhiteSpace(token))
+        if (TokenActual is { } token)
             visible = await ObtenerSeguimiento.PorTokenAsync(token);
         else if (!string.IsNullOrWhiteSpace(Numero))
             visible = await ObtenerSeguimiento.PorNumeroAsync(Numero);
@@ -107,4 +174,34 @@
 
         noEncontrado = visible is null;
     }
+
+    private async Task PedirOtraVisita()
+    {
+        if (TokenActual is not { } token)
+            return;
+
+        ResultadoReprogramacion resultado;
+        try
+        {
+            resultado = await Reprogramacion.EjecutarAsync(token);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateConcurrencyException)
+        {
+            // Otra persona o el operador lo cambió justo antes.
+            resultado = ResultadoReprogramacion.NoPermitida;
+        }
+
+        if (resultado != ResultadoReprogramacion.Realizada)
+        {
+            mensajeError = "No pudimos pedir otra visita para este envío. Comunicate con el comercio.";
+            return;
+        }
+
+        Navegacion.NavigateTo($"/seguimiento/{Uri.EscapeDataString(token)}?reprogramada=true", forceLoad: true);
+    }
+
+    private string HoraLocal(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(utc, DateTimeKind.Utc),
+            TimeZoneInfo.FindSystemTimeZoneById(visible!.ZonaHoraria)).ToString("dd/MM/yyyy HH:mm");
 }

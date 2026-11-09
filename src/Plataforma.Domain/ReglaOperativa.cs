@@ -20,6 +20,16 @@ public class ReglaOperativa
     {
     }
 
+    /// <summary>
+    /// RF 26: el destinatario puede pedir otra visita después de un intento fallido, si quedan intentos
+    /// y todavía está dentro del plazo de reprogramación del operador.
+    /// </summary>
+    public bool PermiteReprogramar(EstadoEnvio estado, int intentosRealizados, DateTime? ultimoIntentoUtc, DateTime ahoraUtc) =>
+        estado == EstadoEnvio.NoEntregado
+        && intentosRealizados < MaximoIntentos
+        && ultimoIntentoUtc is { } intento
+        && ahoraUtc <= intento.AddHours(PlazoReprogramacionHoras);
+
     public static ReglaOperativa Crear(
         Guid id,
         Guid operadorId,

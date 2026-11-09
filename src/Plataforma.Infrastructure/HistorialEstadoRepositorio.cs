@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Plataforma.Application;
 using Plataforma.Domain;
 
@@ -14,4 +15,13 @@ public sealed class HistorialEstadoRepositorio : IHistorialEstadoRepositorio
 
     public async Task AgregarAsync(HistorialEstado historial, CancellationToken cancellationToken = default) =>
         await _context.HistorialEstados.AddAsync(historial, cancellationToken);
+
+    public async Task<IReadOnlyList<HistorialEstado>> ListarPorEnvioAsync(
+        Guid operadorId,
+        Guid envioId,
+        CancellationToken cancellationToken = default) =>
+        await _context.HistorialEstados.AsNoTracking()
+            .Where(historial => historial.OperadorId == operadorId && historial.EnvioId == envioId)
+            .OrderBy(historial => historial.Fecha)
+            .ToListAsync(cancellationToken);
 }
