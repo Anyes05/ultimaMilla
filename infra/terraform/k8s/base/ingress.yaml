@@ -43,6 +43,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: backoffice
+                # Seguimiento público en Blazor (letra 6.2). Vuelta atrás: "backoffice", su página /Seguimiento sigue disponible.
+                name: portal
                 port:
                   name: http
