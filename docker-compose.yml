@@ -120,6 +120,11 @@ services:
       # El receptor de prueba (dentro del Backoffice) corre sin TLS en la red de compose.
       # URL a cargar en el Portal: http://backoffice:8080/api/receptor-prueba/avisos
       Avisos__HostsHttpPermitidos__0: backoffice
+      # Correos al destinatario (RF 27): quedan en Mailpit, se ven en http://localhost:8025.
+      Notificaciones__SmtpHost: mailpit
+      Notificaciones__SmtpPuerto: "1025"
+      Notificaciones__SmtpSsl: "false"
+      Notificaciones__UrlSeguimiento: http://localhost:8081
     depends_on:
       postgres:
         condition: service_healthy
@@ -127,6 +132,11 @@ services:
         condition: service_healthy
       mongo:
         condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.27.0
+    ports:
+      - "8025:8025"
 
 volumes:
   postgres-data:

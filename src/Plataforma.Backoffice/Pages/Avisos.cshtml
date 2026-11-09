@@ -112,3 +112,46 @@
         </div>
     </div>
 </div>
+
+@if (Model.NotificacionesFallidas.Count > 0)
+{
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-white">
+            <h2 class="h5 mb-0">Notificaciones a destinatarios fallidas</h2>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Actualizado</th>
+                            <th>Envío</th>
+                            <th>Estado notificado</th>
+                            <th>Intentos</th>
+                            <th>Último error</th>
+                            <th class="text-end"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var notificacion in Model.NotificacionesFallidas)
+                    {
+                        <tr>
+                            <td class="small">@TextosUsuario.HoraOperador(notificacion.ActualizadaEn, Model.Operador?.ZonaHoraria, "dd/MM HH:mm")</td>
+                            <td><span class="tracking-number">@(Model.Tracking.TryGetValue(notificacion.EnvioId, out var numero) ? numero : "—")</span></td>
+                            <td>@TiposDeEvento.Nombre(notificacion.EstadoEnvio)</td>
+                            <td>@notificacion.Intentos</td>
+                            <td class="small text-muted">@(notificacion.UltimoError ?? "—")</td>
+                            <td class="text-end">
+                                <form method="post" asp-page-handler="ReintentarNotificacion" asp-route-filtro="@Model.Filtro">
+                                    <input type="hidden" name="notificacionId" value="@notificacion.Id" />
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Reintentar</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

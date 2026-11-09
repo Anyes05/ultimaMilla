@@ -19,6 +19,7 @@ public sealed class AvisosDbContext : DbContext
     public DbSet<SuscripcionAviso> Suscripciones => Set<SuscripcionAviso>();
     public DbSet<EntregaAviso> Entregas => Set<EntregaAviso>();
     public DbSet<NotificacionPush> NotificacionesPush => Set<NotificacionPush>();
+    public DbSet<NotificacionDestinatario> NotificacionesDestinatario => Set<NotificacionDestinatario>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +75,20 @@ public sealed class AvisosDbContext : DbContext
 
             // Idempotencia: un evento llega una sola vez a cada dispositivo.
             entidad.HasIndex(notificacion => new { notificacion.EventId, notificacion.Token }).IsUnique();
+            entidad.HasIndex(notificacion => new { notificacion.OperadorId, notificacion.Estado });
+        });
+
+        modelBuilder.Entity<NotificacionDestinatario>(entidad =>
+        {
+            entidad.ToTable("NotificacionesDestinatario");
+            entidad.HasKey(notificacion => notificacion.Id);
+            entidad.Property(notificacion => notificacion.EstadoEnvio).HasMaxLength(40).IsRequired();
+            entidad.Property(notificacion => notificacion.Evento).IsRequired();
+            entidad.Property(notificacion => notificacion.UltimoError).HasMaxLength(500);
+            entidad.Property(notificacion => notificacion.Estado).HasConversion<string>().HasMaxLength(20);
+
+            // Idempotencia: un evento genera un solo correo.
+            entidad.HasIndex(notificacion => notificacion.EventId).IsUnique();
             entidad.HasIndex(notificacion => new { notificacion.OperadorId, notificacion.Estado });
         });
     }

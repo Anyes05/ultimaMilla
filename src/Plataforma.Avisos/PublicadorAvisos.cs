@@ -11,6 +11,9 @@ public interface IPublicadorAvisos
 
     /// <summary>Publica el resultado de un aviso para el tablero en tiempo real.</summary>
     Task PublicarResultadoAsync(ResultadoAviso resultado, CancellationToken cancellationToken = default);
+
+    /// <summary>Vuelve a encolar el evento de una notificación al destinatario (reintento manual).</summary>
+    Task PublicarNotificacionAsync(Guid eventId, string eventoJson, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -43,6 +46,9 @@ public sealed class PublicadorRabbitAvisos : IPublicadorAvisos, IAsyncDisposable
     public Task PublicarResultadoAsync(ResultadoAviso resultado, CancellationToken cancellationToken = default) =>
         PublicarAsync(_rabbit.Exchange, TopologiaAvisos.RoutingResultadoAviso, JsonAvisos.Serializar(resultado),
             resultado.EntregaId.ToString(), cancellationToken);
+
+    public Task PublicarNotificacionAsync(Guid eventId, string eventoJson, CancellationToken cancellationToken = default) =>
+        PublicarAsync(string.Empty, TopologiaNotificaciones.ColaEventos, eventoJson, eventId.ToString(), cancellationToken);
 
     private async Task PublicarAsync(
         string exchange,

@@ -21,6 +21,14 @@ public sealed record EntregaVista(
 
 public sealed record ResumenAvisos(int Pendientes, int Entregados, int Fallidos);
 
+public sealed record NotificacionFallidaVista(
+    Guid Id,
+    Guid EnvioId,
+    string EstadoEnvio,
+    int Intentos,
+    string? UltimoError,
+    DateTime ActualizadaEn);
+
 /// <summary>
 /// Casos de uso de avisos para las pantallas (Backoffice y Portal). Cada consulta recibe el operador
 /// (y el comercio en el Portal) desde el usuario autenticado y filtra por ellos: nunca desde el formulario.
@@ -124,6 +132,42 @@ public sealed class ServicioAvisos
     /// si el comercio ya lo había recibido, puede descartarlo como duplicado.
     /// comercioId != null restringe además al comercio (Portal).
     /// </summary>
+    public async Task<IReadOnlyList<NotificacionFallidaVista>> ListarNotificacionesFallidasAsync(
+        Guid operadorId,
+        int maximo = 100,
+        CancellationToken cancellationToken = default) =>
+        await _db.NotificacionesDestinatario.AsNoTracking()
+            .Where(n => n.OperadorId == operadorId && n.Estado == EstadoNotificacionDestinatario.Fallida)
+            .OrderByDescending(n => n.ActualizadaEn)
+            .Take(maximo)
+            .Select(n => new NotificacionFallidaVista(n.Id, n.EnvioId, n.EstadoEnvio, n.Intentos, n.UltimoError, n.ActualizadaEn))
+            .ToListAsync(cancellationToken);
+
+    public async Task ReintentarNotificacionAsync(
+        Guid notificacionId,
+        Guid operadorId,
+        CancellationToken cancellationToken = default)
+    {
+        var notificacion = await _db.NotificacionesDestinatario.FirstOrDefaultAsync(
+            n => n.Id == notificacionId && n.OperadorId == operadorId,
+            cancellationToken)
+            ?? throw new InvalidOperationException("La notificación no existe.");
+
+        notificacion.ReiniciarParaReintento(DateTime.UtcNow);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _publicador.PublicarNotificacionAsync(notificacion.EventId, notificacion.Evento, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            notificacion.VolverAFallida("La cola no aceptó el reintento.", DateTime.UtcNow);
+            await _db.SaveChangesAsync(CancellationToken.None);
+            throw new InvalidOperationException("La cola no está disponible. Intentá de nuevo en unos minutos.", ex);
+        }
+    }
+
     public async Task ReintentarAsync(
         Guid entregaId,
         Guid operadorId,

@@ -2,6 +2,7 @@ using Plataforma.Avisos;
 using Plataforma.HistorialEventos;
 using Plataforma.Observabilidad;
 using Plataforma.Worker;
+using Plataforma.Worker.Notificaciones;
 using Plataforma.Worker.Push;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -18,6 +19,13 @@ builder.Services.AddHostedService<MonitorColas>();
 // Push de reasignación (opcional 7.3). Sin FCM, el emisor de registro lo deja en el log; Álvaro lo reemplaza por FCM.
 builder.Services.AddSingleton<IEmisorPush, EmisorPushRegistro>();
 builder.Services.AddHostedService<ConsumidorPushReasignacion>();
+// Notificación al destinatario (RF 27). Sin servidor de correo, el emisor de registro lo deja en el log.
+builder.Services.Configure<OpcionesNotificaciones>(builder.Configuration.GetSection(OpcionesNotificaciones.Seccion));
+if (string.IsNullOrWhiteSpace(builder.Configuration[$"{OpcionesNotificaciones.Seccion}:SmtpHost"]))
+    builder.Services.AddSingleton<IEmisorCorreo, EmisorCorreoRegistro>();
+else
+    builder.Services.AddSingleton<IEmisorCorreo, EmisorCorreoSmtp>();
+builder.Services.AddHostedService<ConsumidorNotificacionDestinatario>();
 // Salud para Kubernetes (sondas exec): /tmp/worker-vivo y /tmp/worker-listo.
 builder.Services.AddHostedService<LatidoWorker>();
 if (!string.IsNullOrWhiteSpace(builder.Configuration["Mongo:ConnectionString"]))

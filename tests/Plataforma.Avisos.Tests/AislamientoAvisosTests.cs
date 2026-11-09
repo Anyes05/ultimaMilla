@@ -121,6 +121,8 @@ public class AislamientoAvisosTests
             return Task.CompletedTask;
         }
 
+        public Task PublicarNotificacionAsync(Guid eventId, string eventoJson, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public Task PublicarResultadoAsync(ResultadoAviso resultado, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
     }

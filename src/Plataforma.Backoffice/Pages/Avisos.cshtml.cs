@@ -39,6 +39,7 @@ public class AvisosModel : PageModel
 
     public Operador? Operador { get; private set; }
     public IReadOnlyList<EntregaVista> Entregas { get; private set; } = [];
+    public IReadOnlyList<NotificacionFallidaVista> NotificacionesFallidas { get; private set; } = [];
     public ResumenAvisos Resumen { get; private set; } = new(0, 0, 0);
     public IReadOnlyDictionary<Guid, string> Tracking { get; private set; } = new Dictionary<Guid, string>();
     public string? Mensaje { get; private set; }
@@ -64,6 +65,7 @@ public class AvisosModel : PageModel
             var estado = Filtro == "todos" ? (EstadoEntrega?)null : EstadoEntrega.Fallido;
             Entregas = await _avisos.ListarEntregasOperadorAsync(acceso.OperadorId, estado, 200, ct);
             Resumen = await _avisos.ResumenOperadorAsync(acceso.OperadorId, ct);
+            NotificacionesFallidas = await _avisos.ListarNotificacionesFallidasAsync(acceso.OperadorId, cancellationToken: ct);
             Tracking = (await _listarEnvios.Ejecutar(acceso, ct))
                 .ToDictionary(envio => envio.Id, envio => envio.NumeroSeguimiento);
         }
@@ -83,6 +85,24 @@ public class AvisosModel : PageModel
         TempData["Mensaje"] = forzarFallo
             ? "Receptor de prueba en falla: los avisos nuevos van a fallar y se reintentarán automáticamente."
             : "Receptor de prueba disponible.";
+        return RedirectToPage(new { Filtro });
+    }
+
+    public async Task<IActionResult> OnPostReintentarNotificacionAsync(Guid notificacionId)
+    {
+        if (!AccesoActual.Intentar(User, out var acceso))
+            return Challenge();
+
+        try
+        {
+            await _avisos.ReintentarNotificacionAsync(notificacionId, acceso.OperadorId, HttpContext.RequestAborted);
+            TempData["Mensaje"] = "Notificación reenviada al destinatario.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["Error"] = TextosUsuario.Error(ex);
+        }
+
         return RedirectToPage(new { Filtro });
     }
 

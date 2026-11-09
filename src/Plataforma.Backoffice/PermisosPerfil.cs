@@ -48,7 +48,6 @@ public static class PermisosPerfil
     {
         // El administrador corrige cualquier transición válida (incluidas las automáticas 10 y 11 y las del
         // repartidor, para cuando la app no puede registrarlas). La validez la sigue controlando TransicionesEnvio.
-        // Volviendo a comitear.
         // Asignar a ruta y salir a reparto, igual que el despachador, solo desde Despacho: necesitan una ruta.
         Roles.Administrador => !RequiereRuta(desde, hacia),
         Roles.Despachador => Despachador.Contains((desde, hacia)),

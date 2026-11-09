@@ -16,6 +16,24 @@ public sealed class OpcionesRabbitMq
     public bool Configurado => !string.IsNullOrWhiteSpace(Host);
 }
 
+/// <summary>Correo al destinatario (RF 27). Sin SmtpHost, el worker registra el mensaje en el log en lugar de mandarlo.</summary>
+public sealed class OpcionesNotificaciones
+{
+    public const string Seccion = "Notificaciones";
+
+    public string SmtpHost { get; set; } = string.Empty;
+    public int SmtpPuerto { get; set; } = 587;
+    public string SmtpUsuario { get; set; } = string.Empty;
+    public string SmtpClave { get; set; } = string.Empty;
+    public bool SmtpSsl { get; set; } = true;
+    public string Remitente { get; set; } = "no-responder@tallernet.cloud-ip.cc";
+
+    /// <summary>Base del enlace público que recibe el destinatario.</summary>
+    public string UrlSeguimiento { get; set; } = "https://tracking.tallernet.cloud-ip.cc";
+
+    public bool SmtpConfigurado => !string.IsNullOrWhiteSpace(SmtpHost);
+}
+
 public sealed class OpcionesAvisos
 {
     public const string Seccion = "Avisos";
