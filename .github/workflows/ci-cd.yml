@@ -21,6 +21,20 @@ jobs:
     name: Build and test
     runs-on: ubuntu-24.04
 
+    # PostgreSQL efímero solo para la prueba de integración (6.15); no es la base del ambiente.
+    services:
+      postgres:
+        image: postgres:16.9-alpine
+        env:
+          POSTGRES_PASSWORD: pruebas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -41,6 +55,11 @@ jobs:
 
       - name: Run tenant-isolation tests
         run: dotnet test tests/Plataforma.Infrastructure.Tests/Plataforma.Infrastructure.Tests.csproj --configuration Release --no-build --no-restore
+
+      - name: Run integration tests (PostgreSQL)
+        env:
+          PRUEBAS_POSTGRES: Host=localhost;Port=5432;Username=postgres;Password=pruebas
+        run: dotnet test tests/Plataforma.Infrastructure.Tests/Plataforma.Infrastructure.Tests.csproj --configuration Release --no-build --no-restore --filter "Category=Integracion"
 
       - name: Run architecture tests
         run: dotnet test tests/Plataforma.Architecture.Tests/Plataforma.Architecture.Tests.csproj --configuration Release --no-build --no-restore
