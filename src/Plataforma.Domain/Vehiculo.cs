@@ -62,4 +62,6 @@ public class Vehiculo
     }
 
     public void Desactivar() => Activo = false;
+
+    public void Activar() => Activo = true;
 }

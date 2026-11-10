@@ -59,7 +59,14 @@ public sealed class DespacharRuta
         if (!repartidor.Activo)
             throw new InvalidOperationException("El repartidor no está activo.");
 
-        // RF 14–16: validar capacidad del vehículo y cantidad de paradas si se indica vehículo.
+        // Capacidad: solo bultos disponibles para nueva ruta (RF 34 / capacidad variable).
+        var bultosPorEnvio = new Dictionary<Guid, IReadOnlyList<Bulto>>();
+        foreach (var envioIdCap in envioIds)
+        {
+            var todos = await _bultos.ListarPorEnvioAsync(operadorId, envioIdCap, cancellationToken);
+            bultosPorEnvio[envioIdCap] = todos;
+        }
+
         if (vehiculoId is Guid vid)
         {
             var vehiculo = await _cobertura.ObtenerVehiculoAsync(operadorId, vid, cancellationToken)
@@ -74,9 +81,16 @@ public sealed class DespacharRuta
             decimal volumen = 0;
             foreach (var envioIdCap in envioIds)
             {
-                var bultos = await _bultos.ListarPorEnvioAsync(operadorId, envioIdCap, cancellationToken);
-                peso += bultos.Sum(b => b.PesoKg);
-                volumen += bultos.Sum(b => b.AltoCm * b.AnchoCm * b.LargoCm);
+                var despachables = bultosPorEnvio[envioIdCap]
+                    .Where(b => b.DisponibleParaNuevaRuta)
+                    .ToList();
+                // Sin bultos (flujo v1): no suma capacidad; con bultos, solo los pendientes.
+                if (bultosPorEnvio[envioIdCap].Count > 0 && despachables.Count == 0)
+                    throw new InvalidOperationException(
+                        $"El envío {envioIdCap} no tiene bultos pendientes para una nueva ruta.");
+
+                peso += despachables.Sum(b => b.PesoKg);
+                volumen += despachables.Sum(b => b.AltoCm * b.AnchoCm * b.LargoCm);
             }
 
             if (vehiculo.CapacidadPesoKg > 0 && peso > vehiculo.CapacidadPesoKg)
@@ -101,9 +115,15 @@ public sealed class DespacharRuta
             if (envio.RutaId is not null)
                 throw new InvalidOperationException($"El envío {envio.NumeroSeguimiento} ya está en una ruta.");
 
-            if (envio.Estado is not (EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado))
+            // Rutas mixtas: depósito, reprogramados y parciales con bultos pendientes (RF 34).
+            if (envio.Estado is not (EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado or EstadoEnvio.EntregadoParcialmente))
                 throw new InvalidOperationException(
                     $"El envío {envio.NumeroSeguimiento} no está disponible para despacho ({envio.Estado}).");
+
+            if (bultosPorEnvio.TryGetValue(envioId, out var bultosEnvio) && bultosEnvio.Count > 0
+                && bultosEnvio.All(b => !b.DisponibleParaNuevaRuta))
+                throw new InvalidOperationException(
+                    $"El envío {envio.NumeroSeguimiento} no tiene bultos pendientes para despachar.");
 
             var anterior = envio.Estado;
             envio.AsignarARuta(ruta.Id);

@@ -163,7 +163,8 @@ public class DespachoModel : PageModel
         EnviosEnDeposito = envios
             .Where(envio =>
                 envio.RutaId is null &&
-                envio.Estado is EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado)
+                envio.Estado is EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado
+                    or EstadoEnvio.EntregadoParcialmente)
             .OrderBy(envio => envio.FechaCreacion)
             .ToList();
         Repartidores = await _listarRepartidores.EjecutarAsync(acceso.OperadorId, ct);

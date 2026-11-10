@@ -91,7 +91,8 @@ public class Envio
         Estado = nuevoEstado;
         Version++;
 
-        if (nuevoEstado is EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado)
+        // Sale de la hoja de ruta: depósito, reprogramación o parcial con bultos a nueva visita (RF 34).
+        if (nuevoEstado is EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado or EstadoEnvio.EntregadoParcialmente)
             RutaId = null;
     }
 

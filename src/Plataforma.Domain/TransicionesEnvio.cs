@@ -39,6 +39,7 @@ public static class TransicionesEnvio
             EstadoEnvio.Reprogramado,
             EstadoEnvio.EnDevolucion,
             EstadoEnvio.EnDeposito,
+            EstadoEnvio.AsignadoARuta, // RF 34: bultos pendientes a una nueva ruta
             EstadoEnvio.Extraviado
         ],
 

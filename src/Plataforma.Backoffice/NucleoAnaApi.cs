@@ -231,6 +231,26 @@ public static class NucleoAnaApi
             }
         }).RequireAuthorization();
 
+        app.MapPut("/api/cobertura/zonas/{zonaId:guid}", async (
+            Guid zonaId,
+            ClaimsPrincipal principal,
+            ZonaSolicitud solicitud,
+            GestionCobertura cobertura,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                await cobertura.ActualizarZonaAsync(acceso.OperadorId, zonaId, solicitud.Nombre, solicitud.Poligono ?? "[]", ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
         app.MapGet("/api/cobertura/franjas", async (
             ClaimsPrincipal principal, GestionCobertura cobertura, CancellationToken ct) =>
         {
@@ -249,6 +269,28 @@ public static class NucleoAnaApi
                 var f = await cobertura.DefinirFranjaAsync(
                     acceso.OperadorId, solicitud.Nombre, solicitud.Desde, solicitud.Hasta, solicitud.ZonaId, ct);
                 return Results.Json(f, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPut("/api/cobertura/franjas/{franjaId:guid}", async (
+            Guid franjaId,
+            ClaimsPrincipal principal,
+            FranjaActualizarSolicitud solicitud,
+            GestionCobertura cobertura,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                await cobertura.ActualizarFranjaAsync(
+                    acceso.OperadorId, franjaId, solicitud.Nombre, solicitud.Desde, solicitud.Hasta,
+                    solicitud.ZonaId, solicitud.Activa, ct);
+                return Results.NoContent();
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
@@ -281,6 +323,34 @@ public static class NucleoAnaApi
                     solicitud.MaximoParadas,
                     ct);
                 return Results.Json(v, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPut("/api/cobertura/vehiculos/{vehiculoId:guid}", async (
+            Guid vehiculoId,
+            ClaimsPrincipal principal,
+            VehiculoActualizarSolicitud solicitud,
+            GestionCobertura cobertura,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.Administrador or Roles.Despachador))
+                return Results.Unauthorized();
+            try
+            {
+                await cobertura.ActualizarVehiculoAsync(
+                    acceso.OperadorId,
+                    vehiculoId,
+                    solicitud.CapacidadPesoKg,
+                    solicitud.CapacidadVolumenCm3,
+                    solicitud.MaximoParadas,
+                    solicitud.Activo,
+                    ct);
+                return Results.NoContent();
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
@@ -377,12 +447,23 @@ public sealed record CompletarRetiroSolicitud(Guid? EnvioAsociadoId = null);
 public sealed record CancelarRetiroSolicitud(string? Motivo = null);
 public sealed record ZonaSolicitud(string Nombre, string? Poligono = null);
 public sealed record FranjaSolicitud(string Nombre, TimeOnly Desde, TimeOnly Hasta, Guid? ZonaId = null);
+public sealed record FranjaActualizarSolicitud(
+    string Nombre,
+    TimeOnly Desde,
+    TimeOnly Hasta,
+    Guid? ZonaId = null,
+    bool? Activa = null);
 public sealed record VehiculoSolicitud(
     string Patente,
     string? Descripcion = null,
     decimal CapacidadPesoKg = 0,
     decimal CapacidadVolumenCm3 = 0,
     int MaximoParadas = 0);
+public sealed record VehiculoActualizarSolicitud(
+    decimal CapacidadPesoKg = 0,
+    decimal CapacidadVolumenCm3 = 0,
+    int MaximoParadas = 0,
+    bool? Activo = null);
 public sealed record ComercioSolicitudApi(
     string NombreComercial,
     string? RazonSocial = null,

@@ -44,5 +44,19 @@ public class FranjaHoraria
         };
     }
 
+    public void Actualizar(string nombre, TimeOnly desde, TimeOnly hasta, Guid? zonaId = null)
+    {
+        if (string.IsNullOrWhiteSpace(nombre))
+            throw new ArgumentException("El nombre es requerido.", nameof(nombre));
+        if (hasta <= desde)
+            throw new ArgumentException("La hora hasta debe ser posterior a desde.");
+        Nombre = nombre.Trim();
+        Desde = desde;
+        Hasta = hasta;
+        ZonaId = zonaId;
+    }
+
     public void Desactivar() => Activa = false;
+
+    public void Activar() => Activa = true;
 }

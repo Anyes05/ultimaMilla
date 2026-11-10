@@ -139,6 +139,8 @@ public sealed class SincronizarEntregas
                 continue;
             }
 
+            var rutaAntes = envio.RutaId;
+
             if (evento.CodigoEscaneado is not null &&
                 (evento.Estado != EstadoEnvio.EnTransito ||
                  !string.Equals(evento.CodigoEscaneado.Trim(), envio.NumeroSeguimiento, StringComparison.OrdinalIgnoreCase)))
@@ -246,6 +248,14 @@ public sealed class SincronizarEntregas
                     responsable: usuario);
                 if (eventIdV2 is Guid idV2)
                     eventIdsOutbox.Add(idV2);
+            }
+
+            // RF 34: al quedar parcial/reprogramado se libera RutaId; quitar la parada de la hoja vieja.
+            if (rutaAntes is not null && envio.RutaId is null)
+            {
+                var parada = await _rutas.ObtenerParadaPorEnvioAsync(operadorId, envio.Id, cancellationToken);
+                if (parada is not null)
+                    await _rutas.QuitarParadaAsync(parada, cancellationToken);
             }
 
             await _pruebas.AgregarAsync(

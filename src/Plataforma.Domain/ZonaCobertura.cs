@@ -30,4 +30,12 @@ public class ZonaCobertura
             Poligono = poligono.Trim()
         };
     }
+
+    public void Actualizar(string nombre, string poligono)
+    {
+        if (string.IsNullOrWhiteSpace(nombre))
+            throw new ArgumentException("El nombre de la zona es requerido.");
+        Nombre = nombre.Trim();
+        Poligono = (poligono ?? string.Empty).Trim();
+    }
 }

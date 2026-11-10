@@ -18,6 +18,20 @@ public sealed class CoberturaRepositorio : ICoberturaRepositorio
     public async Task AgregarVehiculoAsync(Vehiculo vehiculo, CancellationToken cancellationToken = default) =>
         await _context.Vehiculos.AddAsync(vehiculo, cancellationToken);
 
+    public Task<ZonaCobertura?> ObtenerZonaAsync(
+        Guid operadorId,
+        Guid zonaId,
+        CancellationToken cancellationToken = default) =>
+        _context.ZonasCobertura.FirstOrDefaultAsync(
+            z => z.OperadorId == operadorId && z.Id == zonaId, cancellationToken);
+
+    public Task<FranjaHoraria?> ObtenerFranjaAsync(
+        Guid operadorId,
+        Guid franjaId,
+        CancellationToken cancellationToken = default) =>
+        _context.FranjasHorarias.FirstOrDefaultAsync(
+            f => f.OperadorId == operadorId && f.Id == franjaId, cancellationToken);
+
     public async Task<IReadOnlyList<ZonaCobertura>> ListarZonasAsync(
         Guid operadorId,
         CancellationToken cancellationToken = default) =>
