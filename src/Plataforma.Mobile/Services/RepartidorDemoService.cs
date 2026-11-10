@@ -123,12 +123,13 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         Ruta ruta, Envio envio, EntregaPendiente evento)
     {
         var bultos = envio.Bultos ?? throw new InvalidOperationException("La ruta no contiene el detalle de bultos. Actualiza la ruta antes de registrar una entrega parcial.");
+        var resultadosEvento = evento.Bultos ?? throw new InvalidOperationException("El evento no contiene resultados por bulto.");
         if (!ruta.EntregaParcialHabilitada)
             throw new InvalidOperationException("La entrega parcial no esta habilitada para este operador.");
-        if (evento.Bultos!.Select(resultado => resultado.BultoId).Distinct().Count() != evento.Bultos.Count)
+        if (resultadosEvento.Select(resultado => resultado.BultoId).Distinct().Count() != resultadosEvento.Count)
             throw new InvalidOperationException("No se puede registrar dos veces el mismo bulto en una parada.");
 
-        var resultados = evento.Bultos.ToDictionary(resultado => resultado.BultoId);
+        var resultados = resultadosEvento.ToDictionary(resultado => resultado.BultoId);
         if (resultados.Keys.Any(id => bultos.All(bulto => bulto.Id != id)))
             throw new InvalidOperationException("Un bulto seleccionado no pertenece a este envio.");
         var bultosActivos = bultos.Where(bulto => bulto.PuedeEntregarse).Select(bulto => bulto.Id).ToHashSet();
@@ -136,7 +137,7 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
             throw new InvalidOperationException("Registra el resultado de cada bulto pendiente de esta parada.");
 
         var catalogoMotivos = ruta.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados;
-        foreach (var resultado in evento.Bultos)
+        foreach (var resultado in resultadosEvento)
         {
             var actual = bultos.Single(bulto => bulto.Id == resultado.BultoId);
             if (!actual.PuedeEntregarse)
