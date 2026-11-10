@@ -181,6 +181,7 @@ public sealed class SeguimientoPublicoTests
             new ReglaOperativaRepositorio(contexto),
             new CambiarEstadoEnvio(
                 new EnvioRepositorio(contexto),
+                new RutaRepositorio(contexto),
                 new RegistrarOutboxEstado(outbox, historial),
                 new PublicarOutboxPendientes(outbox, new PublicadorMensajesPrueba { Disponible = true }),
                 _cache)).EjecutarAsync(token);

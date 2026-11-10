@@ -42,4 +42,23 @@ public class Comercio
             Activo = true
         };
     }
+
+    public void Actualizar(
+        string nombreComercial,
+        string razonSocial,
+        string documentoFiscal,
+        string direccionPrincipal)
+    {
+        if (string.IsNullOrWhiteSpace(nombreComercial))
+            throw new ArgumentException("El nombre comercial es requerido.");
+
+        NombreComercial = nombreComercial.Trim();
+        RazonSocial = razonSocial.Trim();
+        DocumentoFiscal = documentoFiscal.Trim();
+        DireccionPrincipal = direccionPrincipal.Trim();
+    }
+
+    public void Activar() => Activo = true;
+
+    public void Desactivar() => Activo = false;
 }

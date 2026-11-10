@@ -20,7 +20,7 @@ public sealed record EnvioAdmitido(
     public const string Version = MensajeOutbox.VersionContratoV1;
 
     public static EnvioAdmitido Crear(Guid operadorId, Guid envioId) =>
-        new(Guid.NewGuid(), DateTimeOffset.UtcNow, operadorId, envioId, string.Empty, EstadoEnvio.Admitido);
+        new(Guid.NewGuid(), RelojOperacion.Ahora(), operadorId, envioId, string.Empty, EstadoEnvio.Admitido);
 
     public string Serializar() =>
         JsonSerializer.Serialize(this, ObtenerRutasDeHoy.OpcionesJson);

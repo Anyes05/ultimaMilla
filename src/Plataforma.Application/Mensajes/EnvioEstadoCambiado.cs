@@ -28,7 +28,7 @@ public sealed record EnvioEstadoCambiado(
         Guid? eventId = null) =>
         new(
             eventId ?? Guid.NewGuid(),
-            fecha ?? DateTimeOffset.UtcNow,
+            fecha ?? RelojOperacion.Ahora(),
             operadorId,
             envioId,
             estadoAnterior,

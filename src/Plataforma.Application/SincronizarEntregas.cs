@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Plataforma.Application.Mensajes;
 using Plataforma.Domain;
 
 namespace Plataforma.Application;
@@ -9,10 +11,12 @@ public sealed class SincronizarEntregas
     private readonly IBultoRepositorio _bultos;
     private readonly IPruebaDeEntregaRepositorio _pruebas;
     private readonly IEventoSincronizacionRepositorio _eventosProcesados;
+    private readonly IOutboxRepositorio _mensajesOutbox;
     private readonly RegistrarOutboxEstado _outbox;
     private readonly PublicarOutboxPendientes _publicar;
     private readonly ConfiguracionOperador _operadores;
     private readonly IReglaOperativaRepositorio _reglas;
+    private readonly IBanderasOperador _banderas;
     private readonly ICacheLectura _cache;
     private readonly IIntentoEntregaRepositorio _intentos;
 
@@ -22,10 +26,12 @@ public sealed class SincronizarEntregas
         IBultoRepositorio bultos,
         IPruebaDeEntregaRepositorio pruebas,
         IEventoSincronizacionRepositorio eventosProcesados,
+        IOutboxRepositorio mensajesOutbox,
         RegistrarOutboxEstado outbox,
         PublicarOutboxPendientes publicar,
         ConfiguracionOperador operadores,
         IReglaOperativaRepositorio reglas,
+        IBanderasOperador banderas,
         ICacheLectura cache,
         IIntentoEntregaRepositorio intentos)
     {
@@ -34,10 +40,12 @@ public sealed class SincronizarEntregas
         _bultos = bultos;
         _pruebas = pruebas;
         _eventosProcesados = eventosProcesados;
+        _mensajesOutbox = mensajesOutbox;
         _outbox = outbox;
         _publicar = publicar;
         _operadores = operadores;
         _reglas = reglas;
+        _banderas = banderas;
         _cache = cache;
         _intentos = intentos;
     }
@@ -139,18 +147,28 @@ public sealed class SincronizarEntregas
                 continue;
             }
 
+            var reglaSync = await _reglas.ObtenerVigenteAsync(operadorId, DateTime.UtcNow, cancellationToken);
+            var errorPod = ValidarPodSegunRegla(evento, reglaSync);
+            if (errorPod is not null)
+            {
+                rechazados.Add(new EventoRechazado(evento.EnvioId, errorPod, envio.Estado));
+                continue;
+            }
+
             var usaBultos = evento.Bultos is { Count: > 0 };
+            if (usaBultos &&
+                !await _banderas.EstaActivaAsync(operadorId, CatalogoBanderas.EntregaParcial, cancellationToken))
+            {
+                rechazados.Add(new EventoRechazado(
+                    evento.EnvioId,
+                    "La entrega parcial no está habilitada para este operador.",
+                    envio.Estado));
+                continue;
+            }
+
             if (!usaBultos)
             {
-                if (evento.Estado == EstadoEnvio.NoEntregado && envio.IntentosRealizados >= operador.MaximoIntentos)
-                {
-                    rechazados.Add(new EventoRechazado(
-                        evento.EnvioId,
-                        $"Se alcanzó el máximo de {operador.MaximoIntentos} intentos.",
-                        envio.Estado));
-                    continue;
-                }
-
+                // Transición 10 (Pedir otra visita / Reprogramado): solo si quedan intentos.
                 if (evento.Estado == EstadoEnvio.Reprogramado && envio.IntentosRealizados >= operador.MaximoIntentos)
                 {
                     rechazados.Add(new EventoRechazado(
@@ -174,7 +192,8 @@ public sealed class SincronizarEntregas
                     envio.RegistrarIntentoFallido(operador.MaximoIntentos);
                     await _intentos.AgregarAsync(IntentoEntrega.Registrar(
                         Guid.NewGuid(), operadorId, envio.Id, envio.IntentosRealizados,
-                        evento.FechaDispositivo.UtcDateTime, evento.Observaciones), cancellationToken);
+                        RelojOperacion.ConOffsetOperacion(evento.FechaDispositivo).UtcDateTime,
+                        evento.Observaciones), cancellationToken);
                 }
 
                 var anteriorV1 = envio.Estado;
@@ -185,15 +204,32 @@ public sealed class SincronizarEntregas
                     anteriorV1,
                     envio.Estado,
                     cancellationToken,
-                    motivo: $"Sync repartidor: {evento.Observaciones}");
+                    motivo: $"Sync repartidor: {evento.Observaciones}",
+                    responsable: usuario);
                 if (eventIdV1 is Guid idV1)
                     eventIdsOutbox.Add(idV1);
+
+                // Transición 11: al agotar intentos tras NoEntregado, paso automático a EnDevolucion.
+                // Convive con "Pedir otra visita" (10): esa sigue siendo Reprogramado explícito, solo con intentos.
+                if (envio.Estado == EstadoEnvio.NoEntregado
+                    && envio.IntentosRealizados >= operador.MaximoIntentos
+                    && TransicionesEnvio.EsValida(envio.Estado, EstadoEnvio.EnDevolucion))
+                {
+                    var antesDev = envio.Estado;
+                    envio.CambiarEstado(EstadoEnvio.EnDevolucion, usuario, "Máximo de intentos: paso automático a devolución");
+                    var eventIdDev = await _outbox.EjecutarAsync(
+                        operadorId, envio.Id, antesDev, envio.Estado, cancellationToken,
+                        motivo: "Transición 11 automática: máximo de intentos",
+                        responsable: usuario);
+                    if (eventIdDev is Guid idDev)
+                        eventIdsOutbox.Add(idDev);
+                }
             }
             else
             {
                 var anteriorV2 = envio.Estado;
                 var errorBultos = await AplicarBultosAsync(
-                    operadorId, operador, envio, evento, cancellationToken);
+                    operadorId, operador, envio, evento, eventIdsOutbox, cancellationToken);
                 if (errorBultos is not null)
                 {
                     rechazados.Add(errorBultos);
@@ -206,7 +242,8 @@ public sealed class SincronizarEntregas
                     anteriorV2,
                     envio.Estado,
                     cancellationToken,
-                    motivo: $"Sync repartidor (bultos): {evento.Observaciones}");
+                    motivo: $"Sync repartidor (bultos): {evento.Observaciones}",
+                    responsable: usuario);
                 if (eventIdV2 is Guid idV2)
                     eventIdsOutbox.Add(idV2);
             }
@@ -219,7 +256,7 @@ public sealed class SincronizarEntregas
                     evento.NombreReceptor,
                     evento.Observaciones,
                     usuario,
-                    evento.FechaDispositivo,
+                    RelojOperacion.ConOffsetOperacion(evento.FechaDispositivo),
                     evento.Foto,
                     evento.Firma,
                     evento.Latitud,
@@ -262,6 +299,7 @@ public sealed class SincronizarEntregas
         Operador operador,
         Envio envio,
         ComprobanteEntrega evento,
+        List<Guid> eventIdsOutbox,
         CancellationToken cancellationToken)
     {
         var resultados = evento.Bultos!;
@@ -315,15 +353,21 @@ public sealed class SincronizarEntregas
                         envio.Estado);
                 }
 
+                var anteriorBulto = bulto.Estado;
+
                 // Si todavía está Pendiente y el envío ya salió, lo pasamos a EnRuta antes del resultado.
                 if (bulto.Estado == EstadoBulto.Pendiente &&
                     resultado.Estado is EstadoBulto.Entregado or EstadoBulto.NoEntregado
                         or EstadoBulto.PendienteNuevaVisita or EstadoBulto.Extraviado)
                 {
                     bulto.CambiarEstado(EstadoBulto.EnRuta);
+                    await RegistrarOutboxBultoAsync(operadorId, envio.Id, bulto.Id, anteriorBulto, bulto.Estado, eventIdsOutbox, cancellationToken);
+                    anteriorBulto = bulto.Estado;
                 }
 
                 bulto.CambiarEstado(resultado.Estado, resultado.MotivoNoEntrega ?? evento.Observaciones);
+                if (anteriorBulto != bulto.Estado)
+                    await RegistrarOutboxBultoAsync(operadorId, envio.Id, bulto.Id, anteriorBulto, bulto.Estado, eventIdsOutbox, cancellationToken);
             }
 
             // Política post-parcial sobre bultos NoEntregado del lote.
@@ -331,6 +375,7 @@ public sealed class SincronizarEntregas
             {
                 foreach (var bulto in bultos.Where(b => b.Estado == EstadoBulto.NoEntregado))
                 {
+                    var anteriorPol = bulto.Estado;
                     if (regla.PoliticaBultosPendientes == PoliticaBultosPendientes.NuevaVisitaSinRecargo
                         || regla.PoliticaBultosPendientes == PoliticaBultosPendientes.NuevaVisitaConRecargo)
                     {
@@ -342,14 +387,17 @@ public sealed class SincronizarEntregas
                     {
                         bulto.CambiarEstado(EstadoBulto.Devuelto, bulto.MotivoNoEntrega);
                     }
+
+                    if (anteriorPol != bulto.Estado)
+                        await RegistrarOutboxBultoAsync(operadorId, envio.Id, bulto.Id, anteriorPol, bulto.Estado, eventIdsOutbox, cancellationToken);
                 }
             }
 
             var derivado = DerivacionEstadoEnvio.DesdeBultos(bultos.Select(b => b.Estado).ToList());
             if (derivado is EstadoEnvio.NoEntregado or EstadoEnvio.EntregadoParcialmente or EstadoEnvio.Reprogramado)
             {
-                if (envio.IntentosRealizados >= operador.MaximoIntentos
-                    && derivado is EstadoEnvio.NoEntregado or EstadoEnvio.Reprogramado)
+                // Reprogramado con intentos agotados se rechaza (transición 10); NoEntregado sigue y dispara 11.
+                if (envio.IntentosRealizados >= operador.MaximoIntentos && derivado == EstadoEnvio.Reprogramado)
                 {
                     return new EventoRechazado(
                         envio.Id,
@@ -362,16 +410,69 @@ public sealed class SincronizarEntregas
                     envio.RegistrarIntentoFallido(operador.MaximoIntentos);
                     await _intentos.AgregarAsync(IntentoEntrega.Registrar(
                         Guid.NewGuid(), operadorId, envio.Id, envio.IntentosRealizados,
-                        evento.FechaDispositivo.UtcDateTime, evento.Observaciones), cancellationToken);
+                        RelojOperacion.ConOffsetOperacion(evento.FechaDispositivo).UtcDateTime,
+                        evento.Observaciones), cancellationToken);
                 }
             }
 
             envio.AplicarEstadoDerivadoDeBultos(bultos.Select(b => b.Estado).ToList());
+
+            if (envio.Estado == EstadoEnvio.NoEntregado
+                && envio.IntentosRealizados >= operador.MaximoIntentos
+                && TransicionesEnvio.EsValida(envio.Estado, EstadoEnvio.EnDevolucion))
+            {
+                envio.CambiarEstado(EstadoEnvio.EnDevolucion, "sistema", "Máximo de intentos: paso automático a devolución");
+            }
         }
         catch (InvalidOperationException ex)
         {
             return new EventoRechazado(envio.Id, ex.Message, envio.Estado);
         }
+
+        return null;
+    }
+
+    private async Task RegistrarOutboxBultoAsync(
+        Guid operadorId,
+        Guid envioId,
+        Guid bultoId,
+        EstadoBulto anterior,
+        EstadoBulto nuevo,
+        List<Guid> eventIdsOutbox,
+        CancellationToken cancellationToken)
+    {
+        var evento = BultoEstadoCambiado.Crear(operadorId, envioId, bultoId, anterior, nuevo);
+        await _mensajesOutbox.AgregarAsync(
+            MensajeOutbox.CrearPendiente(
+                evento.EventId,
+                operadorId,
+                envioId,
+                BultoEstadoCambiado.Tipo,
+                BultoEstadoCambiado.Version,
+                evento.Serializar(),
+                evento.Fecha,
+                Activity.Current?.Id),
+            cancellationToken);
+        eventIdsOutbox.Add(evento.EventId);
+    }
+
+    private static string? ValidarPodSegunRegla(ComprobanteEntrega evento, ReglaOperativa? regla)
+    {
+        if (regla is null)
+            return null;
+
+        var esEntrega = evento.Estado == EstadoEnvio.Entregado
+            || (evento.Bultos?.Any(b => b.Estado == EstadoBulto.Entregado) ?? false);
+        if (!esEntrega)
+            return null;
+
+        if (regla.ExigeFirma && string.IsNullOrWhiteSpace(evento.Firma)
+            && !(evento.Bultos?.Any(b => !string.IsNullOrWhiteSpace(b.Firma)) ?? false))
+            return "La regla del operador exige firma en la entrega.";
+
+        if (regla.ExigeFoto && string.IsNullOrWhiteSpace(evento.Foto)
+            && !(evento.Bultos?.Any(b => !string.IsNullOrWhiteSpace(b.Foto)) ?? false))
+            return "La regla del operador exige foto en la entrega.";
 
         return null;
     }

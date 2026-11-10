@@ -9,17 +9,20 @@ namespace Plataforma.Application;
 public sealed class CambiarEstadoEnvio : ITransicionEnvio
 {
     private readonly IEnvioRepositorio _envios;
+    private readonly IRutaRepositorio _rutas;
     private readonly RegistrarOutboxEstado _outbox;
     private readonly PublicarOutboxPendientes _publicar;
     private readonly ICacheLectura _cache;
 
     public CambiarEstadoEnvio(
         IEnvioRepositorio envios,
+        IRutaRepositorio rutas,
         RegistrarOutboxEstado outbox,
         PublicarOutboxPendientes publicar,
         ICacheLectura cache)
     {
         _envios = envios;
+        _rutas = rutas;
         _outbox = outbox;
         _publicar = publicar;
         _cache = cache;
@@ -47,7 +50,13 @@ public sealed class CambiarEstadoEnvio : ITransicionEnvio
             envio.CambiarEstado(nuevoEstado);
 
         var eventId = await _outbox.EjecutarAsync(
-            operadorId, envio.Id, estadoAnterior, envio.Estado, cancellationToken);
+            operadorId,
+            envio.Id,
+            estadoAnterior,
+            envio.Estado,
+            cancellationToken,
+            motivo: motivo ?? "",
+            responsable: usuario ?? "");
 
         await _envios.GuardarAsync(cancellationToken);
 
@@ -55,6 +64,13 @@ public sealed class CambiarEstadoEnvio : ITransicionEnvio
             await _publicar.EjecutarUnoAsync(id, cancellationToken);
 
         await CacheSeguimiento.PublicarAsync(_cache, envio, cancellationToken);
+
+        if (envio.RutaId is Guid rutaId)
+        {
+            var ruta = await _rutas.ObtenerAsync(operadorId, rutaId, cancellationToken);
+            if (ruta is not null)
+                await _cache.QuitarAsync(ObtenerRutasDeHoy.Clave(operadorId, ruta.RepartidorId, ruta.Fecha), cancellationToken);
+        }
 
         return new ResultadoTransicionEnvio(envio.Id, estadoAnterior, envio.Estado, eventId);
     }

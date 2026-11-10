@@ -526,7 +526,7 @@ Diferencias con v1:
 - **`numeroSeguimiento`**: es el número que el comercio le muestra a su cliente. Puede llegar `null` si todavía no está asignado.
 - **Tipos de evento**: todos los de v1, más `EntregadoParcialmente` (envíos de varios bultos, RF del cambio).
 
-**Pendiente:** cuando el backend publique los eventos de bulto y de retiro, se agregan a v2 como nuevos valores de `tipo`. Los comercios v2 deben ignorar los `tipo` que no conocen.
+**v2 también incluye** `BultoEstadoCambiado`, `RetiroSolicitado` y `RetiroCompletado`. Los comercios v2 deben ignorar los `tipo` que no conocen.
 
 ### 10.5 Cómo elige la versión el comercio
 

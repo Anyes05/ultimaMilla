@@ -8,6 +8,8 @@ public class HistorialEstado
     public EstadoEnvio Estado { get; private set; }
     public DateTime Fecha { get; private set; }
     public string Motivo { get; private set; } = string.Empty;
+    /// <summary>RF 12: quién registró el cambio (usuario de plataforma o sistema).</summary>
+    public string Responsable { get; private set; } = string.Empty;
 
     private HistorialEstado()
     {
@@ -19,7 +21,8 @@ public class HistorialEstado
         Guid envioId,
         EstadoEnvio estado,
         DateTime fecha,
-        string motivo = "")
+        string motivo = "",
+        string responsable = "")
     {
         if (id == Guid.Empty)
             throw new ArgumentException("El historial necesita un identificador.");
@@ -37,7 +40,8 @@ public class HistorialEstado
             EnvioId = envioId,
             Estado = estado,
             Fecha = fecha,
-            Motivo = motivo.Trim()
+            Motivo = motivo.Trim(),
+            Responsable = responsable.Trim()
         };
     }
 }

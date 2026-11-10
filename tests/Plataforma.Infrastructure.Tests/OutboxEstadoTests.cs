@@ -31,6 +31,7 @@ public class OutboxEstadoTests
         var outbox = new OutboxRepositorio(contexto);
         var casoUso = new CambiarEstadoEnvio(
             new EnvioRepositorio(contexto),
+            new RutaRepositorio(contexto),
             new RegistrarOutboxEstado(outbox, new HistorialEstadoRepositorio(contexto)),
             new PublicarOutboxPendientes(outbox, publicador),
             new CacheLecturaMemoria());

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Plataforma.Domain;
 
 namespace Plataforma.Application;
@@ -7,11 +8,16 @@ public sealed class PublicarOutboxPendientes
 {
     private readonly IOutboxRepositorio _outbox;
     private readonly IPublicadorMensajes _publicador;
+    private readonly ILogger<PublicarOutboxPendientes>? _logger;
 
-    public PublicarOutboxPendientes(IOutboxRepositorio outbox, IPublicadorMensajes publicador)
+    public PublicarOutboxPendientes(
+        IOutboxRepositorio outbox,
+        IPublicadorMensajes publicador,
+        ILogger<PublicarOutboxPendientes>? logger = null)
     {
         _outbox = outbox;
         _publicador = publicador;
+        _logger = logger;
     }
 
     public async Task<int> EjecutarAsync(int maximo = 50, CancellationToken cancellationToken = default)
@@ -28,16 +34,24 @@ public sealed class PublicarOutboxPendientes
             if (mensaje.PublicadoEn is not null)
                 continue;
 
-            await _publicador.PublicarAsync(
-                mensaje.Tipo,
-                mensaje.Version,
-                mensaje.EventId,
-                mensaje.Payload,
-                mensaje.TraceParent,
-                cancellationToken);
+            try
+            {
+                await _publicador.PublicarAsync(
+                    mensaje.Tipo,
+                    mensaje.Version,
+                    mensaje.EventId,
+                    mensaje.Payload,
+                    mensaje.TraceParent,
+                    cancellationToken);
 
-            mensaje.MarcarPublicado(DateTimeOffset.UtcNow);
-            publicados++;
+                mensaje.MarcarPublicado(RelojOperacion.Ahora());
+                publicados++;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // La fila queda pendiente: el publicador en segundo plano reintenta.
+                _logger?.LogWarning(ex, "No se pudo publicar outbox {EventId}; queda pendiente.", mensaje.EventId);
+            }
         }
 
         if (publicados > 0)
@@ -55,16 +69,25 @@ public sealed class PublicarOutboxPendientes
         if (mensaje is null || mensaje.PublicadoEn is not null)
             return false;
 
-        await _publicador.PublicarAsync(
-            mensaje.Tipo,
-            mensaje.Version,
-            mensaje.EventId,
-            mensaje.Payload,
-            mensaje.TraceParent,
-            cancellationToken);
+        try
+        {
+            await _publicador.PublicarAsync(
+                mensaje.Tipo,
+                mensaje.Version,
+                mensaje.EventId,
+                mensaje.Payload,
+                mensaje.TraceParent,
+                cancellationToken);
 
-        mensaje.MarcarPublicado(DateTimeOffset.UtcNow);
-        await _outbox.GuardarAsync(cancellationToken);
-        return true;
+            mensaje.MarcarPublicado(RelojOperacion.Ahora());
+            await _outbox.GuardarAsync(cancellationToken);
+            return true;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // No propagar: el cambio de dominio ya se guardó; el background drenará el outbox.
+            _logger?.LogWarning(ex, "Publicación inmediata falló para {EventId}; se reintentará en background.", eventId);
+            return false;
+        }
     }
 }

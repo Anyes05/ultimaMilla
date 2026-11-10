@@ -32,7 +32,7 @@ public class GestionTarifasTests
             GestionTarifas.VigenciaAbiertaHasta));
         await contexto.SaveChangesAsync();
 
-        var gestion = new GestionTarifas(new TarifaRepositorio(contexto));
+        var gestion = new GestionTarifas(new TarifaRepositorio(contexto), new CacheLecturaMemoria());
         var nuevoDesde = DateTime.UtcNow.AddMinutes(1);
         var id = await gestion.PublicarVersionAsync(
             DatosSemilla.OperadorNorteId,

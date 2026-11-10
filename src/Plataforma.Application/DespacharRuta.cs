@@ -10,6 +10,8 @@ public sealed class DespacharRuta
     private readonly IRutaRepositorio _rutas;
     private readonly IEnvioRepositorio _envios;
     private readonly IRepartidorRepositorio _repartidores;
+    private readonly IBultoRepositorio _bultos;
+    private readonly ICoberturaRepositorio _cobertura;
     private readonly RegistrarOutboxEstado _outbox;
     private readonly PublicarOutboxPendientes _publicar;
     private readonly ICacheLectura _cache;
@@ -18,6 +20,8 @@ public sealed class DespacharRuta
         IRutaRepositorio rutas,
         IEnvioRepositorio envios,
         IRepartidorRepositorio repartidores,
+        IBultoRepositorio bultos,
+        ICoberturaRepositorio cobertura,
         RegistrarOutboxEstado outbox,
         PublicarOutboxPendientes publicar,
         ICacheLectura cache)
@@ -25,6 +29,8 @@ public sealed class DespacharRuta
         _rutas = rutas;
         _envios = envios;
         _repartidores = repartidores;
+        _bultos = bultos;
+        _cobertura = cobertura;
         _outbox = outbox;
         _publicar = publicar;
         _cache = cache;
@@ -35,6 +41,7 @@ public sealed class DespacharRuta
         Guid repartidorId,
         DateOnly fecha,
         IReadOnlyList<Guid> envioIds,
+        Guid? vehiculoId = null,
         CancellationToken cancellationToken = default)
     {
         if (operadorId == Guid.Empty)
@@ -52,6 +59,35 @@ public sealed class DespacharRuta
         if (!repartidor.Activo)
             throw new InvalidOperationException("El repartidor no está activo.");
 
+        // RF 14–16: validar capacidad del vehículo y cantidad de paradas si se indica vehículo.
+        if (vehiculoId is Guid vid)
+        {
+            var vehiculo = await _cobertura.ObtenerVehiculoAsync(operadorId, vid, cancellationToken)
+                ?? throw new InvalidOperationException("El vehículo no existe para ese operador.");
+            if (!vehiculo.Activo)
+                throw new InvalidOperationException("El vehículo no está activo.");
+            if (vehiculo.MaximoParadas > 0 && envioIds.Count > vehiculo.MaximoParadas)
+                throw new InvalidOperationException(
+                    $"El vehículo admite como máximo {vehiculo.MaximoParadas} paradas.");
+
+            decimal peso = 0;
+            decimal volumen = 0;
+            foreach (var envioIdCap in envioIds)
+            {
+                var bultos = await _bultos.ListarPorEnvioAsync(operadorId, envioIdCap, cancellationToken);
+                peso += bultos.Sum(b => b.PesoKg);
+                volumen += bultos.Sum(b => b.AltoCm * b.AnchoCm * b.LargoCm);
+            }
+
+            if (vehiculo.CapacidadPesoKg > 0 && peso > vehiculo.CapacidadPesoKg)
+                throw new InvalidOperationException(
+                    $"El peso de la ruta ({peso} kg) supera la capacidad del vehículo ({vehiculo.CapacidadPesoKg} kg).");
+
+            if (vehiculo.CapacidadVolumenCm3 > 0 && volumen > vehiculo.CapacidadVolumenCm3)
+                throw new InvalidOperationException(
+                    $"El volumen de la ruta ({volumen} cm³) supera la capacidad del vehículo ({vehiculo.CapacidadVolumenCm3} cm³).");
+        }
+
         var ruta = Ruta.Programar(operadorId, repartidorId, fecha);
         var paradas = new List<Parada>(envioIds.Count);
         var eventIds = new List<Guid>();
@@ -65,9 +101,14 @@ public sealed class DespacharRuta
             if (envio.RutaId is not null)
                 throw new InvalidOperationException($"El envío {envio.NumeroSeguimiento} ya está en una ruta.");
 
+            if (envio.Estado is not (EstadoEnvio.EnDeposito or EstadoEnvio.Reprogramado))
+                throw new InvalidOperationException(
+                    $"El envío {envio.NumeroSeguimiento} no está disponible para despacho ({envio.Estado}).");
+
             var anterior = envio.Estado;
             envio.AsignarARuta(ruta.Id);
-            var eventId = await _outbox.EjecutarAsync(operadorId, envio.Id, anterior, envio.Estado, cancellationToken);
+            var eventId = await _outbox.EjecutarAsync(
+                operadorId, envio.Id, anterior, envio.Estado, cancellationToken, responsable: "despacho");
             if (eventId is Guid id)
                 eventIds.Add(id);
             paradas.Add(Parada.Programar(Guid.NewGuid(), operadorId, ruta.Id, envioId, orden++));

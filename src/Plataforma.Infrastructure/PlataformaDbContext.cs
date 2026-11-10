@@ -30,6 +30,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
     public DbSet<ReglaTarifaria> ReglasTarifarias => Set<ReglaTarifaria>();
     public DbSet<VigenciaTarifa> VigenciasTarifa => Set<VigenciaTarifa>();
     public DbSet<ZonaCobertura> ZonasCobertura => Set<ZonaCobertura>();
+    public DbSet<FranjaHoraria> FranjasHorarias => Set<FranjaHoraria>();
     public DbSet<ReglaOperativa> ReglasOperativas => Set<ReglaOperativa>();
     public DbSet<Destinatario> Destinatarios => Set<Destinatario>();
     public DbSet<Direccion> Direcciones => Set<Direccion>();
@@ -50,6 +51,10 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
     public DbSet<EventoAvisoProcesado> EventosAvisoProcesados => Set<EventoAvisoProcesado>();
     public DbSet<AvisoFallido> AvisosFallidos => Set<AvisoFallido>();
     public DbSet<ReceptorPruebaConfiguracion> ReceptoresPruebaConfiguracion => Set<ReceptorPruebaConfiguracion>();
+    public DbSet<BanderaOperador> BanderasOperador => Set<BanderaOperador>();
+    public DbSet<CambioBandera> CambiosBandera => Set<CambioBandera>();
+    public DbSet<SolicitudRetiro> SolicitudesRetiro => Set<SolicitudRetiro>();
+    public DbSet<RecepcionEnvio> RecepcionesEnvio => Set<RecepcionEnvio>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -66,6 +71,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         AplicarFiltroOperador<ReglaTarifaria>(modelBuilder);
         AplicarFiltroOperador<VigenciaTarifa>(modelBuilder);
         AplicarFiltroOperador<ZonaCobertura>(modelBuilder);
+        AplicarFiltroOperador<FranjaHoraria>(modelBuilder);
         AplicarFiltroOperador<ReglaOperativa>(modelBuilder);
         AplicarFiltroOperador<Destinatario>(modelBuilder);
         AplicarFiltroOperador<Direccion>(modelBuilder);
@@ -86,6 +92,10 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         AplicarFiltroOperador<EventoAvisoProcesado>(modelBuilder);
         AplicarFiltroOperador<AvisoFallido>(modelBuilder);
         AplicarFiltroOperador<ReceptorPruebaConfiguracion>(modelBuilder);
+        AplicarFiltroOperador<BanderaOperador>(modelBuilder);
+        AplicarFiltroOperador<CambioBandera>(modelBuilder);
+        AplicarFiltroOperador<SolicitudRetiro>(modelBuilder);
+        AplicarFiltroOperador<RecepcionEnvio>(modelBuilder);
 
         modelBuilder.Entity<Envio>(entidad =>
         {
@@ -157,6 +167,54 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         modelBuilder.Entity<ReceptorPruebaConfiguracion>(entidad =>
         {
             entidad.HasKey(configuracion => configuracion.OperadorId);
+        });
+
+        modelBuilder.Entity<HistorialEstado>(entidad =>
+        {
+            entidad.Property(h => h.Responsable).HasMaxLength(120).HasDefaultValue(string.Empty);
+            entidad.Property(h => h.Motivo).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<BanderaOperador>(entidad =>
+        {
+            entidad.HasKey(b => new { b.OperadorId, b.Clave });
+            entidad.Property(b => b.Clave).HasMaxLength(64);
+        });
+
+        modelBuilder.Entity<CambioBandera>(entidad =>
+        {
+            entidad.HasKey(c => c.Id);
+            entidad.Property(c => c.Clave).HasMaxLength(64);
+            entidad.Property(c => c.Usuario).HasMaxLength(120);
+            entidad.HasIndex(c => new { c.OperadorId, c.Fecha });
+        });
+
+        modelBuilder.Entity<FranjaHoraria>(entidad =>
+        {
+            entidad.HasKey(f => f.Id);
+            entidad.Property(f => f.Nombre).HasMaxLength(80);
+        });
+
+        modelBuilder.Entity<Vehiculo>(entidad =>
+        {
+            entidad.Property(v => v.CapacidadPesoKg).HasDefaultValue(0m);
+            entidad.Property(v => v.CapacidadVolumenCm3).HasDefaultValue(0m);
+            entidad.Property(v => v.MaximoParadas).HasDefaultValue(0);
+        });
+
+        modelBuilder.Entity<SolicitudRetiro>(entidad =>
+        {
+            entidad.HasKey(r => r.Id);
+            entidad.Property(r => r.Direccion).HasMaxLength(300);
+            entidad.Property(r => r.Contacto).HasMaxLength(120);
+            entidad.HasIndex(r => new { r.OperadorId, r.Estado });
+        });
+
+        modelBuilder.Entity<RecepcionEnvio>(entidad =>
+        {
+            entidad.HasKey(r => r.Id);
+            entidad.Property(r => r.Usuario).HasMaxLength(120);
+            entidad.HasIndex(r => new { r.OperadorId, r.EnvioId });
         });
     }
 

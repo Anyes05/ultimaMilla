@@ -135,6 +135,9 @@ public static class TiposDeEvento
         "EntregadoParcialmente" => "Entregado parcialmente",
         "Devuelto" => "Devuelto",
         "Extraviado" => "Extraviado",
+        "BultoEstadoCambiado" => "Cambio de estado de bulto",
+        "RetiroSolicitado" => "Retiro solicitado",
+        "RetiroCompletado" => "Retiro completado",
         _ => tipo
     };
 }

@@ -166,6 +166,7 @@ public static class RepartidorApi
                     solicitud.RepartidorId,
                     solicitud.Fecha,
                     solicitud.EnvioIds,
+                    solicitud.VehiculoId,
                     cancellationToken);
                 return Results.Json(new { ruta.Id, ruta.Fecha, ruta.RepartidorId }, ObtenerRutasDeHoy.OpcionesJson);
             }
@@ -272,7 +273,11 @@ public sealed record LoginRepartidorSolicitud(string Usuario, string Clave);
 
 public sealed record SincronizacionSolicitudApi(DateOnly Fecha, IReadOnlyList<ComprobanteEntrega> Eventos);
 
-public sealed record DespachoSolicitud(Guid RepartidorId, DateOnly Fecha, IReadOnlyList<Guid> EnvioIds);
+public sealed record DespachoSolicitud(
+    Guid RepartidorId,
+    DateOnly Fecha,
+    IReadOnlyList<Guid> EnvioIds,
+    Guid? VehiculoId = null);
 
 public sealed record ReasignacionSolicitud(
     Guid EnvioId,

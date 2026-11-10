@@ -71,6 +71,11 @@ public static class DependencyInjection
         services.AddScoped<IEventoSincronizacionRepositorio, EventoSincronizacionRepositorio>();
         services.AddScoped<IHistorialEstadoRepositorio, HistorialEstadoRepositorio>();
         services.AddScoped<IReglaOperativaRepositorio, ReglaOperativaRepositorio>();
+        services.AddScoped<IBanderaRepositorio, BanderaRepositorio>();
+        services.AddScoped<IRetiroRepositorio, RetiroRepositorio>();
+        services.AddScoped<IRecepcionRepositorio, RecepcionRepositorio>();
+        services.AddScoped<ICoberturaRepositorio, CoberturaRepositorio>();
+        services.AddScoped<IComercioRepositorio, ComercioRepositorio>();
         services.AddScoped<IVerificadorClave, HashClave>();
         services.AddScoped<IAutenticacionIdentity, AutenticacionIdentity>();
         services.AddScoped<IEmisorToken, EmisorTokenJwt>();
@@ -79,6 +84,12 @@ public static class DependencyInjection
         services.AddScoped<CalcularTarifa>();
         services.AddScoped<GestionTarifas>();
         services.AddScoped<GestionReglasOperativas>();
+        services.AddScoped<GestionBanderas>();
+        services.AddScoped<IBanderasOperador>(sp => sp.GetRequiredService<GestionBanderas>());
+        services.AddScoped<GestionRetiros>();
+        services.AddScoped<GestionCobertura>();
+        services.AddScoped<GestionComercios>();
+        services.AddScoped<RecibirEnvioEnDeposito>();
         services.AddScoped<AdmitirEnvio>();
         services.AddScoped<RegistrarOutboxEstado>();
         services.AddScoped<PublicarOutboxPendientes>();

@@ -2,10 +2,14 @@ using Plataforma.Domain;
 
 namespace Plataforma.Application;
 
-public sealed record OperadorVisible(string Nombre, string ColorMarca, int MaximoIntentos)
+public sealed record OperadorVisible(
+    string Nombre,
+    string ColorMarca,
+    int MaximoIntentos,
+    IReadOnlyList<string>? Funcionalidades = null)
 {
-    public static OperadorVisible Desde(Operador operador) =>
-        new(operador.Nombre, operador.ColorMarca, operador.MaximoIntentos);
+    public static OperadorVisible Desde(Operador operador, IReadOnlyList<string>? funcionalidades = null) =>
+        new(operador.Nombre, operador.ColorMarca, operador.MaximoIntentos, funcionalidades);
 }
 
 public sealed record EnvioDeRuta(

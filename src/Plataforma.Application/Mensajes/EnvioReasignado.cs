@@ -31,7 +31,7 @@ public sealed record EnvioReasignado(
         bool urgente = true) =>
         new(
             Guid.NewGuid(),
-            DateTimeOffset.UtcNow,
+            RelojOperacion.Ahora(),
             operadorId,
             envioId,
             numeroSeguimiento,

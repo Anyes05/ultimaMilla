@@ -8,17 +8,20 @@ namespace Plataforma.Application;
 public sealed class IniciarRuta
 {
     private readonly IEnvioRepositorio _envios;
+    private readonly IRutaRepositorio _rutas;
     private readonly RegistrarOutboxEstado _outbox;
     private readonly PublicarOutboxPendientes _publicar;
     private readonly ICacheLectura _cache;
 
     public IniciarRuta(
         IEnvioRepositorio envios,
+        IRutaRepositorio rutas,
         RegistrarOutboxEstado outbox,
         PublicarOutboxPendientes publicar,
         ICacheLectura cache)
     {
         _envios = envios;
+        _rutas = rutas;
         _outbox = outbox;
         _publicar = publicar;
         _cache = cache;
@@ -35,6 +38,9 @@ public sealed class IniciarRuta
 
         if (rutaId == Guid.Empty)
             throw new ArgumentException("La ruta es requerida.", nameof(rutaId));
+
+        var ruta = await _rutas.ObtenerAsync(operadorId, rutaId, cancellationToken)
+            ?? throw new InvalidOperationException("La ruta no existe para ese operador.");
 
         var envios = await _envios.ObtenerPorRutaParaEditarAsync(operadorId, rutaId, cancellationToken);
         var pendientes = envios.Where(envio => envio.Estado == EstadoEnvio.AsignadoARuta).ToList();
@@ -55,7 +61,8 @@ public sealed class IniciarRuta
                 else
                     envio.CambiarEstado(EstadoEnvio.EnTransito);
                 var eventId = await _outbox.EjecutarAsync(
-                    operadorId, envio.Id, anterior, envio.Estado, cancellationToken);
+                    operadorId, envio.Id, anterior, envio.Estado, cancellationToken,
+                    motivo: "Inicio de ruta", responsable: usuario ?? "");
                 if (eventId is Guid id)
                     eventIds.Add(id);
                 iniciados++;
@@ -72,6 +79,8 @@ public sealed class IniciarRuta
         await _envios.GuardarAsync(cancellationToken);
         foreach (var eventId in eventIds)
             await _publicar.EjecutarUnoAsync(eventId, cancellationToken);
+
+        await _cache.QuitarAsync(ObtenerRutasDeHoy.Clave(operadorId, ruta.RepartidorId, ruta.Fecha), cancellationToken);
 
         foreach (var envio in pendientes.Where(e => e.Estado == EstadoEnvio.EnTransito))
             await CacheSeguimiento.PublicarAsync(_cache, envio, cancellationToken);

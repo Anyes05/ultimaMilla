@@ -106,15 +106,23 @@ public sealed class EvidenciaMovilTests
             new RutaRepositorio(contexto), new EnvioRepositorio(contexto),
             new BultoRepositorio(contexto),
             new PruebaDeEntregaRepositorio(contexto), new EventoSincronizacionRepositorio(contexto),
+            new OutboxRepositorio(contexto),
             new RegistrarOutboxEstado(new OutboxRepositorio(contexto), new HistorialEstadoRepositorio(contexto)),
             new PublicarOutboxPendientes(new OutboxRepositorio(contexto),
                 new PublicadorMensajesPrueba { Disponible = false }),
             new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
             new ReglaOperativaRepositorio(contexto),
+            new BanderasSiempreActivas(),
             cache,
             new IntentoEntregaRepositorio(contexto));
         return sync.Ejecutar(DatosSemilla.OperadorNorteId, DatosSemilla.RepartidorNorteId,
             new DateOnly(2026, 10, 29), [evento], "repartidor.norte");
+    }
+
+    private sealed class BanderasSiempreActivas : IBanderasOperador
+    {
+        public Task<bool> EstaActivaAsync(Guid operadorId, string clave, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
     }
 
     private static async Task<PlataformaDbContext> Preparar(EstadoEnvio estado)
@@ -133,6 +141,8 @@ public sealed class EvidenciaMovilTests
         var cache = new CacheLecturaMemoria();
         await new DespacharRuta(new RutaRepositorio(contexto), new EnvioRepositorio(contexto),
             new RepartidorRepositorio(contexto),
+            new BultoRepositorio(contexto),
+            new CoberturaRepositorio(contexto),
             new RegistrarOutboxEstado(new OutboxRepositorio(contexto), new HistorialEstadoRepositorio(contexto)),
             new PublicarOutboxPendientes(new OutboxRepositorio(contexto),
                 new PublicadorMensajesPrueba { Disponible = false }), cache)

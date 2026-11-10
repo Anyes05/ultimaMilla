@@ -20,8 +20,14 @@ public static class ContratoAvisos
     /// <summary>Encabezado HTTP con la versión del cuerpo, junto a la firma.</summary>
     public const string HeaderVersion = "X-Plataforma-Version";
 
-    /// <summary>Tipos que solo existen desde v2 (estados nuevos del cambio de requerimientos).</summary>
-    public static readonly IReadOnlyList<string> AgregadosV2 = ["EntregadoParcialmente"];
+    /// <summary>Tipos que solo existen desde v2 (estados y eventos del cambio de requerimientos).</summary>
+    public static readonly IReadOnlyList<string> AgregadosV2 =
+    [
+        "EntregadoParcialmente",
+        "BultoEstadoCambiado",
+        "RetiroSolicitado",
+        "RetiroCompletado"
+    ];
 
     public static bool EsValida(int version) => version is V1 or V2;
 
@@ -41,6 +47,39 @@ public static class ContratoAvisos
             // v1: el mismo registro y los mismos campos de siempre. No cambiar.
             : JsonAvisos.Serializar(new AvisoComercio(
                 evento.EventId, "EnvioEstadoCambiado", evento.Fecha, evento.EnvioId, evento.EstadoAnterior, evento.EstadoNuevo));
+
+    /// <summary>Aviso v2 de bulto (RF 36): solo suscripciones v2 que eligieron el tipo.</summary>
+    public static string ArmarBulto(
+        Guid eventId,
+        DateTimeOffset fecha,
+        Guid envioId,
+        string? numeroSeguimiento,
+        Guid bultoId,
+        string estadoAnterior,
+        string estadoNuevo) =>
+        JsonAvisos.Serializar(new AvisoComercioV2Bulto(
+            V2,
+            eventId,
+            "BultoEstadoCambiado",
+            fecha,
+            new EnvioAvisoV2(envioId, numeroSeguimiento, estadoAnterior, estadoNuevo),
+            new BultoAvisoV2(bultoId, estadoAnterior, estadoNuevo)));
+
+    /// <summary>Aviso v2 de retiro (RF 36 / RF 37–41).</summary>
+    public static string ArmarRetiro(
+        string tipo,
+        Guid eventId,
+        DateTimeOffset fecha,
+        Guid retiroId,
+        Guid comercioId,
+        string? direccion = null,
+        Guid? envioAsociadoId = null) =>
+        JsonAvisos.Serializar(new AvisoComercioV2Retiro(
+            V2,
+            eventId,
+            tipo,
+            fecha,
+            new RetiroAvisoV2(retiroId, comercioId, direccion, envioAsociadoId)));
 
     /// <summary>Lee un cuerpo de cualquier versión, como el sistema de un comercio. Lo usa el receptor de prueba.</summary>
     public static AvisoComercio? Leer(string json)
@@ -65,3 +104,26 @@ public sealed record EnvioAvisoV2(
     string? NumeroSeguimiento,
     string EstadoAnterior,
     string EstadoNuevo);
+
+public sealed record BultoAvisoV2(Guid Id, string EstadoAnterior, string EstadoNuevo);
+
+public sealed record AvisoComercioV2Bulto(
+    int Version,
+    Guid EventId,
+    string Tipo,
+    DateTimeOffset Fecha,
+    EnvioAvisoV2 Envio,
+    BultoAvisoV2 Bulto);
+
+public sealed record RetiroAvisoV2(
+    Guid Id,
+    Guid ComercioId,
+    string? Direccion,
+    Guid? EnvioAsociadoId);
+
+public sealed record AvisoComercioV2Retiro(
+    int Version,
+    Guid EventId,
+    string Tipo,
+    DateTimeOffset Fecha,
+    RetiroAvisoV2 Retiro);

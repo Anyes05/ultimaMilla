@@ -225,6 +225,23 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("AvisosFallidos");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.BanderaOperador", b =>
+                {
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Clave")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("OperadorId", "Clave");
+
+                    b.ToTable("BanderasOperador");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.Bulto", b =>
                 {
                     b.Property<Guid>("Id")
@@ -269,6 +286,38 @@ namespace Plataforma.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Bultos");
+                });
+
+            modelBuilder.Entity("Plataforma.Domain.CambioBandera", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Clave")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Usuario")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "Fecha");
+
+                    b.ToTable("CambiosBandera");
                 });
 
             modelBuilder.Entity("Plataforma.Domain.Comercio", b =>
@@ -523,6 +572,37 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("EventosSincronizacionProcesados");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.FranjaHoraria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Activa")
+                        .HasColumnType("boolean");
+
+                    b.Property<TimeOnly>("Desde")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly>("Hasta")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ZonaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FranjasHorarias");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.HistorialEstado", b =>
                 {
                     b.Property<Guid>("Id")
@@ -540,10 +620,18 @@ namespace Plataforma.Infrastructure.Migrations
 
                     b.Property<string>("Motivo")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Responsable")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasDefaultValue("");
 
                     b.HasKey("Id");
 
@@ -807,6 +895,46 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("PruebasDeEntrega");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.RecepcionEnvio", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BultosEsperados")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("BultosRecibidos")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("EnvioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HayDiscrepancia")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Observaciones")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Usuario")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "EnvioId");
+
+                    b.ToTable("RecepcionesEnvio");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.ReceptorPruebaConfiguracion", b =>
                 {
                     b.Property<Guid>("OperadorId")
@@ -959,6 +1087,54 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("Rutas");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.SolicitudRetiro", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ComercioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Contacto")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("CreadoEn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Direccion")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("EnvioAsociadoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Estado")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("FechaSolicitada")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Observaciones")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RutaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "Estado");
+
+                    b.ToTable("SolicitudesRetiro");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.SuscripcionWebhook", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1031,9 +1207,24 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal>("CapacidadPesoKg")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric")
+                        .HasDefaultValue(0m);
+
+                    b.Property<decimal>("CapacidadVolumenCm3")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric")
+                        .HasDefaultValue(0m);
+
                     b.Property<string>("Descripcion")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("MaximoParadas")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");

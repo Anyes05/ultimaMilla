@@ -13,17 +13,20 @@ public sealed class ObtenerRutasDeHoy
     private readonly IRutaRepositorio _rutas;
     private readonly IEnvioRepositorio _envios;
     private readonly ConfiguracionOperador _operadores;
+    private readonly IBanderasOperador _banderas;
     private readonly ICacheLectura _cache;
 
     public ObtenerRutasDeHoy(
         IRutaRepositorio rutas,
         IEnvioRepositorio envios,
         ConfiguracionOperador operadores,
+        IBanderasOperador banderas,
         ICacheLectura cache)
     {
         _rutas = rutas;
         _envios = envios;
         _operadores = operadores;
+        _banderas = banderas;
         _cache = cache;
     }
 
@@ -38,7 +41,15 @@ public sealed class ObtenerRutasDeHoy
         if (cacheado is not null)
             return JsonSerializer.Deserialize<List<RutaDelDia>>(cacheado, OpcionesJson) ?? [];
 
-        var operador = await _operadores.ObtenerAsync(operadorId, cancellationToken);
+        var operadorBase = await _operadores.ObtenerAsync(operadorId, cancellationToken);
+        var activas = new List<string>();
+        foreach (var def in CatalogoBanderas.Todas)
+        {
+            if (await _banderas.EstaActivaAsync(operadorId, def.Clave, cancellationToken))
+                activas.Add(def.Clave);
+        }
+
+        var operador = operadorBase with { Funcionalidades = activas };
         var rutas = await _rutas.ObtenerDeHoyAsync(operadorId, repartidorId, fecha, cancellationToken);
         var resultado = new List<RutaDelDia>(rutas.Count);
         foreach (var ruta in rutas)

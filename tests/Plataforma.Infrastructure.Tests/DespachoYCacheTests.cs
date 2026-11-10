@@ -42,6 +42,8 @@ public class DespachoYCacheTests
             new RutaRepositorio(contexto),
             new EnvioRepositorio(contexto),
             new RepartidorRepositorio(contexto),
+            new BultoRepositorio(contexto),
+            new CoberturaRepositorio(contexto),
             Outbox(contexto),
             Publicar(contexto),
             cache);
@@ -105,14 +107,14 @@ public class DespachoYCacheTests
         var envios = new EnvioRepositorio(contexto);
         var rutas = new RutaRepositorio(contexto);
         var repartidores = new RepartidorRepositorio(contexto);
-        await new DespacharRuta(rutas, envios, repartidores, Outbox(contexto), Publicar(contexto), cache).EjecutarAsync(
+        await new DespacharRuta(rutas, envios, repartidores, new BultoRepositorio(contexto), new CoberturaRepositorio(contexto), Outbox(contexto), Publicar(contexto), cache).EjecutarAsync(
             DatosSemilla.OperadorNorteId,
             DatosSemilla.RepartidorNorteId,
             fecha,
             [envioId]);
 
         var config = new ConfiguracionOperador(new OperadorRepositorio(contexto), cache);
-        var obtener = new ObtenerRutasDeHoy(rutas, envios, config, cache);
+        var obtener = new ObtenerRutasDeHoy(rutas, envios, config, new BanderasSiempreActivas(), cache);
 
         var primera = await obtener.Ejecutar(DatosSemilla.OperadorNorteId, DatosSemilla.RepartidorNorteId, fecha);
         var segunda = await obtener.Ejecutar(DatosSemilla.OperadorNorteId, DatosSemilla.RepartidorNorteId, fecha);
@@ -162,7 +164,7 @@ public class DespachoYCacheTests
         await using var contexto = CrearContexto(db, DatosSemilla.OperadorNorteId);
         var envios = new EnvioRepositorio(contexto);
         var rutas = new RutaRepositorio(contexto);
-        await new DespacharRuta(rutas, envios, new RepartidorRepositorio(contexto), Outbox(contexto), Publicar(contexto), cache).EjecutarAsync(
+        await new DespacharRuta(rutas, envios, new RepartidorRepositorio(contexto), new BultoRepositorio(contexto), new CoberturaRepositorio(contexto), Outbox(contexto), Publicar(contexto), cache).EjecutarAsync(
             DatosSemilla.OperadorNorteId,
             DatosSemilla.RepartidorNorteId,
             fecha,
@@ -178,10 +180,12 @@ public class DespachoYCacheTests
             new BultoRepositorio(contexto),
             new PruebaDeEntregaRepositorio(contexto),
             new EventoSincronizacionRepositorio(contexto),
+            new OutboxRepositorio(contexto),
             Outbox(contexto),
             Publicar(contexto),
             new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
             new ReglaOperativaRepositorio(contexto),
+            new BanderasSiempreActivas(),
             cache,
             new IntentoEntregaRepositorio(contexto));
 
@@ -263,7 +267,7 @@ public class DespachoYCacheTests
         var envios = new EnvioRepositorio(contexto);
         var rutas = new RutaRepositorio(contexto);
         await new DespacharRuta(
-                rutas, envios, new RepartidorRepositorio(contexto), Outbox(contexto), Publicar(contexto), cache)
+                rutas, envios, new RepartidorRepositorio(contexto), new BultoRepositorio(contexto), new CoberturaRepositorio(contexto), Outbox(contexto), Publicar(contexto), cache)
             .EjecutarAsync(DatosSemilla.OperadorNorteId, DatosSemilla.RepartidorNorteId, fecha, [envioId]);
 
         var envioDespachado = await contexto.Envios.SingleAsync(e => e.Id == envioId);
@@ -276,10 +280,12 @@ public class DespachoYCacheTests
             new BultoRepositorio(contexto),
             new PruebaDeEntregaRepositorio(contexto),
             new EventoSincronizacionRepositorio(contexto),
+            new OutboxRepositorio(contexto),
             Outbox(contexto),
             Publicar(contexto),
             new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
             new ReglaOperativaRepositorio(contexto),
+            new BanderasSiempreActivas(),
             cache,
             new IntentoEntregaRepositorio(contexto));
 
@@ -323,5 +329,11 @@ public class DespachoYCacheTests
             .AddInterceptors(new OperadorSaveChangesInterceptor(operador))
             .Options;
         return new PlataformaDbContext(options, operador);
+    }
+
+    private sealed class BanderasSiempreActivas : IBanderasOperador
+    {
+        public Task<bool> EstaActivaAsync(Guid operadorId, string clave, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
     }
 }

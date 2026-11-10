@@ -26,7 +26,8 @@ public sealed class RegistrarOutboxEstado
         EstadoEnvio estadoNuevo,
         CancellationToken cancellationToken = default,
         Guid? eventId = null,
-        string motivo = "")
+        string motivo = "",
+        string responsable = "")
     {
         if (estadoAnterior == estadoNuevo)
             return null;
@@ -46,7 +47,8 @@ public sealed class RegistrarOutboxEstado
                 mensaje.Fecha.UtcDateTime,
                 string.IsNullOrWhiteSpace(motivo)
                     ? $"{estadoAnterior} -> {estadoNuevo}"
-                    : motivo),
+                    : motivo,
+                responsable),
             cancellationToken);
 
         // W3C: Activity.Id es el traceparent de la operación que originó el cambio.

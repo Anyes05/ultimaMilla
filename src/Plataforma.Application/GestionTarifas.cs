@@ -22,10 +22,12 @@ public sealed class GestionTarifas
     public static readonly DateTime VigenciaAbiertaHasta = new(9999, 12, 31, 23, 59, 59, DateTimeKind.Utc);
 
     private readonly ITarifaRepositorio _tarifas;
+    private readonly ICacheLectura _cache;
 
-    public GestionTarifas(ITarifaRepositorio tarifas)
+    public GestionTarifas(ITarifaRepositorio tarifas, ICacheLectura cache)
     {
         _tarifas = tarifas;
+        _cache = cache;
     }
 
     public async Task<IReadOnlyList<TarifaVersionVista>> ListarVersionesAsync(
@@ -116,6 +118,9 @@ public sealed class GestionTarifas
         await _tarifas.AgregarReglaAsync(regla, cancellationToken);
         await _tarifas.AgregarVigenciaAsync(vigenciaNueva, cancellationToken);
         await _tarifas.GuardarAsync(cancellationToken);
+        // Aclaración 3.1: invalidar al publicar para que todas las réplicas vean la nueva vigencia.
+        await _cache.QuitarAsync(ClavesCache.TarifaVigente(operadorId), cancellationToken);
+        await _cache.QuitarAsync(ClavesCache.Operador(operadorId), cancellationToken);
 
         return reglaId;
     }

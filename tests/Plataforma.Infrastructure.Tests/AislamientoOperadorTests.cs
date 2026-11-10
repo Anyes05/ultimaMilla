@@ -91,6 +91,7 @@ public class AislamientoOperadorTests
         var outbox = new OutboxRepositorio(contextoNorte);
         var casoUso = new CambiarEstadoEnvio(
             new EnvioRepositorio(contextoNorte),
+            new RutaRepositorio(contextoNorte),
             new RegistrarOutboxEstado(outbox, new HistorialEstadoRepositorio(contextoNorte)),
             new PublicarOutboxPendientes(outbox, new PublicadorMensajesPrueba { Disponible = false }),
             new CacheLecturaMemoria());
@@ -121,6 +122,7 @@ public class AislamientoOperadorTests
         var outbox = new OutboxRepositorio(contextoNorte);
         var casoUso = new CambiarEstadoEnvio(
             new EnvioRepositorio(contextoNorte),
+            new RutaRepositorio(contextoNorte),
             new RegistrarOutboxEstado(outbox, new HistorialEstadoRepositorio(contextoNorte)),
             new PublicarOutboxPendientes(outbox, new PublicadorMensajesPrueba { Disponible = false }),
             new CacheLecturaMemoria());

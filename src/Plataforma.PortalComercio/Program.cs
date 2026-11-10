@@ -150,6 +150,8 @@ app.MapPost("/avisos/reenviar", async (HttpContext contexto, IAntiforgery antifo
     }
 }).RequireAuthorization();
 
+app.MapApisRetirosComercio();
+
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     // La CSP completa (incluido frame-ancestors) la pone UseSeguridadWeb: sin esto Blazor agrega una segunda cabecera.

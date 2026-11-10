@@ -32,6 +32,15 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
 
     protected override async Task ProcesarAsync(IChannel canal, BasicDeliverEventArgs mensaje, CancellationToken stoppingToken)
     {
+        var routing = mensaje.RoutingKey ?? string.Empty;
+        if (routing.StartsWith("bultoestadocambiado", StringComparison.OrdinalIgnoreCase)
+            || routing.StartsWith("retirosolicitado", StringComparison.OrdinalIgnoreCase)
+            || routing.StartsWith("retirocompletado", StringComparison.OrdinalIgnoreCase))
+        {
+            await ProcesarEventoV2Async(canal, mensaje, routing, stoppingToken);
+            return;
+        }
+
         EventoEstadoEnvio? evento = null;
         try
         {
@@ -117,21 +126,135 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
         await canal.BasicAckAsync(mensaje.DeliveryTag, multiple: false, stoppingToken);
     }
 
+    /// <summary>Avisos v2 de bulto/retiro: solo suscripciones v2 que eligieron el tipo.</summary>
+    private async Task ProcesarEventoV2Async(
+        IChannel canal,
+        BasicDeliverEventArgs mensaje,
+        string routing,
+        CancellationToken stoppingToken)
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(mensaje.Body.ToArray());
+        var raiz = doc.RootElement;
+        if (!raiz.TryGetProperty("eventId", out var eventIdProp)
+            || !Guid.TryParse(eventIdProp.GetString(), out var eventId)
+            || !raiz.TryGetProperty("operadorId", out var opProp)
+            || !Guid.TryParse(opProp.GetString(), out var operadorId)
+            || !raiz.TryGetProperty("fecha", out var fechaProp)
+            || !DateTimeOffset.TryParse(fechaProp.GetString(), out var fecha))
+        {
+            await canal.BasicRejectAsync(mensaje.DeliveryTag, requeue: false, stoppingToken);
+            return;
+        }
+
+        var tipo = routing.StartsWith("bulto", StringComparison.OrdinalIgnoreCase) ? "BultoEstadoCambiado"
+            : routing.StartsWith("retirosolicitado", StringComparison.OrdinalIgnoreCase) ? "RetiroSolicitado"
+            : "RetiroCompletado";
+
+        await using var scope = _scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AvisosDbContext>();
+
+        Guid? comercioId = null;
+        Guid envioId = Guid.Empty;
+        string payload;
+
+        if (tipo == "BultoEstadoCambiado")
+        {
+            if (!raiz.TryGetProperty("envioId", out var envioProp)
+                || !Guid.TryParse(envioProp.GetString(), out envioId)
+                || !raiz.TryGetProperty("bultoId", out var bultoProp)
+                || !Guid.TryParse(bultoProp.GetString(), out var bultoId))
+            {
+                await canal.BasicRejectAsync(mensaje.DeliveryTag, requeue: false, stoppingToken);
+                return;
+            }
+
+            comercioId = await BuscarComercioPorEnvioAsync(db, operadorId, envioId, stoppingToken);
+            var numero = await BuscarNumeroPorEnvioAsync(db, operadorId, envioId, stoppingToken);
+            var ant = raiz.TryGetProperty("estadoAnterior", out var a) ? a.GetString() ?? "" : "";
+            var neu = raiz.TryGetProperty("estadoNuevo", out var n) ? n.GetString() ?? "" : "";
+            payload = ContratoAvisos.ArmarBulto(eventId, fecha, envioId, numero, bultoId, ant, neu);
+        }
+        else
+        {
+            if (!raiz.TryGetProperty("retiroId", out var retiroProp)
+                || !Guid.TryParse(retiroProp.GetString(), out var retiroId)
+                || !raiz.TryGetProperty("comercioId", out var comProp)
+                || !Guid.TryParse(comProp.GetString(), out var comId))
+            {
+                await canal.BasicRejectAsync(mensaje.DeliveryTag, requeue: false, stoppingToken);
+                return;
+            }
+
+            comercioId = comId;
+            Guid? envioAsociado = null;
+            if (raiz.TryGetProperty("envioAsociadoId", out var ea) && Guid.TryParse(ea.GetString(), out var eaId))
+                envioAsociado = eaId;
+            var direccion = raiz.TryGetProperty("direccion", out var dir) ? dir.GetString() : null;
+            payload = ContratoAvisos.ArmarRetiro(tipo, eventId, fecha, retiroId, comId, direccion, envioAsociado);
+        }
+
+        if (comercioId is null)
+        {
+            await canal.BasicAckAsync(mensaje.DeliveryTag, multiple: false, stoppingToken);
+            return;
+        }
+
+        var suscripciones = (await db.Suscripciones
+                .Where(s => s.OperadorId == operadorId && s.ComercioId == comercioId && s.Activa)
+                .ToListAsync(stoppingToken))
+            .Where(s => s.VersionContrato >= ContratoAvisos.V2 && s.Acepta(tipo))
+            .ToList();
+
+        var nuevas = new List<EntregaAviso>();
+        foreach (var suscripcion in suscripciones)
+        {
+            if (await db.Entregas.AnyAsync(e => e.EventId == eventId && e.SuscripcionId == suscripcion.Id, stoppingToken))
+                continue;
+            var entrega = EntregaAviso.Crear(eventId, suscripcion, envioId, tipo, payload, DateTime.UtcNow);
+            db.Entregas.Add(entrega);
+            nuevas.Add(entrega);
+        }
+
+        if (nuevas.Count > 0)
+        {
+            try
+            {
+                await db.SaveChangesAsync(stoppingToken);
+            }
+            catch (DbUpdateException ex) when (EsDuplicado(ex))
+            {
+                await canal.BasicAckAsync(mensaje.DeliveryTag, multiple: false, stoppingToken);
+                return;
+            }
+
+            foreach (var entrega in nuevas)
+                await _publicador.PublicarEntregaAsync(entrega.Id, stoppingToken);
+        }
+
+        await canal.BasicAckAsync(mensaje.DeliveryTag, multiple: false, stoppingToken);
+    }
+
     /// <summary>
     /// TRANSITORIO: el contrato v1 no trae comercioId, así que se lee de la tabla Envios del núcleo
     /// (solo lectura, filtrando por operador). Cuando el evento incluya comercioId se deja de usar.
     /// </summary>
     // Transitorio, como la búsqueda de comercio: el contrato v1 del evento interno no trae el número.
     private static async Task<string?> BuscarNumeroSeguimientoAsync(AvisosDbContext db, EventoEstadoEnvio evento, CancellationToken ct) =>
+        await BuscarNumeroPorEnvioAsync(db, evento.OperadorId, evento.EnvioId, ct);
+
+    private static async Task<string?> BuscarNumeroPorEnvioAsync(AvisosDbContext db, Guid operadorId, Guid envioId, CancellationToken ct) =>
         await db.Database
-            .SqlQuery<string>($"""SELECT "NumeroSeguimiento" AS "Value" FROM public."Envios" WHERE "Id" = {evento.EnvioId} AND "OperadorId" = {evento.OperadorId}""")
+            .SqlQuery<string>($"""SELECT "NumeroSeguimiento" AS "Value" FROM public."Envios" WHERE "Id" = {envioId} AND "OperadorId" = {operadorId}""")
             .SingleOrDefaultAsync(ct);
 
-    private static async Task<Guid?> BuscarComercioAsync(AvisosDbContext db, EventoEstadoEnvio evento, CancellationToken ct)
+    private static async Task<Guid?> BuscarComercioAsync(AvisosDbContext db, EventoEstadoEnvio evento, CancellationToken ct) =>
+        await BuscarComercioPorEnvioAsync(db, evento.OperadorId, evento.EnvioId, ct);
+
+    private static async Task<Guid?> BuscarComercioPorEnvioAsync(AvisosDbContext db, Guid operadorId, Guid envioId, CancellationToken ct)
     {
         var comercio = await db.Database
-            .SqlQuery<Guid>($"""SELECT "ComercioId" AS "Value" FROM public."Envios" WHERE "Id" = {evento.EnvioId} AND "OperadorId" = {evento.OperadorId}""")
-            .SingleOrDefaultAsync(ct); // Id es la clave: a lo sumo una fila (y EF no advierte First sin OrderBy).
+            .SqlQuery<Guid>($"""SELECT "ComercioId" AS "Value" FROM public."Envios" WHERE "Id" = {envioId} AND "OperadorId" = {operadorId}""")
+            .SingleOrDefaultAsync(ct);
         return comercio == Guid.Empty ? null : comercio;
     }
 

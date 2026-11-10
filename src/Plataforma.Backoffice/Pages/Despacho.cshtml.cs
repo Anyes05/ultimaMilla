@@ -94,7 +94,8 @@ public class DespachoModel : PageModel
                 RepartidorId,
                 Fecha,
                 EnvioIds.Distinct().ToList(),
-                HttpContext.RequestAborted);
+                vehiculoId: null,
+                cancellationToken: HttpContext.RequestAborted);
 
             TempData["Mensaje"] =
                 $"Ruta despachada para el {ruta.Fecha:dd/MM/yyyy} con {EnvioIds.Distinct().Count()} envío(s).";

@@ -15,6 +15,9 @@ namespace Plataforma.Avisos;
 public static class TopologiaAvisos
 {
     public const string RoutingEstadoCambiado = "envioestadocambiado.v1";
+    public const string RoutingBultoEstadoCambiado = "bultoestadocambiado.v1";
+    public const string RoutingRetiroSolicitado = "retirosolicitado.v1";
+    public const string RoutingRetiroCompletado = "retirocompletado.v1";
     public const string RoutingResultadoAviso = "avisoresultado.v1";
 
     public const string ColaEventos = "plataforma.avisos-comercio";
@@ -36,6 +39,12 @@ public static class TopologiaAvisos
         await canal.QueueDeclareAsync(ColaEventos, durable: true, exclusive: false, autoDelete: false,
             cancellationToken: cancellationToken);
         await canal.QueueBindAsync(ColaEventos, rabbit.Exchange, RoutingEstadoCambiado,
+            cancellationToken: cancellationToken);
+        await canal.QueueBindAsync(ColaEventos, rabbit.Exchange, RoutingBultoEstadoCambiado,
+            cancellationToken: cancellationToken);
+        await canal.QueueBindAsync(ColaEventos, rabbit.Exchange, RoutingRetiroSolicitado,
+            cancellationToken: cancellationToken);
+        await canal.QueueBindAsync(ColaEventos, rabbit.Exchange, RoutingRetiroCompletado,
             cancellationToken: cancellationToken);
 
         await canal.QueueDeclareAsync(ColaEntregas, durable: true, exclusive: false, autoDelete: false,
