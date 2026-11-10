@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +22,20 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString);
             options.AddInterceptors(proveedor.GetRequiredService<OperadorSaveChangesInterceptor>());
         });
+
+        services
+            .AddIdentityCore<UsuarioIdentity>(opciones =>
+            {
+                opciones.User.RequireUniqueEmail = false;
+                opciones.Password.RequiredLength = 6;
+                opciones.Password.RequireDigit = false;
+                opciones.Password.RequireLowercase = false;
+                opciones.Password.RequireUppercase = false;
+                opciones.Password.RequireNonAlphanumeric = false;
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<PlataformaDbContext>()
+            .AddDefaultTokenProviders();
 
         services.AddCacheRedis(configuration);
         services.Configure<OpcionesRabbitMq>(configuration.GetSection(OpcionesRabbitMq.Seccion));
@@ -51,6 +66,7 @@ public static class DependencyInjection
         services.AddScoped<IHistorialEstadoRepositorio, HistorialEstadoRepositorio>();
         services.AddScoped<IReglaOperativaRepositorio, ReglaOperativaRepositorio>();
         services.AddScoped<IVerificadorClave, HashClave>();
+        services.AddScoped<IAutenticacionIdentity, AutenticacionIdentity>();
         services.AddScoped<IEmisorToken, EmisorTokenJwt>();
         services.AddSingleton<ProtectorLoginRepartidor>();
         services.AddScoped<ConfiguracionOperador>();
@@ -69,6 +85,7 @@ public static class DependencyInjection
         services.AddScoped<ListarRepartidoresActivos>();
         services.AddScoped<ListarRutasDelDia>();
         services.AddScoped<DespacharRuta>();
+        services.AddScoped<ReasignarEnvio>();
         services.AddScoped<ObtenerRutasDeHoy>();
         services.AddScoped<SincronizarEntregas>();
         services.AddScoped<ObtenerSeguimientoEnvio>();
@@ -88,5 +105,7 @@ public static class DependencyInjection
 
         await context.Database.MigrateAsync();
         await SemillaDatos.AplicarAsync(context);
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<UsuarioIdentity>>();
+        await SemillaIdentidad.SincronizarAsync(users, context);
     }
 }

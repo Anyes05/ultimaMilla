@@ -175,6 +175,33 @@ public static class RepartidorApi
             }
         }).RequireAuthorization();
 
+        app.MapPost("/api/despacho/reasignar", async (
+            ClaimsPrincipal principal,
+            ReasignacionSolicitud solicitud,
+            ReasignarEnvio reasignar,
+            CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.Despachador or Roles.Administrador))
+                return Results.Unauthorized();
+
+            try
+            {
+                var resultado = await reasignar.EjecutarAsync(
+                    acceso.OperadorId,
+                    solicitud.EnvioId,
+                    solicitud.RepartidorNuevoId,
+                    solicitud.Fecha,
+                    solicitud.Urgente,
+                    cancellationToken);
+                return Results.Json(resultado, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.Json(new { mensaje = ex.Message }, statusCode: StatusCodes.Status400BadRequest);
+            }
+        }).RequireAuthorization();
+
         app.MapGet("/api/seguimiento/{token}", async (
             string token,
             ObtenerSeguimientoEnvio seguimiento,
@@ -246,6 +273,12 @@ public sealed record LoginRepartidorSolicitud(string Usuario, string Clave);
 public sealed record SincronizacionSolicitudApi(DateOnly Fecha, IReadOnlyList<ComprobanteEntrega> Eventos);
 
 public sealed record DespachoSolicitud(Guid RepartidorId, DateOnly Fecha, IReadOnlyList<Guid> EnvioIds);
+
+public sealed record ReasignacionSolicitud(
+    Guid EnvioId,
+    Guid RepartidorNuevoId,
+    DateOnly Fecha,
+    bool Urgente = true);
 
 public sealed record DispositivoSolicitud(string Token, string Plataforma);
 

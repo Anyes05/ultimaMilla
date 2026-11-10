@@ -45,4 +45,24 @@ public sealed class RutaRepositorio : IRutaRepositorio
         await _context.Paradas.AddRangeAsync(paradas, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public Task<Parada?> ObtenerParadaPorEnvioAsync(
+        Guid operadorId,
+        Guid envioId,
+        CancellationToken cancellationToken = default) =>
+        _context.Paradas.FirstOrDefaultAsync(
+            parada => parada.OperadorId == operadorId && parada.EnvioId == envioId,
+            cancellationToken);
+
+    public Task QuitarParadaAsync(Parada parada, CancellationToken cancellationToken = default)
+    {
+        _context.Paradas.Remove(parada);
+        return Task.CompletedTask;
+    }
+
+    public async Task AgregarParadaAsync(Parada parada, CancellationToken cancellationToken = default) =>
+        await _context.Paradas.AddAsync(parada, cancellationToken);
+
+    public Task GuardarAsync(CancellationToken cancellationToken = default) =>
+        _context.SaveChangesAsync(cancellationToken);
 }

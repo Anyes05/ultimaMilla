@@ -175,11 +175,13 @@ public class DespachoYCacheTests
         var sync = new SincronizarEntregas(
             rutas,
             envios,
+            new BultoRepositorio(contexto),
             new PruebaDeEntregaRepositorio(contexto),
             new EventoSincronizacionRepositorio(contexto),
             Outbox(contexto),
             Publicar(contexto),
             new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
+            new ReglaOperativaRepositorio(contexto),
             cache,
             new IntentoEntregaRepositorio(contexto));
 
@@ -271,11 +273,13 @@ public class DespachoYCacheTests
         var sync = new SincronizarEntregas(
             rutas,
             envios,
+            new BultoRepositorio(contexto),
             new PruebaDeEntregaRepositorio(contexto),
             new EventoSincronizacionRepositorio(contexto),
             Outbox(contexto),
             Publicar(contexto),
             new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
+            new ReglaOperativaRepositorio(contexto),
             cache,
             new IntentoEntregaRepositorio(contexto));
 

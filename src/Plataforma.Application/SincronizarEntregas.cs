@@ -6,32 +6,38 @@ public sealed class SincronizarEntregas
 {
     private readonly IRutaRepositorio _rutas;
     private readonly IEnvioRepositorio _envios;
+    private readonly IBultoRepositorio _bultos;
     private readonly IPruebaDeEntregaRepositorio _pruebas;
     private readonly IEventoSincronizacionRepositorio _eventosProcesados;
     private readonly RegistrarOutboxEstado _outbox;
     private readonly PublicarOutboxPendientes _publicar;
     private readonly ConfiguracionOperador _operadores;
+    private readonly IReglaOperativaRepositorio _reglas;
     private readonly ICacheLectura _cache;
     private readonly IIntentoEntregaRepositorio _intentos;
 
     public SincronizarEntregas(
         IRutaRepositorio rutas,
         IEnvioRepositorio envios,
+        IBultoRepositorio bultos,
         IPruebaDeEntregaRepositorio pruebas,
         IEventoSincronizacionRepositorio eventosProcesados,
         RegistrarOutboxEstado outbox,
         PublicarOutboxPendientes publicar,
         ConfiguracionOperador operadores,
+        IReglaOperativaRepositorio reglas,
         ICacheLectura cache,
         IIntentoEntregaRepositorio intentos)
     {
         _rutas = rutas;
         _envios = envios;
+        _bultos = bultos;
         _pruebas = pruebas;
         _eventosProcesados = eventosProcesados;
         _outbox = outbox;
         _publicar = publicar;
         _operadores = operadores;
+        _reglas = reglas;
         _cache = cache;
         _intentos = intentos;
     }
@@ -133,52 +139,77 @@ public sealed class SincronizarEntregas
                 continue;
             }
 
-            if (evento.Estado == EstadoEnvio.NoEntregado && envio.IntentosRealizados >= operador.MaximoIntentos)
+            var usaBultos = evento.Bultos is { Count: > 0 };
+            if (!usaBultos)
             {
-                rechazados.Add(new EventoRechazado(
-                    evento.EnvioId,
-                    $"Se alcanzó el máximo de {operador.MaximoIntentos} intentos.",
-                    envio.Estado));
-                continue;
-            }
+                if (evento.Estado == EstadoEnvio.NoEntregado && envio.IntentosRealizados >= operador.MaximoIntentos)
+                {
+                    rechazados.Add(new EventoRechazado(
+                        evento.EnvioId,
+                        $"Se alcanzó el máximo de {operador.MaximoIntentos} intentos.",
+                        envio.Estado));
+                    continue;
+                }
 
-            if (evento.Estado == EstadoEnvio.Reprogramado && envio.IntentosRealizados >= operador.MaximoIntentos)
+                if (evento.Estado == EstadoEnvio.Reprogramado && envio.IntentosRealizados >= operador.MaximoIntentos)
+                {
+                    rechazados.Add(new EventoRechazado(
+                        evento.EnvioId,
+                        $"El operador admite como máximo {operador.MaximoIntentos} intentos.",
+                        envio.Estado));
+                    continue;
+                }
+
+                if (!TransicionesEnvio.EsValida(envio.Estado, evento.Estado))
+                {
+                    rechazados.Add(new EventoRechazado(
+                        evento.EnvioId,
+                        $"Transición inválida: {envio.Estado} -> {evento.Estado}",
+                        envio.Estado));
+                    continue;
+                }
+
+                if (evento.Estado == EstadoEnvio.NoEntregado)
+                {
+                    envio.RegistrarIntentoFallido(operador.MaximoIntentos);
+                    await _intentos.AgregarAsync(IntentoEntrega.Registrar(
+                        Guid.NewGuid(), operadorId, envio.Id, envio.IntentosRealizados,
+                        evento.FechaDispositivo.UtcDateTime, evento.Observaciones), cancellationToken);
+                }
+
+                var anteriorV1 = envio.Estado;
+                envio.CambiarEstado(evento.Estado, evento.NombreReceptor, evento.Observaciones);
+                var eventIdV1 = await _outbox.EjecutarAsync(
+                    operadorId,
+                    envio.Id,
+                    anteriorV1,
+                    envio.Estado,
+                    cancellationToken,
+                    motivo: $"Sync repartidor: {evento.Observaciones}");
+                if (eventIdV1 is Guid idV1)
+                    eventIdsOutbox.Add(idV1);
+            }
+            else
             {
-                rechazados.Add(new EventoRechazado(
-                    evento.EnvioId,
-                    $"El operador admite como máximo {operador.MaximoIntentos} intentos.",
-                    envio.Estado));
-                continue;
-            }
+                var anteriorV2 = envio.Estado;
+                var errorBultos = await AplicarBultosAsync(
+                    operadorId, operador, envio, evento, cancellationToken);
+                if (errorBultos is not null)
+                {
+                    rechazados.Add(errorBultos);
+                    continue;
+                }
 
-            if (!TransicionesEnvio.EsValida(envio.Estado, evento.Estado))
-            {
-                rechazados.Add(new EventoRechazado(
-                    evento.EnvioId,
-                    $"Transición inválida: {envio.Estado} -> {evento.Estado}",
-                    envio.Estado));
-                continue;
+                var eventIdV2 = await _outbox.EjecutarAsync(
+                    operadorId,
+                    envio.Id,
+                    anteriorV2,
+                    envio.Estado,
+                    cancellationToken,
+                    motivo: $"Sync repartidor (bultos): {evento.Observaciones}");
+                if (eventIdV2 is Guid idV2)
+                    eventIdsOutbox.Add(idV2);
             }
-
-            if (evento.Estado == EstadoEnvio.NoEntregado)
-            {
-                envio.RegistrarIntentoFallido(operador.MaximoIntentos);
-                await _intentos.AgregarAsync(IntentoEntrega.Registrar(
-                    Guid.NewGuid(), operadorId, envio.Id, envio.IntentosRealizados,
-                    evento.FechaDispositivo.UtcDateTime, evento.Observaciones), cancellationToken);
-            }
-
-            var anterior = envio.Estado;
-            envio.CambiarEstado(evento.Estado, evento.NombreReceptor, evento.Observaciones);
-            var eventId = await _outbox.EjecutarAsync(
-                operadorId,
-                envio.Id,
-                anterior,
-                envio.Estado,
-                cancellationToken,
-                motivo: $"Sync repartidor: {evento.Observaciones}");
-            if (eventId is Guid id)
-                eventIdsOutbox.Add(id);
 
             await _pruebas.AgregarAsync(
                 PruebaDeEntrega.DesdeSincronizacion(
@@ -224,6 +255,125 @@ public sealed class SincronizarEntregas
         }
 
         return new ResultadoSincronizacion(aplicados, rechazados);
+    }
+
+    private async Task<EventoRechazado?> AplicarBultosAsync(
+        Guid operadorId,
+        Operador operador,
+        Envio envio,
+        ComprobanteEntrega evento,
+        CancellationToken cancellationToken)
+    {
+        var resultados = evento.Bultos!;
+        if (resultados.Select(b => b.BultoId).Distinct().Count() != resultados.Count)
+            return new EventoRechazado(envio.Id, "Hay bultos duplicados en el mismo evento.", envio.Estado);
+
+        if (resultados.Any(b => b is null || b.BultoId == Guid.Empty))
+            return new EventoRechazado(envio.Id, "Hay resultados de bulto incompletos.", envio.Estado);
+
+        var bultos = (await _bultos.ListarPorEnvioAsync(operadorId, envio.Id, cancellationToken)).ToList();
+        if (bultos.Count == 0)
+            return new EventoRechazado(envio.Id, "El envío no tiene bultos registrados.", envio.Estado);
+
+        var porId = bultos.ToDictionary(b => b.Id);
+        foreach (var resultado in resultados)
+        {
+            if (!porId.ContainsKey(resultado.BultoId))
+                return new EventoRechazado(envio.Id, $"El bulto {resultado.BultoId} no pertenece al envío.", envio.Estado);
+        }
+
+        var regla = await _reglas.ObtenerVigenteAsync(operadorId, DateTime.UtcNow, cancellationToken);
+        var admiteParcial = regla?.AdmiteEntregaParcial ?? false;
+
+        // Proyectar estados finales del lote (los no mencionados quedan igual).
+        var proyectados = bultos.ToDictionary(b => b.Id, b => b.Estado);
+        foreach (var resultado in resultados)
+            proyectados[resultado.BultoId] = resultado.Estado;
+
+        var entregados = proyectados.Values.Count(e => e == EstadoBulto.Entregado);
+        var noEntregados = proyectados.Values.Count(e =>
+            e is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita);
+        if (!admiteParcial && entregados > 0 && noEntregados > 0)
+        {
+            return new EventoRechazado(
+                envio.Id,
+                "El operador no admite entrega parcial de bultos.",
+                envio.Estado);
+        }
+
+        try
+        {
+            foreach (var resultado in resultados)
+            {
+                var bulto = porId[resultado.BultoId];
+                if (bulto.Estado is EstadoBulto.Entregado or EstadoBulto.Devuelto or EstadoBulto.Extraviado
+                    && bulto.Estado != resultado.Estado)
+                {
+                    return new EventoRechazado(
+                        envio.Id,
+                        $"El bulto {bulto.Codigo} ya está en estado terminal {bulto.Estado}.",
+                        envio.Estado);
+                }
+
+                // Si todavía está Pendiente y el envío ya salió, lo pasamos a EnRuta antes del resultado.
+                if (bulto.Estado == EstadoBulto.Pendiente &&
+                    resultado.Estado is EstadoBulto.Entregado or EstadoBulto.NoEntregado
+                        or EstadoBulto.PendienteNuevaVisita or EstadoBulto.Extraviado)
+                {
+                    bulto.CambiarEstado(EstadoBulto.EnRuta);
+                }
+
+                bulto.CambiarEstado(resultado.Estado, resultado.MotivoNoEntrega ?? evento.Observaciones);
+            }
+
+            // Política post-parcial sobre bultos NoEntregado del lote.
+            if (regla is not null && admiteParcial)
+            {
+                foreach (var bulto in bultos.Where(b => b.Estado == EstadoBulto.NoEntregado))
+                {
+                    if (regla.PoliticaBultosPendientes == PoliticaBultosPendientes.NuevaVisitaSinRecargo
+                        || regla.PoliticaBultosPendientes == PoliticaBultosPendientes.NuevaVisitaConRecargo)
+                    {
+                        if (TransicionesBulto.EsValida(bulto.Estado, EstadoBulto.PendienteNuevaVisita))
+                            bulto.CambiarEstado(EstadoBulto.PendienteNuevaVisita, bulto.MotivoNoEntrega);
+                    }
+                    else if (regla.PoliticaBultosPendientes == PoliticaBultosPendientes.DevolucionAlComercio
+                             && TransicionesBulto.EsValida(bulto.Estado, EstadoBulto.Devuelto))
+                    {
+                        bulto.CambiarEstado(EstadoBulto.Devuelto, bulto.MotivoNoEntrega);
+                    }
+                }
+            }
+
+            var derivado = DerivacionEstadoEnvio.DesdeBultos(bultos.Select(b => b.Estado).ToList());
+            if (derivado is EstadoEnvio.NoEntregado or EstadoEnvio.EntregadoParcialmente or EstadoEnvio.Reprogramado)
+            {
+                if (envio.IntentosRealizados >= operador.MaximoIntentos
+                    && derivado is EstadoEnvio.NoEntregado or EstadoEnvio.Reprogramado)
+                {
+                    return new EventoRechazado(
+                        envio.Id,
+                        $"Se alcanzó el máximo de {operador.MaximoIntentos} intentos.",
+                        envio.Estado);
+                }
+
+                if (derivado is EstadoEnvio.NoEntregado or EstadoEnvio.EntregadoParcialmente)
+                {
+                    envio.RegistrarIntentoFallido(operador.MaximoIntentos);
+                    await _intentos.AgregarAsync(IntentoEntrega.Registrar(
+                        Guid.NewGuid(), operadorId, envio.Id, envio.IntentosRealizados,
+                        evento.FechaDispositivo.UtcDateTime, evento.Observaciones), cancellationToken);
+                }
+            }
+
+            envio.AplicarEstadoDerivadoDeBultos(bultos.Select(b => b.Estado).ToList());
+        }
+        catch (InvalidOperationException ex)
+        {
+            return new EventoRechazado(envio.Id, ex.Message, envio.Estado);
+        }
+
+        return null;
     }
 
     private static string? ValidarEvidencia(ComprobanteEntrega evento)

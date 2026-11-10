@@ -8,6 +8,7 @@ public class MensajeOutbox
 {
     public const string TipoEnvioEstadoCambiado = "EnvioEstadoCambiado";
     public const string TipoEnvioAdmitido = "EnvioAdmitido";
+    public const string TipoEnvioReasignado = "EnvioReasignado";
     public const string VersionContratoV1 = "1";
 
     public Guid EventId { get; private set; }

@@ -1,7 +1,7 @@
 # Contratos del repartidor — borrador v2 (sincronización por bulto)
 
 **Estado:** **acordado** Ana + Álvaro (03/11/2026). Listo para que Álvaro implemente offline por bulto.  
-**v1 permanece inmutable.** El servidor aplicará `bultos[]` cuando Ana cablee `SincronizarEntregas` (post-gate).
+**v1 permanece inmutable.** El servidor (`SincronizarEntregas`) aplica `bultos[]` cuando viene en el evento; ausente/vacío = v1.
 
 ## Qué agrega v2
 

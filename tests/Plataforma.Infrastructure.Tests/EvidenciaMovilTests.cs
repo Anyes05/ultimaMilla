@@ -104,11 +104,14 @@ public sealed class EvidenciaMovilTests
         var cache = new CacheLecturaMemoria();
         var sync = new SincronizarEntregas(
             new RutaRepositorio(contexto), new EnvioRepositorio(contexto),
+            new BultoRepositorio(contexto),
             new PruebaDeEntregaRepositorio(contexto), new EventoSincronizacionRepositorio(contexto),
             new RegistrarOutboxEstado(new OutboxRepositorio(contexto), new HistorialEstadoRepositorio(contexto)),
             new PublicarOutboxPendientes(new OutboxRepositorio(contexto),
                 new PublicadorMensajesPrueba { Disponible = false }),
-            new ConfiguracionOperador(new OperadorRepositorio(contexto), cache), cache,
+            new ConfiguracionOperador(new OperadorRepositorio(contexto), cache),
+            new ReglaOperativaRepositorio(contexto),
+            cache,
             new IntentoEntregaRepositorio(contexto));
         return sync.Ejecutar(DatosSemilla.OperadorNorteId, DatosSemilla.RepartidorNorteId,
             new DateOnly(2026, 10, 29), [evento], "repartidor.norte");

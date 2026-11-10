@@ -6,7 +6,8 @@ public enum RolUsuario
     Despachador,
     OperarioDeposito,
     Comercio,
-    Repartidor
+    Repartidor,
+    AdministradorPlataforma
 }
 
 public static class Roles
@@ -16,6 +17,7 @@ public static class Roles
     public const string OperarioDeposito = "operario_deposito";
     public const string Comercio = "comercio";
     public const string Repartidor = "repartidor";
+    public const string AdministradorPlataforma = "administrador_plataforma";
 
     public static string De(RolUsuario rol) => rol switch
     {
@@ -24,6 +26,7 @@ public static class Roles
         RolUsuario.OperarioDeposito => OperarioDeposito,
         RolUsuario.Comercio => Comercio,
         RolUsuario.Repartidor => Repartidor,
+        RolUsuario.AdministradorPlataforma => AdministradorPlataforma,
         _ => throw new ArgumentOutOfRangeException(nameof(rol))
     };
 }

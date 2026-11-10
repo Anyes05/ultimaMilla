@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Plataforma.Application;
+using Plataforma.Domain;
 
 namespace Plataforma.Infrastructure;
 
@@ -27,9 +28,12 @@ public sealed class EmisorTokenJwt : IEmisorToken
         {
             new(ClaimsPlataforma.UsuarioId, sesion.UsuarioId.ToString()),
             new("unique_name", sesion.NombreUsuario),
-            new(ClaimsPlataforma.OperadorId, sesion.OperadorId.ToString()),
             new(ClaimsPlataforma.Rol, sesion.RolClaim)
         };
+
+        // Admin plataforma no lleva operador_id (docs/contratos/identidad.md §3.1).
+        if (sesion.Rol != RolUsuario.AdministradorPlataforma && sesion.OperadorId != Guid.Empty)
+            claims.Add(new Claim(ClaimsPlataforma.OperadorId, sesion.OperadorId.ToString()));
 
         if (sesion.ComercioId is Guid comercioId)
             claims.Add(new Claim(ClaimsPlataforma.ComercioId, comercioId.ToString()));

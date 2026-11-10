@@ -1,10 +1,12 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Plataforma.Application;
 using Plataforma.Domain;
 
 namespace Plataforma.Infrastructure;
 
-public class PlataformaDbContext : DbContext
+public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRole<Guid>, Guid>
 {
     public PlataformaDbContext(
         DbContextOptions<PlataformaDbContext> options,
@@ -51,6 +53,8 @@ public class PlataformaDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.Entity<Operador>().HasQueryFilter(operador =>
             OperadorIdFiltro == null || operador.Id == OperadorIdFiltro);
 

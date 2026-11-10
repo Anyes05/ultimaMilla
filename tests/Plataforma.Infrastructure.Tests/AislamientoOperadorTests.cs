@@ -150,7 +150,9 @@ public class AislamientoOperadorTests
         }
 
         await using var contextoLogin = CrearContexto(db, operadorId: null);
-        var iniciarSesion = new IniciarSesion(new UsuarioRepositorio(contextoLogin), new HashClave());
+        var iniciarSesion = new IniciarSesion(
+            new UsuarioRepositorio(contextoLogin),
+            new AutenticacionIdentityPrueba());
         var resultado = await iniciarSesion.Ejecutar(
             DatosSemilla.UsuarioDespachadorNorte,
             DatosSemilla.ClaveDesarrollo);
@@ -194,5 +196,20 @@ public class AislamientoOperadorTests
             .Options;
 
         return new PlataformaDbContext(options, operador);
+    }
+
+    /// <summary>Doble de Identity: valida el hash legado (pbkdf2) sin tablas AspNet.</summary>
+    private sealed class AutenticacionIdentityPrueba : IAutenticacionIdentity
+    {
+        private readonly HashClave _legado = new();
+
+        public Task<bool> VerificarAsync(
+            Guid usuarioId,
+            string nombreUsuario,
+            string email,
+            string clave,
+            string hashLegado,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_legado.Coincide(clave, hashLegado));
     }
 }

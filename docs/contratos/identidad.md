@@ -1,9 +1,10 @@
 # Contrato técnico — Identity / autenticación (letra 6.3)
 
-**Estado:** **cerrado v1** (Ana, 03/11/2026).  
+**Estado:** **cerrado v1** (Ana, 03/11/2026). **Implementación en código:** ASP.NET Identity + `UsuarioPlataforma` (Opción A), sin cambiar endpoints de login.  
 **Dueña:** Ana.  
 **Álvaro:** confirmó sync v2 el mismo día; este contrato Identity cierra la elección para el merge del **08/11**.  
-**Aportes:** Nadia (web) completo; Álvaro/Joel con defaults operativos abajo (pueden matizar sin cambiar la decisión A).
+**Aportes:** Nadia (web) completo; Álvaro/Joel con defaults operativos abajo (pueden matizar sin cambiar la decisión A).  
+**Nota Nadia:** `AdmitirEnvio` / `EnvioAdmitido` (correo al alta) no se toca en este merge.
 
 | Cuándo | Qué |
 |--------|-----|

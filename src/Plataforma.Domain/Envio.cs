@@ -127,6 +127,26 @@ public class Envio
         RutaId = rutaId;
     }
 
+    /// <summary>
+    /// Mueve el envío a otra ruta sin duplicarlo (un envío ↔ una ruta).
+    /// Solo desde AsignadoARuta o EnTransito; el estado de entrega no cambia.
+    /// </summary>
+    public void ReasignarARuta(Guid rutaNuevaId)
+    {
+        if (rutaNuevaId == Guid.Empty)
+            throw new ArgumentException("La ruta nueva es requerida.", nameof(rutaNuevaId));
+
+        if (Estado is not (EstadoEnvio.AsignadoARuta or EstadoEnvio.EnTransito))
+            throw new InvalidOperationException(
+                $"Solo se puede reasignar un envío AsignadoARuta o EnTransito (actual: {Estado}).");
+
+        if (RutaId == rutaNuevaId)
+            throw new InvalidOperationException("El envío ya está en esa ruta.");
+
+        RutaId = rutaNuevaId;
+        Version++;
+    }
+
     public void RegistrarIntentoFallido(int maximoIntentos)
     {
         if (maximoIntentos < 1)
