@@ -68,11 +68,13 @@
                         @if (usuario.IsInRole(Roles.Administrador) || usuario.IsInRole(Roles.Despachador))
                         {
                             <a class="@ClaseNav("/Despacho")" asp-area="" asp-page="/Despacho">Despacho</a>
+                            <a class="@ClaseNav("/Retiros")" asp-area="" asp-page="/Retiros">Retiros</a>
                             <a class="@ClaseNav("/Tablero")" asp-area="" asp-page="/Tablero">Tablero en vivo</a>
                         }
                         @if (usuario.IsInRole(Roles.Administrador) || usuario.IsInRole(Roles.OperarioDeposito))
                         {
                             <span class="app-sidebar__section">Depósito</span>
+                            <a class="@ClaseNav("/Deposito/Recepcion")" asp-area="" asp-page="/Deposito/Recepcion">Recepción</a>
                             <a class="@ClaseNav("/Deposito/Rendicion")" asp-area="" asp-page="/Deposito/Rendicion">Rendición de devoluciones</a>
                         }
                         @if (usuario.IsInRole(Roles.Administrador))
@@ -81,6 +83,9 @@
                             <a class="@ClaseNav("/Tarifas")" asp-area="" asp-page="/Tarifas">Tarifas</a>
                             <a class="@ClaseNav("/Reglas")" asp-area="" asp-page="/Reglas">Reglas operativas</a>
                             <a class="@ClaseNav("/Comercios")" asp-area="" asp-page="/Comercios">Comercios</a>
+                            <a class="@ClaseNav("/Usuarios")" asp-area="" asp-page="/Usuarios">Usuarios</a>
+                            <a class="@ClaseNav("/Repartidores")" asp-area="" asp-page="/Repartidores">Repartidores</a>
+                            <a class="@ClaseNav("/Cobertura")" asp-area="" asp-page="/Cobertura">Zonas, franjas y vehículos</a>
                             <a class="@ClaseNav("/Avisos")" asp-area="" asp-page="/Avisos">Avisos fallidos</a>
                             <a class="@ClaseNav("/Cache")" asp-area="" asp-page="/Cache">Caché</a>
                         }

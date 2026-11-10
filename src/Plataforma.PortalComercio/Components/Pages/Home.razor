@@ -4,6 +4,7 @@
 @using Plataforma.Domain
 @inject IHttpContextAccessor HttpContextAccessor
 @inject AdmitirEnvio AdmitirEnvio
+@inject GestionCobertura Cobertura
 @inject ListarEnvios ListarEnvios
 @inject NavigationManager Navegacion
 
@@ -49,6 +50,33 @@
                         <ValidationMessage For="() => Formulario!.Email" />
                     </div>
 
+                    @if (Zonas.Count > 0 || Franjas.Count > 0)
+                    {
+                        <h3 class="h6 mb-3">Zona y horario de entrega</h3>
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold" for="zona">Zona <span class="text-muted fw-normal">(opcional)</span></label>
+                                <InputSelect id="zona" @bind-Value="Formulario!.ZonaId" class="form-select">
+                                    <option value="">Sin zona</option>
+                                    @foreach (var zona in Zonas)
+                                    {
+                                        <option value="@zona.Id">@zona.Nombre</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label fw-semibold" for="franja">Franja horaria <span class="text-muted fw-normal">(opcional)</span></label>
+                                <InputSelect id="franja" @bind-Value="Formulario!.FranjaId" class="form-select">
+                                    <option value="">Sin franja</option>
+                                    @foreach (var franja in Franjas)
+                                    {
+                                        <option value="@franja.Id">@franja.Nombre (@franja.Desde.ToString("HH:mm") a @franja.Hasta.ToString("HH:mm"))</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    }
+
                     <h3 class="h6 mb-3">Datos para la tarifa</h3>
                     <div class="row g-3 mb-3">
                         <div class="col-sm-4">
@@ -65,6 +93,11 @@
                             <label class="form-label fw-semibold" for="distancia">Distancia (km)</label>
                             <InputNumber id="distancia" @bind-Value="Formulario!.DistanciaKm" class="form-control" step="0.1" min="0" />
                             <ValidationMessage For="() => Formulario!.DistanciaKm" />
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label fw-semibold" for="volumen">Volumen (cm³)</label>
+                            <InputNumber id="volumen" @bind-Value="Formulario!.VolumenCm3" class="form-control" step="any" min="0" />
+                            <ValidationMessage For="() => Formulario!.VolumenCm3" />
                         </div>
                     </div>
                     <div class="d-flex flex-wrap gap-4 mb-4">
@@ -162,6 +195,8 @@
     private string? TrackingCreado { get; set; }
 
     private List<Envio> Envios { get; set; } = [];
+    private IReadOnlyList<ZonaCobertura> Zonas { get; set; } = [];
+    private IReadOnlyList<FranjaHoraria> Franjas { get; set; } = [];
     private string? mensajeError;
     private Envio? EnvioCreado =>
         string.IsNullOrWhiteSpace(TrackingCreado)
@@ -203,7 +238,10 @@
                 Formulario.DistanciaKm,
                 Formulario.Fragil,
                 Formulario.Urgente,
-                Formulario.CantidadBultos);
+                Formulario.CantidadBultos,
+                Formulario.ZonaId,
+                Formulario.FranjaId,
+                Formulario.VolumenCm3);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
@@ -227,6 +265,8 @@
         }
 
         Envios = await ListarEnvios.Ejecutar(acceso);
+        Zonas = await Cobertura.ListarZonasAsync(acceso.OperadorId);
+        Franjas = await Cobertura.ListarFranjasAsync(acceso.OperadorId);
     }
 
     private bool IntentarObtenerAcceso(out AccesoActual acceso)
@@ -263,6 +303,13 @@
 
         [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "500", ErrorMessage = "La distancia debe estar entre 0 y 500 km.")]
         public decimal DistanciaKm { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "10000000", ErrorMessage = "El volumen debe estar entre 0 y 10.000.000 cm³.")]
+        public decimal VolumenCm3 { get; set; }
+
+        public Guid? ZonaId { get; set; }
+
+        public Guid? FranjaId { get; set; }
 
         public bool Urgente { get; set; }
 

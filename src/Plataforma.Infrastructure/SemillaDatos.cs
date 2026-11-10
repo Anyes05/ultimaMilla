@@ -161,6 +161,9 @@ public static class SemillaDatos
             "Operario Norte", "operario@norte.test", DatosSemilla.UsuarioOperarioNorte, RolUsuario.OperarioDeposito, cancellationToken);
         await AsegurarUsuarioOperadorAsync(context, DatosSemilla.UsuarioOperarioSurId, DatosSemilla.OperadorSurId,
             "Operario Sur", "operario@sur.test", DatosSemilla.UsuarioOperarioSur, RolUsuario.OperarioDeposito, cancellationToken);
+        // Administra banderas de todos los operadores; el modelo exige un operador, pero el rol no se limita a Norte.
+        await AsegurarUsuarioOperadorAsync(context, DatosSemilla.UsuarioAdministradorPlataformaId, DatosSemilla.OperadorNorteId,
+            "Administrador de Plataforma", "plataforma@demo.test", DatosSemilla.UsuarioAdministradorPlataforma, RolUsuario.AdministradorPlataforma, cancellationToken);
     }
 
     private static async Task AsegurarUsuarioOperadorAsync(

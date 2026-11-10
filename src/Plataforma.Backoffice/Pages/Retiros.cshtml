@@ -1,0 +1,120 @@
+@page
+@model RetirosModel
+@using Plataforma.Domain
+@{
+    ViewData["Title"] = "Retiros";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @Model.ColorMarcaCss">Planificación</p>
+        <h1 class="display-6 fw-bold mb-1">Retiros en domicilio</h1>
+        <p class="text-muted mb-0">Pedidos de los comercios de <strong>@Model.Operador?.Nombre</strong>.</p>
+    </div>
+    <form method="post" action="/logout">
+        <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+    </form>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Retiros solicitados</h2>
+        <span class="badge rounded-pill text-bg-light">@Model.Retiros.Count</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Comercio</th>
+                        <th>Dirección</th>
+                        <th>Contacto</th>
+                        <th>Estado</th>
+                        <th>Ruta</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Retiros.Count == 0)
+                {
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">Todavía no hay retiros solicitados.</td>
+                    </tr>
+                }
+                @foreach (var retiro in Model.Retiros)
+                {
+                    var rutas = Model.RutasPorFecha.TryGetValue(retiro.FechaSolicitada, out var delDia) ? delDia : [];
+                    var asignada = rutas.FirstOrDefault(ruta => ruta.RutaId == retiro.RutaId);
+                    var programable = retiro.Estado is EstadoRetiro.Solicitado or EstadoRetiro.Programado;
+                    var completable = retiro.Estado is EstadoRetiro.Programado or EstadoRetiro.EnCurso;
+                    <tr>
+                        <td>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</td>
+                        <td class="fw-semibold">@(Model.Comercios.TryGetValue(retiro.ComercioId, out var comercio) ? comercio : "—")</td>
+                        <td>
+                            @retiro.Direccion
+                            @if (!string.IsNullOrWhiteSpace(retiro.Observaciones))
+                            {
+                                <span class="d-block small text-muted">@retiro.Observaciones</span>
+                            }
+                        </td>
+                        <td>@(string.IsNullOrWhiteSpace(retiro.Contacto) ? "—" : retiro.Contacto)</td>
+                        <td><span class="status-badge @RetirosModel.ClaseEstado(retiro.Estado)">@RetirosModel.NombreEstado(retiro.Estado)</span></td>
+                        <td>
+                            @if (programable && rutas.Count > 0)
+                            {
+                                <form method="post" asp-page-handler="Programar" class="d-flex gap-2">
+                                    <input type="hidden" name="retiroId" value="@retiro.Id" />
+                                    <select class="form-select form-select-sm" name="rutaId" aria-label="Ruta" required>
+                                        <option value="">Elegí una ruta</option>
+                                        @foreach (var ruta in rutas)
+                                        {
+                                            <option value="@ruta.RutaId" selected="@(ruta.RutaId == retiro.RutaId)">@ruta.Repartidor (@ruta.Envios.Count envíos)</option>
+                                        }
+                                    </select>
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Asignar</button>
+                                </form>
+                            }
+                            else if (programable)
+                            {
+                                <span class="small text-muted">No hay rutas ese día</span>
+                            }
+                            else
+                            {
+                                <span class="small text-muted">@(asignada?.Repartidor ?? "—")</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (RetirosModel.EstaAbierto(retiro))
+                            {
+                                <div class="d-flex justify-content-end gap-2">
+                                    @if (completable)
+                                    {
+                                        <form method="post" asp-page-handler="Completar">
+                                            <input type="hidden" name="retiroId" value="@retiro.Id" />
+                                            <button class="btn btn-sm btn-primary" type="submit">Completar</button>
+                                        </form>
+                                    }
+                                    <form method="post" asp-page-handler="Cancelar">
+                                        <input type="hidden" name="retiroId" value="@retiro.Id" />
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Cancelar</button>
+                                    </form>
+                                </div>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

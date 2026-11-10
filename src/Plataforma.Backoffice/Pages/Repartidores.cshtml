@@ -1,0 +1,107 @@
+@page
+@model RepartidoresModel
+@{
+    ViewData["Title"] = "Repartidores";
+    var editando = Model.Editar is not null;
+}
+
+<div class="mb-4">
+    <p class="text-uppercase fw-semibold small mb-1" style="color: @EstadosVista.ColorMarca(Model.Operador)">Administración</p>
+    <h1 class="display-6 fw-bold mb-1">Repartidores</h1>
+    <p class="text-muted mb-0">Quién reparte para <strong>@Model.Operador?.Nombre</strong> y quién puede usar la app.</p>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white"><h2 class="h5 mb-0">@(editando ? "Modificar repartidor" : "Nuevo repartidor")</h2></div>
+    <div class="card-body p-4">
+        <form method="post" asp-page-handler="Guardar" asp-route-editar="@Model.Editar">
+            <div asp-validation-summary="All" class="text-danger"></div>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" asp-for="Formulario.Nombre">Nombre</label>
+                    <input class="form-control" asp-for="Formulario.Nombre" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" asp-for="Formulario.Documento">Documento</label>
+                    <input class="form-control" asp-for="Formulario.Documento" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold" asp-for="Formulario.Telefono">Teléfono</label>
+                    <input class="form-control" asp-for="Formulario.Telefono" />
+                </div>
+            </div>
+            @if (!Model.TieneAcceso)
+            {
+                <h3 class="h6 mt-4 mb-3">Acceso a la app <span class="text-muted fw-normal">(opcional, sin esto no puede iniciar sesión)</span></h3>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" asp-for="Formulario.NombreUsuario">Usuario</label>
+                        <input class="form-control" asp-for="Formulario.NombreUsuario" autocomplete="off" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" asp-for="Formulario.Email">Email</label>
+                        <input class="form-control" asp-for="Formulario.Email" type="email" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" asp-for="Formulario.Clave">Clave</label>
+                        <input class="form-control" asp-for="Formulario.Clave" type="password" autocomplete="new-password" />
+                    </div>
+                </div>
+            }
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-primary">@(editando ? "Guardar cambios" : "Crear repartidor")</button>
+                @if (editando)
+                {
+                    <a class="btn btn-outline-secondary" asp-page="/Repartidores" asp-route-editar="">Cancelar</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Repartidores registrados</h2>
+        <span class="badge rounded-pill text-bg-light">@Model.Repartidores.Count</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light"><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Usuario en la app</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Repartidores.Count == 0)
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4">Todavía no hay repartidores.</td></tr>
+            }
+            @foreach (var repartidor in Model.Repartidores)
+            {
+                <tr>
+                    <td class="fw-semibold">@repartidor.Nombre</td>
+                    <td>@(string.IsNullOrWhiteSpace(repartidor.Documento) ? "—" : repartidor.Documento)</td>
+                    <td>@(string.IsNullOrWhiteSpace(repartidor.Telefono) ? "—" : repartidor.Telefono)</td>
+                    <td>@Model.NombreUsuario(repartidor.UsuarioId)</td>
+                    <td><span class="status-badge @(repartidor.Activo ? "status-entregado" : "status-extraviado")">@(repartidor.Activo ? "Activo" : "Desactivado")</span></td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Repartidores" asp-route-editar="@repartidor.Id">Editar</a>
+                            <form method="post" asp-page-handler="CambiarActivo">
+                                <input type="hidden" name="repartidorId" value="@repartidor.Id" />
+                                <input type="hidden" name="activo" value="@(repartidor.Activo ? "false" : "true")" />
+                                <button class="btn btn-sm @(repartidor.Activo ? "btn-outline-danger" : "btn-outline-primary")" type="submit">@(repartidor.Activo ? "Desactivar" : "Reactivar")</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

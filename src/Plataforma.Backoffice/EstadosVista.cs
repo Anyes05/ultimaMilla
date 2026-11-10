@@ -31,6 +31,14 @@ public static class EstadosVista
         _ => "status-" + estado.ToLowerInvariant()
     };
 
+    public static string NombreBulto(EstadoBulto estado) => estado switch
+    {
+        EstadoBulto.EnRuta => "En ruta",
+        EstadoBulto.NoEntregado => "No entregado",
+        EstadoBulto.PendienteNuevaVisita => "Pendiente de nueva visita",
+        _ => estado.ToString()
+    };
+
     public static string ColorMarca(Operador? operador) => operador?.ColorMarca switch
     {
         "verde" => "#198754",

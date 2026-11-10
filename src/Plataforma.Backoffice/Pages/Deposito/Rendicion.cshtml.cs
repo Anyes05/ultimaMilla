@@ -20,15 +20,25 @@ public class RendicionModel : PageModel
     private readonly ListarEnvios _listarEnvios;
     private readonly ITransicionEnvio _transicion;
     private readonly IEnvioRepositorio _envios;
+    private readonly IBultoRepositorio _bultos;
+    private readonly RendirBulto _rendirBulto;
 
-    public RendicionModel(ListarEnvios listarEnvios, ITransicionEnvio transicion, IEnvioRepositorio envios)
+    public RendicionModel(
+        ListarEnvios listarEnvios,
+        ITransicionEnvio transicion,
+        IEnvioRepositorio envios,
+        IBultoRepositorio bultos,
+        RendirBulto rendirBulto)
     {
+        _bultos = bultos;
+        _rendirBulto = rendirBulto;
         _listarEnvios = listarEnvios;
         _transicion = transicion;
         _envios = envios;
     }
 
     public IReadOnlyList<Envio> Pendientes { get; private set; } = [];
+    public IReadOnlyList<BultoPorRendir> Bultos { get; private set; } = [];
     public int TotalPendientes { get; private set; }
     public int Pagina { get; private set; } = 1;
     public int TamanoPagina { get; } = 50;
@@ -57,6 +67,11 @@ public class RendicionModel : PageModel
             return RedirectToPage();
         }
 
+        // El código impreso en cada bulto rinde solo ese bulto; el número de seguimiento, el envío entero.
+        var bulto = await _bultos.ObtenerPorCodigoAsync(acceso.OperadorId, numero, HttpContext.RequestAborted);
+        if (bulto is not null)
+            return await RendirBultoAsync(acceso, bulto.Id);
+
         // El número es único dentro del operador; se confirma el operador además del filtro global.
         var encontrado = await _envios.ObtenerPorNumeroAsync(numero, HttpContext.RequestAborted);
         if (encontrado is null || encontrado.OperadorId != acceso.OperadorId)
@@ -76,6 +91,34 @@ public class RendicionModel : PageModel
 
         return await RendirAsync(acceso, envioId);
     }
+
+    /// <summary>Rinde un solo bulto desde la lista.</summary>
+    public async Task<IActionResult> OnPostRendirBultoAsync(Guid bultoId)
+    {
+        if (!AccesoActual.Intentar(User, out var acceso))
+            return Challenge();
+
+        return await RendirBultoAsync(acceso, bultoId);
+    }
+
+    private async Task<IActionResult> RendirBultoAsync(AccesoActual acceso, Guid bultoId)
+    {
+        try
+        {
+            var resultado = await _rendirBulto.PorIdAsync(
+                acceso.OperadorId, bultoId, UsuarioActual(acceso), Motivo, HttpContext.RequestAborted);
+            TempData["Mensaje"] = $"Bulto {resultado.Codigo} rendido. El envío quedó {EstadosVista.Nombre(resultado.EstadoEnvio).ToLowerInvariant()}.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            TempData["Error"] = TextosUsuario.Error(ex);
+        }
+
+        return RedirectToPage();
+    }
+
+    private string UsuarioActual(AccesoActual acceso) =>
+        string.IsNullOrWhiteSpace(User.Identity?.Name) ? acceso.UsuarioId.ToString() : User.Identity.Name;
 
     private async Task<IActionResult> RendirAsync(AccesoActual acceso, Guid envioId)
     {
@@ -104,8 +147,17 @@ public class RendicionModel : PageModel
 
         try
         {
-            await _transicion.EjecutarAsync(
-                envio.Id, acceso.OperadorId, EstadoEnvio.Devuelto, User.Identity?.Name, Motivo, HttpContext.RequestAborted);
+            // Rendir el envío entero rinde sus bultos; el último deriva el envío a Devuelto.
+            var ct = HttpContext.RequestAborted;
+            var bultos = await _bultos.ListarPorEnvioAsync(acceso.OperadorId, envio.Id, ct);
+            foreach (var bulto in bultos.Where(item => TransicionesBulto.EsValida(item.Estado, EstadoBulto.Devuelto)))
+                await _rendirBulto.PorIdAsync(acceso.OperadorId, bulto.Id, UsuarioActual(acceso), Motivo, ct);
+
+            // Envíos sin bultos, o con alguno que no se puede rendir: se cierra el envío como antes.
+            var actual = await _envios.ObtenerPorOperadorAsync(envio.Id, acceso.OperadorId, ct);
+            if (actual?.Estado == EstadoEnvio.EnDevolucion)
+                await _transicion.EjecutarAsync(
+                    envio.Id, acceso.OperadorId, EstadoEnvio.Devuelto, User.Identity?.Name, Motivo, ct);
             TempData["Mensaje"] = $"{envio.NumeroSeguimiento} rendido: quedó como devuelto.";
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
@@ -128,5 +180,16 @@ public class RendicionModel : PageModel
         Pendientes = resultado.Items;
         TotalPendientes = resultado.Total;
         Pagina = resultado.Pagina;
+
+        // El repositorio también trae los bultos Pendiente de envíos recién admitidos: acá solo interesan los que vuelven.
+        var parciales = await _listarEnvios.EjecutarPaginadoAsync(
+            acceso, EstadoEnvio.EntregadoParcialmente, 1, TamanoPagina, HttpContext.RequestAborted);
+        var envios = Pendientes.Concat(parciales.Items).ToDictionary(envio => envio.Id);
+        Bultos = (await _bultos.ListarPendientesRendicionAsync(acceso.OperadorId, HttpContext.RequestAborted))
+            .Where(bulto => envios.ContainsKey(bulto.EnvioId))
+            .Select(bulto => new BultoPorRendir(bulto, envios[bulto.EnvioId]))
+            .ToList();
     }
+
+    public sealed record BultoPorRendir(Bulto Bulto, Envio Envio);
 }

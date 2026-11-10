@@ -76,7 +76,9 @@ public class TarifasModel : PageModel
                 Simulacion.DistanciaKm,
                 Simulacion.Fragil,
                 Simulacion.Urgente,
-                HttpContext.RequestAborted);
+                HttpContext.RequestAborted,
+                Simulacion.VolumenCm3,
+                Simulacion.ConZona);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
@@ -113,7 +115,9 @@ public class TarifasModel : PageModel
                     NuevaVersion.PrecioPorKg,
                     NuevaVersion.PrecioPorKm,
                     NuevaVersion.RecargoFragil,
-                    NuevaVersion.RecargoUrgente),
+                    NuevaVersion.RecargoUrgente,
+                    NuevaVersion.PrecioPorCm3,
+                    NuevaVersion.RecargoZona),
                 desde,
                 User.Identity?.Name ?? acceso.UsuarioId.ToString(),
                 HttpContext.RequestAborted);
@@ -171,6 +175,8 @@ public class TarifasModel : PageModel
             NuevaVersion.PrecioPorKm = Vigente.PrecioPorKm;
             NuevaVersion.RecargoFragil = Vigente.RecargoFragil;
             NuevaVersion.RecargoUrgente = Vigente.RecargoUrgente;
+            NuevaVersion.PrecioPorCm3 = Vigente.PrecioPorCm3;
+            NuevaVersion.RecargoZona = Vigente.RecargoZona;
         }
     }
 
@@ -181,6 +187,11 @@ public class TarifasModel : PageModel
 
         [Range(typeof(decimal), "0", "500", ErrorMessage = "La distancia debe estar entre 0 y 500 km.")]
         public decimal DistanciaKm { get; set; } = 5;
+
+        [Range(typeof(decimal), "0", "10000000", ErrorMessage = "El volumen debe estar entre 0 y 10.000.000 cm³.")]
+        public decimal VolumenCm3 { get; set; }
+
+        public bool ConZona { get; set; }
 
         public bool Urgente { get; set; }
 
@@ -203,6 +214,12 @@ public class TarifasModel : PageModel
 
         [Range(typeof(decimal), "0", "1000000")]
         public decimal RecargoUrgente { get; set; }
+
+        [Range(typeof(decimal), "0", "1000000")]
+        public decimal PrecioPorCm3 { get; set; }
+
+        [Range(typeof(decimal), "0", "1000000")]
+        public decimal RecargoZona { get; set; }
 
         /// <summary>Hora del operador; vacía = ahora. Se completa al cargar la página.</summary>
         public DateTime VigenteDesdeLocal { get; set; }

@@ -5,6 +5,10 @@ namespace Plataforma.Application;
 public interface IRecepcionRepositorio
 {
     Task AgregarAsync(RecepcionEnvio recepcion, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DiscrepanciaRecepcion>> ListarDiscrepanciasAsync(
+        Guid operadorId,
+        int limite,
+        CancellationToken cancellationToken = default);
     Task GuardarAsync(CancellationToken cancellationToken = default);
 }
 
@@ -79,6 +83,15 @@ public sealed class RecibirEnvioEnDeposito
             transicion.EventId);
     }
 }
+
+public sealed record DiscrepanciaRecepcion(
+    string NumeroSeguimiento,
+    string Destinatario,
+    int BultosEsperados,
+    int BultosRecibidos,
+    string Observaciones,
+    string Usuario,
+    DateTimeOffset Fecha);
 
 public sealed record ResultadoRecepcion(
     Guid EnvioId,

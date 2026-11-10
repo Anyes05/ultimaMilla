@@ -1,0 +1,74 @@
+@model Plataforma.Backoffice.Pages.TableroModel
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">Entregas parciales</h2>
+                <span class="badge rounded-pill text-bg-light" data-total-parciales>@Model.TotalParciales</span>
+            </div>
+            <div class="table-responsive" style="max-height: 320px">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light"><tr><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Entregados</th><th>Faltan</th></tr></thead>
+                    <tbody>
+                    @if (Model.Parciales.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-4">No hay entregas parciales.</td></tr>
+                    }
+                    @foreach (var parcial in Model.Parciales)
+                    {
+                        <tr>
+                            <td><span class="tracking-number">@parcial.Envio.NumeroSeguimiento</span></td>
+                            <td>@parcial.Envio.Destinatario</td>
+                            <td class="text-center fw-semibold">@parcial.Entregados de @parcial.Total</td>
+                            <td class="small">
+                                @foreach (var bulto in parcial.Faltantes)
+                                {
+                                    <span class="d-block">@bulto.Codigo: @EstadosVista.NombreBulto(bulto.Estado)</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">Retiros</h2>
+                <span class="small text-muted">
+                    Solicitados <strong data-retiros="solicitados">@Model.RetirosSolicitados</strong> ·
+                    Programados <strong data-retiros="programados">@Model.RetirosProgramados</strong> ·
+                    En curso <strong data-retiros="encurso">@Model.RetirosEnCurso</strong> ·
+                    Completados hoy <strong data-retiros="completados">@Model.RetirosCompletadosHoy</strong>
+                </span>
+            </div>
+            <div class="table-responsive" style="max-height: 320px">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light"><tr><th>Fecha</th><th>Comercio</th><th>Dirección</th><th class="text-end">Estado</th></tr></thead>
+                    <tbody>
+                    @if (Model.RetirosAbiertos.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-4">No hay retiros abiertos.</td></tr>
+                    }
+                    @foreach (var retiro in Model.RetirosAbiertos)
+                    {
+                        <tr>
+                            <td>@retiro.FechaSolicitada.ToString("dd/MM")</td>
+                            <td class="fw-semibold">@(Model.Comercios.TryGetValue(retiro.ComercioId, out var comercio) ? comercio : "—")</td>
+                            <td>@retiro.Direccion</td>
+                            <td class="text-end"><span class="status-badge @RetirosModel.ClaseEstado(retiro.Estado)">@RetirosModel.NombreEstado(retiro.Estado)</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            @if (Model.TotalRetirosAbiertos > Model.RetirosAbiertos.Count)
+            {
+                <div class="card-footer bg-white small text-muted">Se muestran @Model.RetirosAbiertos.Count de @Model.TotalRetirosAbiertos. <a asp-page="/Retiros">Ver todos</a></div>
+            }
+        </div>
+    </div>
+</div>

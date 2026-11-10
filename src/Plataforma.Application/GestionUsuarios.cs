@@ -9,7 +9,8 @@ public sealed class GestionUsuarios
         RolUsuario.Administrador,
         RolUsuario.Despachador,
         RolUsuario.OperarioDeposito,
-        RolUsuario.Comercio
+        RolUsuario.Comercio,
+        RolUsuario.Repartidor
     ];
 
     private readonly IUsuarioRepositorio _usuarios;

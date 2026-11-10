@@ -32,6 +32,20 @@ public sealed class CoberturaRepositorio : ICoberturaRepositorio
         _context.FranjasHorarias.FirstOrDefaultAsync(
             f => f.OperadorId == operadorId && f.Id == franjaId, cancellationToken);
 
+    public async Task<IReadOnlyList<FranjaHoraria>> ListarTodasLasFranjasAsync(
+        Guid operadorId,
+        CancellationToken cancellationToken = default) =>
+        await _context.FranjasHorarias
+            .Where(franja => franja.OperadorId == operadorId)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Vehiculo>> ListarTodosLosVehiculosAsync(
+        Guid operadorId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Vehiculos
+            .Where(vehiculo => vehiculo.OperadorId == operadorId)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<ZonaCobertura>> ListarZonasAsync(
         Guid operadorId,
         CancellationToken cancellationToken = default) =>

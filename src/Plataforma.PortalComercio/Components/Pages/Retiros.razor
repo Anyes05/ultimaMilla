@@ -1,0 +1,245 @@
+@page "/retiros"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = Plataforma.Domain.Roles.Comercio)]
+@using Plataforma.Application
+@using Plataforma.Domain
+@inject IHttpContextAccessor HttpContextAccessor
+@inject GestionRetiros GestionRetiros
+@inject IBanderasOperador Banderas
+@inject IOperadorRepositorio Operadores
+@inject NavigationManager Navegacion
+
+<PageTitle>Retiros</PageTitle>
+
+<div class="mb-4">
+    <p class="text-uppercase text-primary fw-semibold small mb-1">Portal de comercio</p>
+    <h1 class="display-6 fw-bold mb-1">Retiros en domicilio</h1>
+    <p class="text-muted mb-0">Pedí que pasemos a buscar tus paquetes.</p>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Ok))
+{
+    <div class="alert alert-success" role="status">@(Ok == "cancelado" ? "Retiro cancelado." : "Retiro solicitado.")</div>
+}
+@if (mensajeError is not null)
+{
+    <div class="alert alert-danger" role="alert">@mensajeError</div>
+}
+
+@* En un POST se renderiza siempre: si la bandera se apagó entre medio, Blazor necesita el formulario y el caso de uso avisa. *@
+@if (habilitado || HttpMethods.IsPost(HttpContextAccessor.HttpContext?.Request.Method ?? string.Empty))
+{
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <h2 class="h5 mb-4">Solicitar un retiro</h2>
+            <EditForm method="post" Model="Formulario" OnValidSubmit="SolicitarAsync" FormName="SolicitarRetiroForm">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="alert alert-danger py-2" />
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold" for="direccion">Dirección de retiro</label>
+                        <InputText id="direccion" @bind-Value="Formulario!.Direccion" class="form-control" placeholder="Calle, número y localidad" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" for="fecha">Fecha</label>
+                        <InputDate id="fecha" @bind-Value="Formulario!.Fecha" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" for="contacto">Contacto <span class="text-muted fw-normal">(opcional)</span></label>
+                        <InputText id="contacto" @bind-Value="Formulario!.Contacto" class="form-control" placeholder="Nombre o teléfono" />
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold" for="observaciones">Observaciones <span class="text-muted fw-normal">(opcional)</span></label>
+                        <InputText id="observaciones" @bind-Value="Formulario!.Observaciones" class="form-control" />
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Solicitar retiro</button>
+            </EditForm>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info" role="status">El retiro en domicilio no está habilitado por tu operador.</div>
+}
+
+<section aria-labelledby="retiros-titulo">
+    <h2 id="retiros-titulo" class="h4 fw-bold mb-3">Mis retiros</h2>
+    @* Un solo formulario: Blazor exige nombres únicos, y cada botón manda el retiro que cancela. *@
+    <form method="post" @onsubmit="CancelarAsync" @formname="CancelarRetiroForm">
+        <AntiforgeryToken />
+        @if (retiros.Count == 0)
+        {
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center text-muted py-5">Todavía no pediste retiros.</div>
+            </div>
+        }
+        else
+        {
+            <div class="card border-0 shadow-sm">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Dirección</th>
+                                <th>Contacto</th>
+                                <th>Estado</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var retiro in retiros)
+                            {
+                                <tr @key="retiro.Id">
+                                    <td>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</td>
+                                    <td>@retiro.Direccion</td>
+                                    <td>@(string.IsNullOrWhiteSpace(retiro.Contacto) ? "—" : retiro.Contacto)</td>
+                                    <td><span class="status-badge @ClaseEstado(retiro.Estado)">@NombreEstado(retiro.Estado)</span></td>
+                                    <td class="text-end">
+                                        @if (retiro.Estado is EstadoRetiro.Solicitado or EstadoRetiro.Programado)
+                                        {
+                                            <button type="submit" name="RetiroACancelar" value="@retiro.Id" class="btn btn-sm btn-outline-danger">Cancelar</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </form>
+</section>
+
+@code {
+    [SupplyParameterFromForm(FormName = "SolicitarRetiroForm")]
+    private RetiroForm? Formulario { get; set; }
+
+    [SupplyParameterFromForm(FormName = "CancelarRetiroForm")]
+    private Guid? RetiroACancelar { get; set; }
+
+    [SupplyParameterFromQuery(Name = "ok")]
+    private string? Ok { get; set; }
+
+    private IReadOnlyList<SolicitudRetiro> retiros = [];
+    private bool habilitado;
+    private string? mensajeError;
+    private DateOnly hoy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Formulario ??= new();
+        if (!IntentarObtenerAcceso(out var acceso, out var comercioId))
+        {
+            mensajeError = "No se pudo identificar el comercio autenticado. Volvé a iniciar sesión.";
+            return;
+        }
+
+        var operador = await Operadores.ObtenerAsync(acceso.OperadorId);
+        hoy = operador?.DiaActual() ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        if (Formulario.Fecha == default)
+            Formulario.Fecha = hoy.AddDays(1);
+
+        habilitado = await Banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.RetiroDomicilio);
+        await CargarAsync(acceso.OperadorId, comercioId);
+    }
+
+    private async Task SolicitarAsync()
+    {
+        Formulario ??= new();
+        if (!IntentarObtenerAcceso(out var acceso, out var comercioId))
+            return;
+
+        if (Formulario.Fecha < hoy)
+        {
+            mensajeError = "La fecha del retiro no puede ser anterior a hoy.";
+            return;
+        }
+
+        try
+        {
+            await GestionRetiros.SolicitarAsync(
+                acceso.OperadorId, comercioId, Formulario.Direccion, Formulario.Contacto ?? string.Empty,
+                Formulario.Fecha, Formulario.Observaciones ?? string.Empty);
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            mensajeError = TextosUsuario.Error(ex);
+            return;
+        }
+
+        Navegacion.NavigateTo("/retiros?ok=solicitado", forceLoad: true);
+    }
+
+    private async Task CancelarAsync()
+    {
+        if (RetiroACancelar is not Guid id || !IntentarObtenerAcceso(out var acceso, out _))
+            return;
+
+        // Solo los del propio comercio: la lista ya viene filtrada.
+        if (retiros.All(retiro => retiro.Id != id))
+        {
+            mensajeError = "El retiro no existe.";
+            return;
+        }
+
+        try
+        {
+            await GestionRetiros.CancelarAsync(acceso.OperadorId, id, "Cancelado por el comercio");
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            mensajeError = TextosUsuario.Error(ex);
+            return;
+        }
+
+        Navegacion.NavigateTo("/retiros?ok=cancelado", forceLoad: true);
+    }
+
+    private async Task CargarAsync(Guid operadorId, Guid comercioId) =>
+        retiros = (await GestionRetiros.ListarAsync(operadorId, comercioId))
+            .OrderByDescending(retiro => retiro.FechaSolicitada)
+            .ThenByDescending(retiro => retiro.CreadoEn)
+            .ToList();
+
+    private bool IntentarObtenerAcceso(out AccesoActual acceso, out Guid comercioId)
+    {
+        comercioId = Guid.Empty;
+        var principal = HttpContextAccessor.HttpContext?.User ?? new System.Security.Claims.ClaimsPrincipal();
+        if (!AccesoActual.Intentar(principal, out acceso) || acceso.Rol != Roles.Comercio || acceso.ComercioId is not Guid comercio)
+            return false;
+
+        comercioId = comercio;
+        return true;
+    }
+
+    private static string NombreEstado(EstadoRetiro estado) => estado switch
+    {
+        EstadoRetiro.EnCurso => "En curso",
+        _ => estado.ToString()
+    };
+
+    private static string ClaseEstado(EstadoRetiro estado) => estado switch
+    {
+        EstadoRetiro.Solicitado => "status-admitido",
+        EstadoRetiro.Programado => "status-asignado-a-ruta",
+        EstadoRetiro.EnCurso => "status-en-transito",
+        EstadoRetiro.Completado => "status-entregado",
+        _ => "status-extraviado"
+    };
+
+    public class RetiroForm
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "La dirección es requerida.")]
+        [System.ComponentModel.DataAnnotations.StringLength(300, ErrorMessage = "La dirección es demasiado larga.")]
+        public string Direccion { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(120, ErrorMessage = "El contacto es demasiado largo.")]
+        public string? Contacto { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(500, ErrorMessage = "Las observaciones son demasiado largas.")]
+        public string? Observaciones { get; set; }
+
+        public DateOnly Fecha { get; set; }
+    }
+}

@@ -12,6 +12,8 @@ public interface ICoberturaRepositorio
     Task<IReadOnlyList<ZonaCobertura>> ListarZonasAsync(Guid operadorId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FranjaHoraria>> ListarFranjasAsync(Guid operadorId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Vehiculo>> ListarVehiculosAsync(Guid operadorId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FranjaHoraria>> ListarTodasLasFranjasAsync(Guid operadorId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Vehiculo>> ListarTodosLosVehiculosAsync(Guid operadorId, CancellationToken cancellationToken = default);
     Task<Vehiculo?> ObtenerVehiculoAsync(Guid operadorId, Guid vehiculoId, CancellationToken cancellationToken = default);
     Task GuardarAsync(CancellationToken cancellationToken = default);
 }
@@ -125,4 +127,12 @@ public sealed class GestionCobertura
 
     public Task<IReadOnlyList<Vehiculo>> ListarVehiculosAsync(Guid operadorId, CancellationToken ct = default) =>
         _repo.ListarVehiculosAsync(operadorId, ct);
+
+    /// <summary>Incluye las inactivas: la pantalla de administración tiene que poder reactivarlas.</summary>
+    public Task<IReadOnlyList<FranjaHoraria>> ListarTodasLasFranjasAsync(Guid operadorId, CancellationToken ct = default) =>
+        _repo.ListarTodasLasFranjasAsync(operadorId, ct);
+
+    /// <summary>Incluye los inactivos: la pantalla de administración tiene que poder reactivarlos.</summary>
+    public Task<IReadOnlyList<Vehiculo>> ListarTodosLosVehiculosAsync(Guid operadorId, CancellationToken ct = default) =>
+        _repo.ListarTodosLosVehiculosAsync(operadorId, ct);
 }

@@ -1,0 +1,119 @@
+@page
+@model RecepcionModel
+@using Plataforma.Application
+@{
+    ViewData["Title"] = "Recepción";
+}
+
+<div class="mb-4">
+    <p class="text-uppercase text-primary fw-semibold small mb-1">Depósito</p>
+    <h1 class="display-6 fw-bold mb-1">Recepción de envíos</h1>
+    <p class="text-muted mb-0">Contá los bultos que llegan. Si faltan o sobran, dejá una observación.</p>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form method="post" asp-page-handler="Recibir" class="row g-2 align-items-end" autocomplete="off">
+            <div class="col-sm-8 col-lg-6">
+                <label class="form-label fw-semibold" for="numeroSeguimiento">Número de seguimiento</label>
+                <input id="numeroSeguimiento" name="numeroSeguimiento" class="form-control form-control-lg"
+                       placeholder="Escaneá el código o escribí el número" autofocus required />
+            </div>
+            <div class="col-sm-4 col-lg-3">
+                <button class="btn btn-primary btn-lg w-100" type="submit">Recibir completo</button>
+            </div>
+        </form>
+        <p class="small text-muted mt-2 mb-0">Para registrar una diferencia, usá la cantidad de la lista de abajo.</p>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-end gap-3 mb-3">
+    <h2 class="h5 mb-0">Pendientes de recibir</h2>
+    <span class="badge rounded-pill text-bg-light">@Model.TotalPendientes</span>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Esperados</th><th>Recibidos</th><th>Observaciones</th><th></th></tr>
+            </thead>
+            <tbody>
+            @if (Model.Pendientes.Count == 0)
+            {
+                <tr><td colspan="6" class="text-center text-muted py-5">No hay envíos pendientes de recibir.</td></tr>
+            }
+            @foreach (var pendiente in Model.Pendientes)
+            {
+                var formulario = $"recibir-{pendiente.Envio.Id}";
+                <tr>
+                    <td><span class="tracking-number">@pendiente.Envio.NumeroSeguimiento</span></td>
+                    <td>@pendiente.Envio.Destinatario</td>
+                    <td class="text-center">@pendiente.BultosEsperados</td>
+                    <td style="max-width: 7rem">
+                        <input form="@formulario" name="bultosRecibidos" type="number" min="0" step="1" value="@pendiente.BultosEsperados" class="form-control form-control-sm" aria-label="Bultos recibidos" required />
+                    </td>
+                    <td>
+                        <input form="@formulario" name="observaciones" class="form-control form-control-sm" maxlength="500" aria-label="Observaciones" placeholder="Obligatoria si hay diferencia" />
+                    </td>
+                    <td class="text-end">
+                        <form id="@formulario" method="post" asp-page-handler="Recibir">
+                            <input type="hidden" name="envioId" value="@pendiente.Envio.Id" />
+                            <button class="btn btn-sm btn-outline-primary" type="submit">Recibir</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.TotalPaginas > 1)
+{
+    <nav class="mb-4" aria-label="Páginas">
+        <ul class="pagination justify-content-end mb-0">
+            <li class="page-item @(Model.Pagina <= 1 ? "disabled" : "")"><a class="page-link" asp-route-pagina="@(Model.Pagina - 1)">Anterior</a></li>
+            <li class="page-item disabled"><span class="page-link">@Model.Pagina de @Model.TotalPaginas</span></li>
+            <li class="page-item @(Model.Pagina >= Model.TotalPaginas ? "disabled" : "")"><a class="page-link" asp-route-pagina="@(Model.Pagina + 1)">Siguiente</a></li>
+        </ul>
+    </nav>
+}
+
+<h2 class="h5 mb-3">Últimas discrepancias</h2>
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Esperados</th><th class="text-center">Recibidos</th><th>Observaciones</th><th>Registró</th><th>Fecha</th></tr>
+            </thead>
+            <tbody>
+            @if (Model.Discrepancias.Count == 0)
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">No hay discrepancias registradas.</td></tr>
+            }
+            @foreach (var discrepancia in Model.Discrepancias)
+            {
+                <tr>
+                    <td><span class="tracking-number">@discrepancia.NumeroSeguimiento</span></td>
+                    <td>@discrepancia.Destinatario</td>
+                    <td class="text-center">@discrepancia.BultosEsperados</td>
+                    <td class="text-center">@discrepancia.BultosRecibidos</td>
+                    <td>@discrepancia.Observaciones</td>
+                    <td>@discrepancia.Usuario</td>
+                    <td>@RelojOperacion.ParaContrato(discrepancia.Fecha).ToString("dd/MM/yyyy HH:mm")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

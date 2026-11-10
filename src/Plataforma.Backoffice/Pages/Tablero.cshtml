@@ -43,6 +43,10 @@
     </div>
 </div>
 
+<div id="detalle-operacion">
+    <partial name="_TableroDetalle" model="Model" />
+</div>
+
 <div class="row g-4">
     <div class="col-lg-7">
         <div class="card border-0 shadow-sm">
@@ -158,8 +162,22 @@
                 return fila;
             }
 
+            // Parciales y retiros: el servidor arma el detalle y varios eventos seguidos piden una sola recarga.
+            let recargaDetalle;
+            function refrescarDetalle() {
+                clearTimeout(recargaDetalle);
+                recargaDetalle = setTimeout(async () => {
+                    try {
+                        const respuesta = await fetch("/Tablero?handler=Detalle", { credentials: "same-origin" });
+                        if (respuesta.ok) document.getElementById("detalle-operacion").innerHTML = await respuesta.text();
+                    } catch { /* la próxima novedad vuelve a intentar */ }
+                }, 400);
+            }
+            conexion.on("detalleCambiado", refrescarDetalle);
+
             conexion.on("estadoEnvioCambiado", e => {
                 if (!primeraVez("estado:" + e.eventId)) return;
+                refrescarDetalle();
                 let fila = document.querySelector(`tr[data-envio="${e.envioId}"]`);
                 const tracking = fila?.dataset.tracking ?? e.numeroSeguimiento ?? "Envío nuevo";
                 if (!fila && e.numeroSeguimiento) {
@@ -196,7 +214,7 @@
             });
 
             conexion.onreconnecting(() => estadoConexion("Reconectando…", false));
-            conexion.onreconnected(() => estadoConexion("En vivo", true));
+            conexion.onreconnected(() => { estadoConexion("En vivo", true); refrescarDetalle(); });
             conexion.onclose(() => estadoConexion("Desconectado", false));
 
             conexion.start()

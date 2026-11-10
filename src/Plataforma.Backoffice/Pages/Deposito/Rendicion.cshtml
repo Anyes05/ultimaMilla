@@ -23,7 +23,7 @@
     <div class="card-body p-4">
         <form method="post" asp-page-handler="Escanear" class="row g-2 align-items-end" autocomplete="off">
             <div class="col-sm-8 col-lg-6">
-                <label class="form-label fw-semibold" for="numeroSeguimiento">Número de seguimiento</label>
+                <label class="form-label fw-semibold" for="numeroSeguimiento">Número de seguimiento o código de bulto</label>
                 <input id="numeroSeguimiento" name="numeroSeguimiento" class="form-control form-control-lg"
                        placeholder="Escaneá el código o escribí el número" autofocus required />
             </div>
@@ -95,6 +95,43 @@
         </ul>
     </nav>
 }
+
+<div class="d-flex justify-content-between align-items-end gap-3 mt-4 mb-3">
+    <h2 class="h5 mb-0">Bultos por rendir</h2>
+    <span class="badge rounded-pill text-bg-light">@Model.Bultos.Count</span>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Bulto</th><th>N° Tracking</th><th>Destinatario</th><th>Estado del envío</th><th>Estado del bulto</th><th class="text-end">Acción</th></tr>
+            </thead>
+            <tbody>
+            @if (Model.Bultos.Count == 0)
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4">No hay bultos para rendir.</td></tr>
+            }
+            @foreach (var item in Model.Bultos)
+            {
+                <tr>
+                    <td class="fw-semibold">@item.Bulto.Codigo</td>
+                    <td><span class="tracking-number">@item.Envio.NumeroSeguimiento</span></td>
+                    <td>@item.Envio.Destinatario</td>
+                    <td><span class="status-badge @EstadosVista.Clase(item.Envio.Estado)">@EstadosVista.Nombre(item.Envio.Estado)</span></td>
+                    <td>@EstadosVista.NombreBulto(item.Bulto.Estado)</td>
+                    <td class="text-end">
+                        <form method="post" asp-page-handler="RendirBulto">
+                            <input type="hidden" name="bultoId" value="@item.Bulto.Id" />
+                            <button class="btn btn-sm btn-outline-primary" type="submit">Rendir bulto</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
 
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js" referrerpolicy="no-referrer"></script>

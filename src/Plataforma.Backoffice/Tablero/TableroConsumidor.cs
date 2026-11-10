@@ -26,6 +26,14 @@ public sealed class TableroConsumidor : BackgroundService
     /// <summary>Un aviso del tablero que nadie mostró en este tiempo ya no sirve: se descarta.</summary>
     private const int VigenciaMensajeMs = 60_000;
 
+    /// <summary>Eventos que cambian el detalle de parciales y retiros (RF 41).</summary>
+    private static readonly string[] RoutingDetalle =
+    [
+        TopologiaAvisos.RoutingBultoEstadoCambiado,
+        TopologiaAvisos.RoutingRetiroSolicitado,
+        TopologiaAvisos.RoutingRetiroCompletado
+    ];
+
     private readonly IHubContext<HubAvisosOperador> _hub;
     private readonly IServiceScopeFactory _scopes;
     private readonly OpcionesRabbitMq _rabbit;
@@ -86,6 +94,8 @@ public sealed class TableroConsumidor : BackgroundService
             cancellationToken: stoppingToken);
         await canal.QueueBindAsync(Cola, _rabbit.Exchange, TopologiaAvisos.RoutingResultadoAviso,
             cancellationToken: stoppingToken);
+        foreach (var routing in RoutingDetalle)
+            await canal.QueueBindAsync(Cola, _rabbit.Exchange, routing, cancellationToken: stoppingToken);
 
         var consumidor = new AsyncEventingBasicConsumer(canal);
         consumidor.ReceivedAsync += async (_, mensaje) =>
@@ -118,6 +128,16 @@ public sealed class TableroConsumidor : BackgroundService
     {
         switch (mensaje.RoutingKey)
         {
+            case TopologiaAvisos.RoutingBultoEstadoCambiado:
+            case TopologiaAvisos.RoutingRetiroSolicitado:
+            case TopologiaAvisos.RoutingRetiroCompletado:
+                var detalle = JsonAvisos.Deserializar<EventoDeOperador>(mensaje.Body.Span);
+                if (detalle is null || detalle.OperadorId == Guid.Empty)
+                    return;
+                // Solo avisa: la pantalla vuelve a pedir el detalle, filtrado por su operador.
+                await _hub.Clients.Group(HubAvisosOperador.Grupo(detalle.OperadorId)).SendAsync("detalleCambiado", ct);
+                break;
+
             case TopologiaAvisos.RoutingEstadoCambiado:
                 var evento = JsonAvisos.Deserializar<EventoEstadoEnvio>(mensaje.Body.Span);
                 if (evento is null || evento.OperadorId == Guid.Empty)
@@ -155,6 +175,8 @@ public sealed class TableroConsumidor : BackgroundService
                 break;
         }
     }
+
+    private sealed record EventoDeOperador(Guid OperadorId);
 
     /// <summary>
     /// El evento de la cola trae solo el id interno del envío; el tablero muestra el número de seguimiento

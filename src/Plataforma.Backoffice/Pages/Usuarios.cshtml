@@ -1,0 +1,137 @@
+@page
+@model UsuariosModel
+@{
+    ViewData["Title"] = "Usuarios";
+    var editando = Model.Editar is not null;
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase fw-semibold small mb-1" style="color: @Model.ColorMarcaCss">Administración</p>
+        <h1 class="display-6 fw-bold mb-1">Usuarios</h1>
+        <p class="text-muted mb-0">Quién puede entrar a <strong>@Model.Operador?.Nombre</strong> y con qué perfil.</p>
+    </div>
+    <form method="post" action="/logout">
+        <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+    </form>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white">
+        <h2 class="h5 mb-0">@(editando ? "Modificar usuario" : "Nuevo usuario")</h2>
+    </div>
+    <div class="card-body p-4">
+        <form method="post" asp-page-handler="Guardar" asp-route-editar="@Model.Editar">
+            <div asp-validation-summary="All" class="text-danger"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" asp-for="Formulario.Nombre">Nombre</label>
+                    <input class="form-control" asp-for="Formulario.Nombre" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" asp-for="Formulario.Email">Email</label>
+                    <input class="form-control" asp-for="Formulario.Email" type="email" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" asp-for="Formulario.NombreUsuario">Usuario</label>
+                    <input class="form-control" asp-for="Formulario.NombreUsuario" autocomplete="off" readonly="@editando" />
+                </div>
+                @if (!editando)
+                {
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold" asp-for="Formulario.Clave">Clave</label>
+                        <input class="form-control" asp-for="Formulario.Clave" type="password" autocomplete="new-password" />
+                    </div>
+                }
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" asp-for="Formulario.Rol">Perfil</label>
+                    <select class="form-select" asp-for="Formulario.Rol" asp-items="UsuariosModel.Perfiles"></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" asp-for="Formulario.ComercioId">Comercio <span class="text-muted fw-normal">(solo perfil Comercio)</span></label>
+                    <select class="form-select" asp-for="Formulario.ComercioId">
+                        <option value="">Sin comercio</option>
+                        @foreach (var comercio in Model.Comercios)
+                        {
+                            <option value="@comercio.Id">@comercio.NombreComercial@(comercio.Activo ? "" : " (dado de baja)")</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button type="submit" class="btn btn-primary">@(editando ? "Guardar cambios" : "Crear usuario")</button>
+                @if (editando)
+                {
+                    <a class="btn btn-outline-secondary" asp-page="/Usuarios" asp-route-editar="">Cancelar</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Usuarios registrados</h2>
+        <span class="badge rounded-pill text-bg-light">@Model.Usuarios.Count</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Perfil</th>
+                        <th>Comercio</th>
+                        <th>Estado</th>
+                        <th class="text-end"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var usuario in Model.Usuarios)
+                {
+                    <tr>
+                        <td class="fw-semibold">@usuario.NombreUsuario</td>
+                        <td>@usuario.Nombre</td>
+                        <td>@usuario.Email</td>
+                        <td>@UsuariosModel.NombrePerfil(usuario.Rol)</td>
+                        <td>@Model.NombreComercio(usuario.ComercioId)</td>
+                        <td>
+                            @if (usuario.Activo)
+                            {
+                                <span class="status-badge status-entregado">Activo</span>
+                            }
+                            else
+                            {
+                                <span class="status-badge status-extraviado">Desactivado</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-2">
+                                <a class="btn btn-sm btn-outline-secondary" asp-page="/Usuarios" asp-route-editar="@usuario.Id">Editar</a>
+                                <form method="post" asp-page-handler="CambiarActivo">
+                                    <input type="hidden" name="usuarioId" value="@usuario.Id" />
+                                    <input type="hidden" name="activo" value="@(usuario.Activo ? "false" : "true")" />
+                                    <button class="btn btn-sm @(usuario.Activo ? "btn-outline-danger" : "btn-outline-primary")" type="submit">
+                                        @(usuario.Activo ? "Desactivar" : "Reactivar")
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

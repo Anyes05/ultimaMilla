@@ -1,0 +1,205 @@
+@page
+@model CoberturaModel
+@{
+    ViewData["Title"] = "Zonas, franjas y vehículos";
+}
+
+<div class="mb-4">
+    <p class="text-uppercase fw-semibold small mb-1" style="color: @EstadosVista.ColorMarca(Model.Operador)">Administración</p>
+    <h1 class="display-6 fw-bold mb-1">Zonas, franjas y vehículos</h1>
+    <p class="text-muted mb-0">Dónde y cuándo entrega <strong>@Model.Operador?.Nombre</strong>, y con qué flota.</p>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+<div class="card border-0 shadow-sm mb-4" id="zonas">
+    <div class="card-header bg-white"><h2 class="h5 mb-0">Zonas</h2></div>
+    <div class="card-body p-4">
+        <form method="post" asp-page-handler="GuardarZona" asp-route-editarZona="@Model.EditarZona" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold" asp-for="FormZona.Nombre">Nombre</label>
+                <input class="form-control" asp-for="FormZona.Nombre" />
+                <span class="text-danger small" asp-validation-for="FormZona.Nombre"></span>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label fw-semibold" asp-for="FormZona.Poligono">Polígono <span class="text-muted fw-normal">(opcional)</span></label>
+                <input class="form-control" asp-for="FormZona.Poligono" />
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">@(Model.EditarZona is null ? "Crear zona" : "Guardar")</button>
+                @if (Model.EditarZona is not null)
+                {
+                    <a class="btn btn-outline-secondary" asp-page="/Cobertura">Cancelar</a>
+                }
+            </div>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light"><tr><th>Nombre</th><th>Polígono</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Zonas.Count == 0)
+            {
+                <tr><td colspan="3" class="text-center text-muted py-4">Todavía no hay zonas.</td></tr>
+            }
+            @foreach (var zona in Model.Zonas)
+            {
+                <tr>
+                    <td class="fw-semibold">@zona.Nombre</td>
+                    <td class="small text-muted">@(string.IsNullOrWhiteSpace(zona.Poligono) ? "—" : zona.Poligono)</td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-secondary" asp-page="/Cobertura" asp-route-editarZona="@zona.Id">Editar</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4" id="franjas">
+    <div class="card-header bg-white"><h2 class="h5 mb-0">Franjas horarias</h2></div>
+    <div class="card-body p-4">
+        <form method="post" asp-page-handler="GuardarFranja" asp-route-editarFranja="@Model.EditarFranja" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold" asp-for="FormFranja.Nombre">Nombre</label>
+                <input class="form-control" asp-for="FormFranja.Nombre" />
+                <span class="text-danger small" asp-validation-for="FormFranja.Nombre"></span>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-semibold" asp-for="FormFranja.Desde">Desde</label>
+                <input class="form-control" asp-for="FormFranja.Desde" type="time" asp-format="{0:HH:mm}" />
+                <span class="text-danger small" asp-validation-for="FormFranja.Desde"></span>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-semibold" asp-for="FormFranja.Hasta">Hasta</label>
+                <input class="form-control" asp-for="FormFranja.Hasta" type="time" asp-format="{0:HH:mm}" />
+                <span class="text-danger small" asp-validation-for="FormFranja.Hasta"></span>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold" asp-for="FormFranja.ZonaId">Zona</label>
+                <select class="form-select" asp-for="FormFranja.ZonaId">
+                    <option value="">Todas las zonas</option>
+                    @foreach (var zona in Model.Zonas)
+                    {
+                        <option value="@zona.Id">@zona.Nombre</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">@(Model.EditarFranja is null ? "Crear" : "Guardar")</button>
+                @if (Model.EditarFranja is not null)
+                {
+                    <a class="btn btn-outline-secondary" asp-page="/Cobertura">Cancelar</a>
+                }
+            </div>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light"><tr><th>Nombre</th><th>Horario</th><th>Zona</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Franjas.Count == 0)
+            {
+                <tr><td colspan="5" class="text-center text-muted py-4">Todavía no hay franjas.</td></tr>
+            }
+            @foreach (var franja in Model.Franjas)
+            {
+                <tr>
+                    <td class="fw-semibold">@franja.Nombre</td>
+                    <td>@franja.Desde.ToString("HH:mm") a @franja.Hasta.ToString("HH:mm")</td>
+                    <td>@Model.NombreZona(franja.ZonaId)</td>
+                    <td><span class="status-badge @(franja.Activa ? "status-entregado" : "status-extraviado")">@(franja.Activa ? "Activa" : "Inactiva")</span></td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Cobertura" asp-route-editarFranja="@franja.Id">Editar</a>
+                            <form method="post" asp-page-handler="CambiarFranja">
+                                <input type="hidden" name="franjaId" value="@franja.Id" />
+                                <input type="hidden" name="activa" value="@(franja.Activa ? "false" : "true")" />
+                                <button class="btn btn-sm @(franja.Activa ? "btn-outline-danger" : "btn-outline-primary")" type="submit">@(franja.Activa ? "Desactivar" : "Activar")</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm" id="vehiculos">
+    <div class="card-header bg-white"><h2 class="h5 mb-0">Vehículos</h2></div>
+    <div class="card-body p-4">
+        <form method="post" asp-page-handler="GuardarVehiculo" asp-route-editarVehiculo="@Model.EditarVehiculo" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label fw-semibold" asp-for="FormVehiculo.Patente">Patente</label>
+                <input class="form-control" asp-for="FormVehiculo.Patente" readonly="@(Model.EditarVehiculo is not null)" />
+                <span class="text-danger small" asp-validation-for="FormVehiculo.Patente"></span>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold" asp-for="FormVehiculo.Descripcion">Descripción</label>
+                <input class="form-control" asp-for="FormVehiculo.Descripcion" readonly="@(Model.EditarVehiculo is not null)" />
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-semibold" asp-for="FormVehiculo.CapacidadPesoKg">Peso máx. (kg)</label>
+                <input class="form-control" asp-for="FormVehiculo.CapacidadPesoKg" type="number" step="any" min="0" />
+                <span class="text-danger small" asp-validation-for="FormVehiculo.CapacidadPesoKg"></span>
+            </div>
+            <div class="col-6 col-md-2">
+                <label class="form-label fw-semibold" asp-for="FormVehiculo.CapacidadVolumenCm3">Volumen máx. (cm³)</label>
+                <input class="form-control" asp-for="FormVehiculo.CapacidadVolumenCm3" type="number" step="any" min="0" />
+                <span class="text-danger small" asp-validation-for="FormVehiculo.CapacidadVolumenCm3"></span>
+            </div>
+            <div class="col-6 col-md-1">
+                <label class="form-label fw-semibold" asp-for="FormVehiculo.MaximoParadas">Paradas</label>
+                <input class="form-control" asp-for="FormVehiculo.MaximoParadas" type="number" step="1" min="0" />
+                <span class="text-danger small" asp-validation-for="FormVehiculo.MaximoParadas"></span>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">@(Model.EditarVehiculo is null ? "Crear" : "Guardar")</button>
+                @if (Model.EditarVehiculo is not null)
+                {
+                    <a class="btn btn-outline-secondary" asp-page="/Cobertura">Cancelar</a>
+                }
+            </div>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light"><tr><th>Patente</th><th>Descripción</th><th>Peso máx.</th><th>Volumen máx.</th><th>Paradas</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Vehiculos.Count == 0)
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">Todavía no hay vehículos.</td></tr>
+            }
+            @foreach (var vehiculo in Model.Vehiculos)
+            {
+                <tr>
+                    <td class="fw-semibold">@vehiculo.Patente</td>
+                    <td>@(string.IsNullOrWhiteSpace(vehiculo.Descripcion) ? "—" : vehiculo.Descripcion)</td>
+                    <td>@vehiculo.CapacidadPesoKg.ToString("0.##") kg</td>
+                    <td>@vehiculo.CapacidadVolumenCm3.ToString("0.##") cm³</td>
+                    <td>@vehiculo.MaximoParadas</td>
+                    <td><span class="status-badge @(vehiculo.Activo ? "status-entregado" : "status-extraviado")">@(vehiculo.Activo ? "Activo" : "Inactivo")</span></td>
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end gap-2">
+                            <a class="btn btn-sm btn-outline-secondary" asp-page="/Cobertura" asp-route-editarVehiculo="@vehiculo.Id">Editar</a>
+                            <form method="post" asp-page-handler="CambiarVehiculo">
+                                <input type="hidden" name="vehiculoId" value="@vehiculo.Id" />
+                                <input type="hidden" name="activo" value="@(vehiculo.Activo ? "false" : "true")" />
+                                <button class="btn btn-sm @(vehiculo.Activo ? "btn-outline-danger" : "btn-outline-primary")" type="submit">@(vehiculo.Activo ? "Desactivar" : "Activar")</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
