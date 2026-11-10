@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.DataProtection;
 using Plataforma.Domain;
 
 namespace Plataforma.PortalComercio;
@@ -63,6 +65,54 @@ public static class SeguimientoPublico
     // Leer el encabezado crudo permitiría saltar el límite escribiendo una IP distinta en cada consulta.
     private static string IpCliente(HttpContext contexto) =>
         contexto.Connection.RemoteIpAddress?.ToString() ?? "sin-ip";
+
+    private const string PropositoRetiro = "Plataforma.SeguimientoRetiro.v1";
+
+    /// <summary>
+    /// Enlace público de un retiro (RF 37 a 41, mismo mecanismo que el de los envíos): el operador y el retiro van
+    /// cifrados y firmados con las claves compartidas del Portal, así no se exponen identificadores internos ni se
+    /// pueden adivinar enlaces de otros retiros.
+    /// </summary>
+    public static string TokenRetiro(IDataProtectionProvider proveedor, Guid operadorId, Guid retiroId) =>
+        proveedor.CreateProtector(PropositoRetiro).Protect($"{operadorId:N}{retiroId:N}");
+
+    public static bool LeerTokenRetiro(IDataProtectionProvider proveedor, string? token, out Guid operadorId, out Guid retiroId)
+    {
+        operadorId = retiroId = Guid.Empty;
+        if (string.IsNullOrWhiteSpace(token) || token.Length > 400)
+            return false;
+
+        try
+        {
+            var texto = proveedor.CreateProtector(PropositoRetiro).Unprotect(token.Trim());
+            return texto.Length == 64
+                   && Guid.TryParseExact(texto[..32], "N", out operadorId)
+                   && Guid.TryParseExact(texto[32..], "N", out retiroId);
+        }
+        catch (Exception ex) when (ex is CryptographicException or FormatException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Etapas que ve quien sigue un retiro.</summary>
+    public static readonly IReadOnlyList<(string Nombre, EstadoRetiro Estado)> EtapasRetiro =
+    [
+        ("Solicitado", EstadoRetiro.Solicitado),
+        ("Programado", EstadoRetiro.Programado),
+        ("En camino", EstadoRetiro.EnCurso),
+        ("Retirado", EstadoRetiro.Completado)
+    ];
+
+    public static string DescripcionRetiro(EstadoRetiro estado) => estado switch
+    {
+        EstadoRetiro.Solicitado => "Recibimos el pedido de retiro. El operador lo va a asignar a una ruta.",
+        EstadoRetiro.Programado => "El retiro ya está asignado a la ruta del día.",
+        EstadoRetiro.EnCurso => "El repartidor va en camino a retirar los paquetes.",
+        EstadoRetiro.Completado => "Los paquetes fueron retirados.",
+        EstadoRetiro.Cancelado => "El retiro fue cancelado.",
+        _ => string.Empty
+    };
 
     /// <summary>Color de la marca del operador (RF 5).</summary>
     public static string ColorMarcaCss(string colorMarca) => colorMarca switch

@@ -24,4 +24,19 @@ public sealed class HistorialEstadoRepositorio : IHistorialEstadoRepositorio
             .Where(historial => historial.OperadorId == operadorId && historial.EnvioId == envioId)
             .OrderBy(historial => historial.Fecha)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<HistorialEstado>> ListarPorEnviosAsync(
+        Guid operadorId,
+        IReadOnlyCollection<Guid> envioIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (envioIds.Count == 0)
+            return [];
+
+        var ids = envioIds.ToList();
+        return await _context.HistorialEstados.AsNoTracking()
+            .Where(historial => historial.OperadorId == operadorId && ids.Contains(historial.EnvioId))
+            .OrderBy(historial => historial.Fecha)
+            .ToListAsync(cancellationToken);
+    }
 }

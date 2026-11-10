@@ -1,0 +1,92 @@
+@page "/etiquetas/{Numero}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = Plataforma.Domain.Roles.Comercio)]
+@using Plataforma.Application
+@using Plataforma.Domain
+@inject IHttpContextAccessor HttpContextAccessor
+@inject IEnvioRepositorio Envios
+@inject IBultoRepositorio Bultos
+@inject IOperadorRepositorio Operadores
+@inject IComercioRepositorio Comercios
+
+<PageTitle>Etiquetas @Numero</PageTitle>
+
+<style>
+    .etiqueta { width: 100mm; min-height: 150mm; border: 1px dashed #adb5bd; padding: 6mm; margin: 0 auto 8mm; background: #fff; color: #000; }
+    .etiqueta .codigo svg { width: 100%; height: 22mm; }
+    @@media print {
+        .no-imprimir, .sidebar, .top-row { display: none !important; }
+        main, article, .content { padding: 0 !important; margin: 0 !important; }
+        .etiqueta { border: none; page-break-after: always; break-after: page; margin: 0; }
+    }
+</style>
+
+<div class="no-imprimir d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-primary fw-semibold small mb-1">Portal de comercio</p>
+        <h1 class="h3 fw-bold mb-1">Etiquetas del envío</h1>
+        <p class="text-muted mb-0">Una por bulto. Pegala visible: el depósito la escanea al recibir y al rendir.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/#mis-envios">Volver</a>
+        <button class="btn btn-primary" type="button" onclick="window.print()">Imprimir</button>
+    </div>
+</div>
+
+@if (envio is null || operador is null)
+{
+    <div class="alert alert-warning" role="alert">No encontramos ese envío entre los de tu comercio.</div>
+}
+else
+{
+    @for (var i = 0; i < bultos.Count; i++)
+    {
+        var bulto = bultos[i];
+        <section class="etiqueta" data-bulto="@bulto.Codigo" aria-label="Etiqueta del bulto @(i + 1)">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <strong style="color: @SeguimientoPublico.ColorMarcaCss(operador.ColorMarca)">@operador.Nombre</strong>
+                <span class="fw-bold">Bulto @(i + 1) de @bultos.Count</span>
+            </div>
+            <p class="small text-uppercase mb-1">Destinatario</p>
+            <p class="fs-5 fw-bold mb-1">@envio.Destinatario</p>
+            <p class="mb-3">@envio.DireccionEntrega</p>
+            <p class="small mb-1">Remite: <strong>@comercio</strong></p>
+            <p class="small mb-3">
+                Peso: <strong>@bulto.PesoKg.ToString("0.###") kg</strong>
+                @if (bulto.AltoCm > 0 || bulto.AnchoCm > 0 || bulto.LargoCm > 0)
+                {
+                    <span> · Medidas: <strong>@bulto.AltoCm.ToString("0.#") × @bulto.AnchoCm.ToString("0.#") × @bulto.LargoCm.ToString("0.#") cm</strong></span>
+                }
+            </p>
+            <div class="codigo mb-1">@((MarkupString)CodigoBarras.Svg(bulto.Codigo))</div>
+            <p class="text-center font-monospace small mb-3">@bulto.Codigo</p>
+            <p class="small mb-0">Seguimiento: <strong class="font-monospace">@envio.NumeroSeguimiento</strong></p>
+        </section>
+    }
+}
+
+@code {
+    [Parameter]
+    public string? Numero { get; set; }
+
+    private Envio? envio;
+    private Operador? operador;
+    private string? comercio;
+    private IReadOnlyList<Bulto> bultos = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var principal = HttpContextAccessor.HttpContext?.User ?? new System.Security.Claims.ClaimsPrincipal();
+        if (!AccesoActual.Intentar(principal, out var acceso) || acceso.ComercioId is not Guid comercioId || string.IsNullOrWhiteSpace(Numero))
+            return;
+
+        var encontrado = await Envios.ObtenerPorNumeroAsync(Numero.Trim());
+        // Solo los envíos del propio comercio, aunque alguien escriba otro número en la dirección.
+        if (encontrado is null || encontrado.OperadorId != acceso.OperadorId || encontrado.ComercioId != comercioId)
+            return;
+
+        envio = encontrado;
+        operador = await Operadores.ObtenerAsync(acceso.OperadorId);
+        comercio = (await Comercios.ObtenerAsync(acceso.OperadorId, comercioId))?.NombreComercial;
+        bultos = (await Bultos.ListarPorEnvioAsync(acceso.OperadorId, envio.Id)).OrderBy(bulto => bulto.Codigo).ToList();
+    }
+}

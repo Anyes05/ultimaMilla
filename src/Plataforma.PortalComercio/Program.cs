@@ -120,7 +120,7 @@ app.MapPost("/logout", (HttpContext httpContext) =>
 
 // Reenvío de un aviso fallido desde el panel del comercio. El comercio sale del usuario autenticado:
 // solo puede reenviar sus propios avisos.
-app.MapPost("/avisos/reenviar", async (HttpContext contexto, IAntiforgery antiforgery, ServicioAvisos avisos, ILogger<Program> logger) =>
+app.MapPost("/avisos/reenviar", async (HttpContext contexto, IAntiforgery antiforgery, ServicioAvisos avisos, IBanderasOperador banderas, ILogger<Program> logger) =>
 {
     await antiforgery.ValidateRequestAsync(contexto);
 
@@ -132,6 +132,9 @@ app.MapPost("/avisos/reenviar", async (HttpContext contexto, IAntiforgery antifo
     var formulario = await contexto.Request.ReadFormAsync(contexto.RequestAborted);
     if (!Guid.TryParse(formulario["entregaId"], out var entregaId))
         return Results.Redirect("/avisos?error=" + Uri.EscapeDataString("Aviso inválido."));
+
+    if (!await banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.AvisosComercio, contexto.RequestAborted))
+        return Results.Redirect("/avisos?error=" + Uri.EscapeDataString("Los avisos a tu sistema están desactivados por el operador."));
 
     try
     {

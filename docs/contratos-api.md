@@ -79,6 +79,9 @@ Cuando el endpoint devuelve cuerpo de error, usa:
 | 13 | `POST /api/retiros/{id}/programar` | `despachador`, `administrador` | Asignar retiro a una ruta |
 | 14 | `POST /api/retiros/{id}/completar` | ops depósito/despacho | Marcar retiro completado (+ outbox `RetiroCompletado`) |
 | 15 | `POST /api/retiros/{id}/cancelar` | `comercio`, ops | Cancelar retiro |
+| 16 | `GET /api/plataforma/banderas` | `administrador_plataforma` | Banderas de todos los operadores con su valor actual |
+| 17 | `POST /api/plataforma/banderas` | `administrador_plataforma` | Activar o apagar una bandera de un operador (`{ operadorId, clave, activa }`); responde `204` |
+| 18 | `GET /api/plataforma/banderas/historial?operadorId=` | `administrador_plataforma` | Auditoría de cambios: operador, clave, valor, usuario y fecha |
 
 ---
 

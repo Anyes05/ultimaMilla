@@ -15,9 +15,11 @@ public static class NucleoAnaApi
             IOperadorRepositorio operadores,
             CancellationToken ct) =>
         {
-            if (!AccesoActual.Intentar(principal, out var acceso) ||
-                acceso.Rol is not (Roles.AdministradorPlataforma or Roles.Administrador))
+            // Banderas: solo quien ofrece la plataforma (aclaración 3.2), no el administrador de un operador.
+            if (!AccesoActual.Intentar(principal, out var acceso))
                 return Results.Unauthorized();
+            if (!acceso.EsAdministradorPlataforma)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var ops = await operadores.ListarIdsAsync(ct);
             var lista = await banderas.ListarTodasAsync(ops, ct);
@@ -30,9 +32,11 @@ public static class NucleoAnaApi
             GestionBanderas banderas,
             CancellationToken ct) =>
         {
-            if (!AccesoActual.Intentar(principal, out var acceso) ||
-                acceso.Rol is not (Roles.AdministradorPlataforma or Roles.Administrador))
+            // Banderas: solo quien ofrece la plataforma (aclaración 3.2), no el administrador de un operador.
+            if (!AccesoActual.Intentar(principal, out var acceso))
                 return Results.Unauthorized();
+            if (!acceso.EsAdministradorPlataforma)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             try
             {
@@ -56,9 +60,11 @@ public static class NucleoAnaApi
             GestionBanderas banderas,
             CancellationToken ct) =>
         {
-            if (!AccesoActual.Intentar(principal, out var acceso) ||
-                acceso.Rol is not (Roles.AdministradorPlataforma or Roles.Administrador))
+            // Banderas: solo quien ofrece la plataforma (aclaración 3.2), no el administrador de un operador.
+            if (!AccesoActual.Intentar(principal, out var acceso))
                 return Results.Unauthorized();
+            if (!acceso.EsAdministradorPlataforma)
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
 
             var hist = await banderas.HistorialAsync(operadorId, ct);
             return Results.Json(hist, ObtenerRutasDeHoy.OpcionesJson);

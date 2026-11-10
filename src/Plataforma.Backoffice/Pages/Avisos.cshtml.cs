@@ -19,8 +19,10 @@ public class AvisosModel : PageModel
     private readonly IOperadorRepositorio _operadores;
     private readonly Plataforma.Infrastructure.PlataformaDbContext _contexto;
     private readonly ILogger<AvisosModel> _logger;
+    private readonly IBanderasOperador _banderas;
 
     public AvisosModel(
+        IBanderasOperador banderas,
         ServicioAvisos avisos,
         ListarEnvios listarEnvios,
         IOperadorRepositorio operadores,
@@ -32,7 +34,11 @@ public class AvisosModel : PageModel
         _operadores = operadores;
         _contexto = contexto;
         _logger = logger;
+        _banderas = banderas;
     }
+
+    /// <summary>Bandera "avisos-comercio" del operador: apagada, no se envían ni se reintentan.</summary>
+    public bool AvisosActivos { get; private set; } = true;
 
     /// <summary>Caída simulada del receptor de prueba (configuración de Joel, por operador).</summary>
     public bool ReceptorFalla { get; private set; }
@@ -63,6 +69,7 @@ public class AvisosModel : PageModel
         try
         {
             var estado = Filtro == "todos" ? (EstadoEntrega?)null : EstadoEntrega.Fallido;
+            AvisosActivos = await _banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.AvisosComercio, ct);
             Entregas = await _avisos.ListarEntregasOperadorAsync(acceso.OperadorId, estado, 200, ct);
             Resumen = await _avisos.ResumenOperadorAsync(acceso.OperadorId, ct);
             NotificacionesFallidas = await _avisos.ListarNotificacionesFallidasAsync(acceso.OperadorId, cancellationToken: ct);
@@ -110,6 +117,12 @@ public class AvisosModel : PageModel
     {
         if (!AccesoActual.Intentar(User, out var acceso))
             return Challenge();
+
+        if (!await _banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.AvisosComercio, HttpContext.RequestAborted))
+        {
+            TempData["Error"] = "Los avisos a comercios están apagados para este operador: no se reintentan.";
+            return RedirectToPage(new { Filtro });
+        }
 
         try
         {

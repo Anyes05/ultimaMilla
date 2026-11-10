@@ -6,6 +6,7 @@
 @using Plataforma.Domain
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ServicioAvisos ServicioAvisos
+@inject IBanderasOperador Banderas
 @inject ListarEnvios ListarEnvios
 @inject IOperadorRepositorio Operadores
 @inject NavigationManager Navegacion
@@ -31,6 +32,10 @@
 @if (Ok == "reenviado")
 {
     <div class="alert alert-success" role="status">Aviso reenviado: se vuelve a mandar con el mismo identificador de evento.</div>
+}
+@if (!avisosActivos)
+{
+    <div class="alert alert-info" role="status">Los avisos a tu sistema están desactivados por el operador: no se envían ni se pueden reenviar.</div>
 }
 @if (!string.IsNullOrWhiteSpace(ErrorQuery ?? mensajeError))
 {
@@ -155,7 +160,7 @@
                                     </details>
                                 </td>
                                 <td class="text-end">
-                                    @if (entrega.Estado == EstadoEntrega.Fallido)
+                                    @if (entrega.Estado == EstadoEntrega.Fallido && avisosActivos)
                                     {
                                         <form method="post" action="/avisos/reenviar">
                                             <AntiforgeryToken />
@@ -188,6 +193,7 @@
     private string? ErrorQuery { get; set; }
 
     private string? mensajeError;
+    private bool avisosActivos = true;
     private string? zonaHoraria;
     private bool TieneSuscripcion;
     private string SecretoVisible = string.Empty;
@@ -216,6 +222,7 @@
         {
             // Las fechas del historial se muestran en la hora del operador, no en UTC.
             zonaHoraria = (await Operadores.ObtenerAsync(acceso.OperadorId))?.ZonaHoraria;
+            avisosActivos = await Banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.AvisosComercio);
             var suscripcion = await ServicioAvisos.ObtenerSuscripcionAsync(acceso.OperadorId, comercioId);
             TieneSuscripcion = suscripcion is not null;
             SecretoVisible = suscripcion is null ? string.Empty : "…" + suscripcion.Secreto[^4..];

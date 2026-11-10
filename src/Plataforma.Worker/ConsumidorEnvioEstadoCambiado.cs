@@ -70,6 +70,14 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
             return;
         }
 
+        if (!await AvisosHabilitadosAsync(db, evento.OperadorId, stoppingToken))
+        {
+            Logger.LogInformation("EventId={EventId}: avisos a comercios apagados para el operador {OperadorId}; no se envían.",
+                evento.EventId, evento.OperadorId);
+            await canal.BasicAckAsync(mensaje.DeliveryTag, multiple: false, stoppingToken);
+            return;
+        }
+
         var suscripciones = (await db.Suscripciones
                 .Where(s => s.OperadorId == evento.OperadorId && s.ComercioId == comercioId && s.Activa)
                 .ToListAsync(stoppingToken))
@@ -199,6 +207,14 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
             return;
         }
 
+        if (!await AvisosHabilitadosAsync(db, operadorId, stoppingToken))
+        {
+            Logger.LogInformation("EventId={EventId}: avisos a comercios apagados para el operador {OperadorId}; no se envían.",
+                eventId, operadorId);
+            await canal.BasicAckAsync(mensaje.DeliveryTag, multiple: false, stoppingToken);
+            return;
+        }
+
         var suscripciones = (await db.Suscripciones
                 .Where(s => s.OperadorId == operadorId && s.ComercioId == comercioId && s.Activa)
                 .ToListAsync(stoppingToken))
@@ -246,6 +262,21 @@ public sealed class ConsumidorEnvioEstadoCambiado : ConsumidorRabbitBase
         await db.Database
             .SqlQuery<string>($"""SELECT "NumeroSeguimiento" AS "Value" FROM public."Envios" WHERE "Id" = {envioId} AND "OperadorId" = {operadorId}""")
             .SingleOrDefaultAsync(ct);
+
+    /// <summary>Clave de CatalogoBanderas.AvisosComercio; el worker no referencia el núcleo.</summary>
+    private const string BanderaAvisosComercio = "avisos-comercio";
+
+    /// <summary>
+    /// Bandera "avisos-comercio" del operador, leída de la base en cada evento: el cambio rige desde el evento siguiente.
+    /// Sin fila, vale el valor por defecto del catálogo (activa).
+    /// </summary>
+    private static async Task<bool> AvisosHabilitadosAsync(AvisosDbContext db, Guid operadorId, CancellationToken ct)
+    {
+        var valores = await db.Database
+            .SqlQuery<bool>($"""SELECT "Activa" AS "Value" FROM public."BanderasOperador" WHERE "OperadorId" = {operadorId} AND "Clave" = {BanderaAvisosComercio}""")
+            .ToListAsync(ct);
+        return valores.Count == 0 || valores[0];
+    }
 
     private static async Task<Guid?> BuscarComercioAsync(AvisosDbContext db, EventoEstadoEnvio evento, CancellationToken ct) =>
         await BuscarComercioPorEnvioAsync(db, evento.OperadorId, evento.EnvioId, ct);

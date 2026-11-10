@@ -1,4 +1,38 @@
 @model Plataforma.Backoffice.Pages.TableroModel
+@using Plataforma.Application
+
+@{ var ahora = DateTime.UtcNow; }
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h5 mb-0">Envíos en riesgo</h2>
+        <span class="badge rounded-pill @(Model.EnRiesgo.Total > 0 ? "text-bg-danger" : "text-bg-light")" data-total-riesgo>@Model.EnRiesgo.Total</span>
+    </div>
+    <div class="table-responsive" style="max-height: 320px">
+        <table class="table align-middle mb-0">
+            <thead class="table-light"><tr><th>N° Tracking</th><th>Destinatario</th><th>Estado</th><th>Compromiso</th><th class="text-end"></th></tr></thead>
+            <tbody>
+            @if (Model.EnRiesgo.Envios.Count == 0)
+            {
+                <tr><td colspan="5" class="text-center text-muted py-4">Ningún envío en riesgo de incumplir su ventana.</td></tr>
+            }
+            @foreach (var riesgo in Model.EnRiesgo.Envios)
+            {
+                var vencido = riesgo.CompromisoUtc < ahora;
+                <tr data-riesgo="@riesgo.NumeroSeguimiento">
+                    <td><span class="tracking-number">@riesgo.NumeroSeguimiento</span></td>
+                    <td>@riesgo.Destinatario</td>
+                    <td><span class="status-badge @EstadosVista.Clase(riesgo.Estado)">@EstadosVista.Nombre(riesgo.Estado)</span></td>
+                    <td class="small text-muted">@riesgo.Criterio</td>
+                    <td class="text-end fw-semibold @(vencido ? "text-danger" : "text-warning-emphasis")">@TableroModel.Vencimiento(riesgo.CompromisoUtc, ahora)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="card-footer bg-white small text-muted">
+        En riesgo: les quedan menos de @((int)ListarEnviosEnRiesgo.MargenPorDefecto.TotalHours) h para su plazo comprometido, o ya lo pasaron.
+    </div>
+</div>
 
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
@@ -37,7 +71,7 @@
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h2 class="h5 mb-0">Retiros</h2>
+                <h2 class="h5 mb-0">Retiros @if (!Model.RetirosActivos) { <span class="status-badge status-extraviado ms-1" data-retiros-apagado>Apagado</span> }</h2>
                 <span class="small text-muted">
                     Solicitados <strong data-retiros="solicitados">@Model.RetirosSolicitados</strong> ·
                     Programados <strong data-retiros="programados">@Model.RetirosProgramados</strong> ·

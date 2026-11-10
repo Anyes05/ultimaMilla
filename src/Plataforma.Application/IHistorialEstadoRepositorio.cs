@@ -10,4 +10,10 @@ public interface IHistorialEstadoRepositorio
         Guid operadorId,
         Guid envioId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Historial de varios envíos en una sola consulta (reportes y tablero).</summary>
+    Task<IReadOnlyList<HistorialEstado>> ListarPorEnviosAsync(
+        Guid operadorId,
+        IReadOnlyCollection<Guid> envioIds,
+        CancellationToken cancellationToken = default);
 }

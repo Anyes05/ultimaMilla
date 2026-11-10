@@ -5,8 +5,13 @@ using Plataforma.Domain;
 namespace Plataforma.Application;
 
 /// <summary>Admite un envío y calcula la tarifa con la regla vigente del operador.</summary>
+/// <summary>Peso y medidas declarados por el comercio para un bulto (RF 8).</summary>
+public sealed record BultoDeclarado(decimal PesoKg, decimal AltoCm = 0, decimal AnchoCm = 0, decimal LargoCm = 0);
+
 public sealed class AdmitirEnvio
 {
+    public const int MaximoBultos = 20;
+
     private readonly IEnvioRepositorio _envios;
     private readonly IBultoRepositorio _bultos;
     private readonly CalcularTarifa _tarifa;
@@ -45,10 +50,27 @@ public sealed class AdmitirEnvio
         Guid? franjaId = null,
         decimal volumenCm3 = 0,
         string? claveExterna = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        IReadOnlyList<BultoDeclarado>? bultosDeclarados = null)
     {
         if (operadorId == Guid.Empty)
             throw new ArgumentException("El operador es requerido.", nameof(operadorId));
+
+        // Con el detalle de cada bulto (RF 8), la cantidad, el peso total y el volumen salen de ahí.
+        if (bultosDeclarados is { Count: > 0 })
+        {
+            if (bultosDeclarados.Count > MaximoBultos)
+                throw new ArgumentOutOfRangeException(nameof(bultosDeclarados), $"Un envío admite como máximo {MaximoBultos} bultos.");
+            if (bultosDeclarados.Any(bulto => bulto.PesoKg <= 0))
+                throw new ArgumentOutOfRangeException(nameof(bultosDeclarados), "Cada bulto debe pesar más de 0 kg.");
+            if (bultosDeclarados.Any(bulto => bulto.AltoCm < 0 || bulto.AnchoCm < 0 || bulto.LargoCm < 0))
+                throw new ArgumentOutOfRangeException(nameof(bultosDeclarados), "Las medidas de un bulto no pueden ser negativas.");
+
+            cantidadBultos = bultosDeclarados.Count;
+            pesoKg = bultosDeclarados.Sum(bulto => bulto.PesoKg);
+            if (volumenCm3 <= 0)
+                volumenCm3 = bultosDeclarados.Sum(bulto => bulto.AltoCm * bulto.AnchoCm * bulto.LargoCm);
+        }
 
         if (comercioId == Guid.Empty)
             throw new ArgumentException("El comercio es requerido.", nameof(comercioId));
@@ -96,8 +118,12 @@ public sealed class AdmitirEnvio
         for (var i = 1; i <= cantidadBultos; i++)
         {
             var codigo = $"{envio.NumeroSeguimiento}-B{i:00}";
+            var declarado = bultosDeclarados is { Count: > 0 } ? bultosDeclarados[i - 1] : null;
             await _bultos.AgregarAsync(
-                Bulto.Crear(Guid.NewGuid(), operadorId, envio.Id, codigo, pesos[i - 1]),
+                declarado is null
+                    ? Bulto.Crear(Guid.NewGuid(), operadorId, envio.Id, codigo, pesos[i - 1])
+                    : Bulto.Crear(Guid.NewGuid(), operadorId, envio.Id, codigo,
+                        declarado.PesoKg, declarado.AltoCm, declarado.AnchoCm, declarado.LargoCm),
                 cancellationToken);
         }
 

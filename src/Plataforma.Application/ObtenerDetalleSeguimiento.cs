@@ -40,6 +40,10 @@ public sealed class ObtenerDetalleSeguimiento
     private readonly IReglaOperativaRepositorio _reglas;
     private readonly ICoberturaRepositorio _cobertura;
     private readonly ICacheLectura _cache;
+    private readonly IBanderasOperador _banderas;
+
+    /// <summary>Lo que se guarda en caché: el operador queda adentro para aplicar su bandera, sin mostrarlo.</summary>
+    private sealed record DetalleCacheado(Guid OperadorId, DetalleSeguimiento? Detalle);
 
     public ObtenerDetalleSeguimiento(
         IEnvioRepositorio envios,
@@ -49,8 +53,10 @@ public sealed class ObtenerDetalleSeguimiento
         IRutaRepositorio rutas,
         IReglaOperativaRepositorio reglas,
         ICoberturaRepositorio cobertura,
-        ICacheLectura cache)
+        ICacheLectura cache,
+        IBanderasOperador banderas)
     {
+        _banderas = banderas;
         _envios = envios;
         _bultos = bultos;
         _historial = historial;
@@ -89,18 +95,35 @@ public sealed class ObtenerDetalleSeguimiento
         CancellationToken cancellationToken)
     {
         var cacheado = await _cache.LeerAsync(clave, cancellationToken);
-        if (cacheado is not null)
-            return JsonSerializer.Deserialize<DetalleSeguimiento>(cacheado, ObtenerRutasDeHoy.OpcionesJson);
+        // Una entrada con el formato anterior no trae el detalle: se trata como fallo y se vuelve a armar.
+        if (cacheado is not null &&
+            JsonSerializer.Deserialize<DetalleCacheado>(cacheado, ObtenerRutasDeHoy.OpcionesJson) is { Detalle: { } guardado } entrada)
+            return await AplicarBanderaAsync(entrada.OperadorId, guardado, cancellationToken);
 
         var envio = await buscar();
         if (envio is null)
             return null;
 
         var detalle = await ArmarAsync(envio, cancellationToken);
-        if (detalle is not null)
-            await _cache.GuardarAsync(clave, JsonSerializer.Serialize(detalle, ObtenerRutasDeHoy.OpcionesJson), Vigencia, cancellationToken);
-        return detalle;
+        if (detalle is null)
+            return null;
+
+        await _cache.GuardarAsync(
+            clave,
+            JsonSerializer.Serialize(new DetalleCacheado(envio.OperadorId, detalle), ObtenerRutasDeHoy.OpcionesJson),
+            Vigencia,
+            cancellationToken);
+        return await AplicarBanderaAsync(envio.OperadorId, detalle, cancellationToken);
     }
+
+    /// <summary>
+    /// La bandera se aplica después de la caché: apagarla se ve en la próxima consulta, sin esperar la vigencia del detalle.
+    /// </summary>
+    private async Task<DetalleSeguimiento> AplicarBanderaAsync(Guid operadorId, DetalleSeguimiento detalle, CancellationToken cancellationToken) =>
+        detalle.PuedeReprogramar &&
+        !await _banderas.EstaActivaAsync(operadorId, CatalogoBanderas.SeguimientoReprogramacion, cancellationToken)
+            ? detalle with { PuedeReprogramar = false }
+            : detalle;
 
     private async Task<DetalleSeguimiento?> ArmarAsync(Envio envio, CancellationToken cancellationToken)
     {

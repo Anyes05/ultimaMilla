@@ -7,6 +7,7 @@
 @inject IBanderasOperador Banderas
 @inject IOperadorRepositorio Operadores
 @inject NavigationManager Navegacion
+@inject Microsoft.AspNetCore.DataProtection.IDataProtectionProvider Proteccion
 
 <PageTitle>Retiros</PageTitle>
 
@@ -84,6 +85,7 @@ else
                                 <th>Dirección</th>
                                 <th>Contacto</th>
                                 <th>Estado</th>
+                                <th>Seguimiento</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -95,6 +97,7 @@ else
                                     <td>@retiro.Direccion</td>
                                     <td>@(string.IsNullOrWhiteSpace(retiro.Contacto) ? "—" : retiro.Contacto)</td>
                                     <td><span class="status-badge @ClaseEstado(retiro.Estado)">@NombreEstado(retiro.Estado)</span></td>
+                                    <td><a href="/seguimiento/retiro/@SeguimientoPublico.TokenRetiro(Proteccion, retiro.OperadorId, retiro.Id)" target="_blank" rel="noopener">Ver enlace</a></td>
                                     <td class="text-end">
                                         @if (retiro.Estado is EstadoRetiro.Solicitado or EstadoRetiro.Programado)
                                         {

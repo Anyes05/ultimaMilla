@@ -19,13 +19,16 @@ public sealed class SolicitarReprogramacion
     private readonly IHistorialEstadoRepositorio _historial;
     private readonly IReglaOperativaRepositorio _reglas;
     private readonly ITransicionEnvio _transicion;
+    private readonly IBanderasOperador _banderas;
 
     public SolicitarReprogramacion(
         IEnvioRepositorio envios,
         IHistorialEstadoRepositorio historial,
         IReglaOperativaRepositorio reglas,
-        ITransicionEnvio transicion)
+        ITransicionEnvio transicion,
+        IBanderasOperador banderas)
     {
+        _banderas = banderas;
         _envios = envios;
         _historial = historial;
         _reglas = reglas;
@@ -40,6 +43,10 @@ public sealed class SolicitarReprogramacion
         var envio = await _envios.ObtenerPorTokenAsync(token.Trim(), cancellationToken);
         if (envio is null)
             return ResultadoReprogramacion.NoEncontrado;
+
+        // Bandera del operador: aunque la página oculte el botón, el pedido se rechaza acá.
+        if (!await _banderas.EstaActivaAsync(envio.OperadorId, CatalogoBanderas.SeguimientoReprogramacion, cancellationToken))
+            return ResultadoReprogramacion.NoPermitida;
 
         var ahora = DateTime.UtcNow;
         var regla = await _reglas.ObtenerVigenteAsync(envio.OperadorId, ahora, cancellationToken);

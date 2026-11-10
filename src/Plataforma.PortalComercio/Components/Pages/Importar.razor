@@ -1,0 +1,161 @@
+@page "/importar"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = Plataforma.Domain.Roles.Comercio)]
+@using Plataforma.Application
+@using Plataforma.Domain
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ImportarEnvios Importador
+@inject GestionCobertura Cobertura
+@inject ListarEnvios ListarEnvios
+
+<PageTitle>Importar envíos</PageTitle>
+
+<div class="mb-4">
+    <p class="text-uppercase text-primary fw-semibold small mb-1">Portal de comercio</p>
+    <h1 class="display-6 fw-bold mb-1">Importar envíos</h1>
+    <p class="text-muted mb-0">Subí una planilla CSV con muchos envíos a la vez. Volver a subir el mismo archivo no duplica nada: cada fila se reconoce por su clave.</p>
+</div>
+
+@if (mensajeError is not null)
+{
+    <div class="alert alert-danger" role="alert">@mensajeError</div>
+}
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form method="post" enctype="multipart/form-data" @onsubmit="ImportarAsync" @formname="ImportarEnviosForm">
+            <AntiforgeryToken />
+            <input type="hidden" name="enviado" value="1" />
+            <label class="form-label fw-semibold" for="archivo">Archivo CSV</label>
+            <div class="input-group">
+                <input id="archivo" name="archivo" type="file" accept=".csv,text/csv" class="form-control" required />
+                <button class="btn btn-primary" type="submit">Importar</button>
+            </div>
+            <p class="small text-muted mt-2 mb-0">Hasta @ImportacionCsv.MaximoFilas filas y 1 MB. Separado por punto y coma o por coma, con encabezado en la primera línea.</p>
+        </form>
+    </div>
+</div>
+
+@if (resultados.Count > 0)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-4 col-md-2"><div class="card border-0 shadow-sm"><div class="card-body p-3"><span class="small text-muted d-block">Creados</span><strong class="fs-3 text-success" data-resultado="creados">@resultados.Count(r => r.Estado == "Creado")</strong></div></div></div>
+        <div class="col-4 col-md-2"><div class="card border-0 shadow-sm"><div class="card-body p-3"><span class="small text-muted d-block">Ya existían</span><strong class="fs-3" data-resultado="existentes">@resultados.Count(r => r.Estado == "Ya existía")</strong></div></div></div>
+        <div class="col-4 col-md-2"><div class="card border-0 shadow-sm"><div class="card-body p-3"><span class="small text-muted d-block">Con error</span><strong class="fs-3 text-danger" data-resultado="errores">@resultados.Count(r => r.Estado == "Error")</strong></div></div></div>
+    </div>
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light"><tr><th>Línea</th><th>Clave</th><th>Resultado</th><th>N° Tracking</th></tr></thead>
+                <tbody>
+                @foreach (var fila in resultados)
+                {
+                    <tr data-clave="@fila.Clave">
+                        <td>@fila.Linea</td>
+                        <td>@fila.Clave</td>
+                        <td>
+                            <span class="status-badge @(fila.Estado == "Error" ? "status-extraviado" : fila.Estado == "Creado" ? "status-entregado" : "status-en-deposito")">@fila.Estado</span>
+                            @if (fila.Detalle is not null)
+                            {
+                                <span class="d-block small text-muted">@fila.Detalle</span>
+                            }
+                        </td>
+                        <td>
+                            @if (fila.Tracking is not null)
+                            {
+                                <span class="tracking-number">@fila.Tracking</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+        <h2 class="h6">Formato</h2>
+        <p class="small text-muted">Columnas obligatorias: <code>clave_externa</code>, <code>destinatario</code>, <code>direccion</code> y <code>peso_kg</code>.
+            Opcionales: <code>email</code>, <code>distancia_km</code>, <code>bultos</code>, <code>volumen_cm3</code>, <code>urgente</code> y <code>fragil</code> (si/no),
+            <code>zona</code> y <code>franja</code> (por nombre). La clave es tu identificador del pedido.</p>
+        <pre class="small bg-light p-3 rounded mb-0">clave_externa;destinatario;direccion;email;peso_kg;distancia_km;bultos;urgente;fragil;zona;franja
+PED-1001;Ana Pérez;Av. Italia 1234, Montevideo;ana@ejemplo.com;2,5;8;1;no;no;Centro;Mañana
+PED-1002;Juan Gómez;Rivera 2020, Montevideo;;1;3;2;si;no;;</pre>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm(FormName = "ImportarEnviosForm", Name = "enviado")]
+    private string? Enviado { get; set; }
+
+    private List<FilaResultado> resultados = [];
+    private string? mensajeError;
+
+    private async Task ImportarAsync()
+    {
+        var http = HttpContextAccessor.HttpContext;
+        if (http is null || !AccesoActual.Intentar(http.User, out var acceso) || acceso.Rol != Roles.Comercio || acceso.ComercioId is not Guid comercioId)
+        {
+            mensajeError = "No se pudo identificar el comercio autenticado. Volvé a iniciar sesión.";
+            return;
+        }
+
+        var archivo = http.Request.HasFormContentType ? http.Request.Form.Files["archivo"] : null;
+        if (archivo is null || archivo.Length == 0)
+        {
+            mensajeError = "Elegí un archivo CSV.";
+            return;
+        }
+
+        if (archivo.Length > 1024 * 1024)
+        {
+            mensajeError = "El archivo supera 1 MB. Dividilo en varios.";
+            return;
+        }
+
+        string texto;
+        using (var lector = new StreamReader(archivo.OpenReadStream(), detectEncodingFromByteOrderMarks: true))
+            texto = await lector.ReadToEndAsync();
+
+        IReadOnlyList<FilaCsv> filas;
+        try
+        {
+            filas = ImportacionCsv.Leer(
+                texto,
+                (await Cobertura.ListarZonasAsync(acceso.OperadorId)).GroupBy(z => z.Nombre).ToDictionary(g => g.Key, g => g.First().Id),
+                (await Cobertura.ListarFranjasAsync(acceso.OperadorId)).GroupBy(f => f.Nombre).ToDictionary(g => g.Key, g => g.First().Id));
+        }
+        catch (FormatException ex)
+        {
+            mensajeError = ex.Message;
+            return;
+        }
+
+        resultados = filas.Where(fila => fila.Item is null)
+            .Select(fila => new FilaResultado(fila.Linea, fila.Clave, "Error", fila.Error, null))
+            .ToList();
+
+        var validas = filas.Where(fila => fila.Item is not null).ToList();
+        if (validas.Count > 0)
+        {
+            // Mismo caso de uso que la API: idempotente por clave externa (RF 7).
+            var salida = await Importador.EjecutarAsync(acceso.OperadorId, comercioId, validas.Select(fila => fila.Item!).ToList());
+            var tracking = (await ListarEnvios.Ejecutar(acceso)).ToDictionary(envio => envio.Id, envio => envio.NumeroSeguimiento);
+            for (var i = 0; i < salida.Count; i++)
+            {
+                var resultado = salida[i];
+                resultados.Add(new FilaResultado(
+                    validas[i].Linea,
+                    validas[i].Clave,
+                    resultado.Error is not null ? "Error" : resultado.Creado ? "Creado" : "Ya existía",
+                    resultado.Error is null ? null : TextosUsuario.Error(new ArgumentException(resultado.Error)),
+                    resultado.EnvioId is Guid envioId && tracking.TryGetValue(envioId, out var numero) ? numero : null));
+            }
+        }
+
+        resultados = resultados.OrderBy(fila => fila.Linea).ToList();
+    }
+
+    private sealed record FilaResultado(int Linea, string Clave, string Estado, string? Detalle, string? Tracking);
+}

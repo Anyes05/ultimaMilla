@@ -1,0 +1,86 @@
+@page "/seguimiento/retiro/{Token}"
+@using Microsoft.AspNetCore.DataProtection
+@using Plataforma.Application
+@using Plataforma.Domain
+@inject IDataProtectionProvider Proteccion
+@inject IRetiroRepositorio Retiros
+@inject IOperadorRepositorio Operadores
+@inject IComercioRepositorio Comercios
+
+@* Seguimiento público de un retiro: sin sesión, con el mismo límite de tasa que /seguimiento, y sin dirección,
+   contacto ni identificadores internos. *@
+
+<PageTitle>Seguimiento de retiro</PageTitle>
+<HeadContent>
+    <meta name="robots" content="noindex, nofollow" />
+</HeadContent>
+
+<div class="row justify-content-center">
+    <div class="col-md-10 col-lg-7">
+        <div class="mb-4">
+            <p class="text-uppercase text-primary fw-semibold small mb-1">Seguimiento</p>
+            <h1 class="h2 fw-bold mb-1">Retiro en domicilio</h1>
+        </div>
+
+        @if (retiro is null || operador is null)
+        {
+            <div class="alert alert-warning" role="alert">No encontramos un retiro con ese enlace. Revisá el enlace que recibiste.</div>
+        }
+        else
+        {
+            var etapa = SeguimientoPublico.EtapasRetiro.ToList().FindIndex(item => item.Estado == retiro.Estado);
+            <article class="card border-0 shadow-sm" aria-labelledby="estado-retiro">
+                <div class="card-body p-4">
+                    <p class="seguimiento-marca small fw-semibold mb-3" style="color: @SeguimientoPublico.ColorMarcaCss(operador.ColorMarca)">@operador.Nombre</p>
+                    <h2 id="estado-retiro" class="h4 fw-bold mb-1" data-estado-retiro="@retiro.Estado">@NombreEstado(retiro.Estado)</h2>
+                    <p class="text-muted">@SeguimientoPublico.DescripcionRetiro(retiro.Estado)</p>
+                    @if (!string.IsNullOrWhiteSpace(comercio))
+                    {
+                        <p class="small mb-1">Pedido por <strong>@comercio</strong></p>
+                    }
+                    <p class="small mb-3">Fecha del retiro: <strong>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</strong></p>
+
+                    @if (retiro.Estado != EstadoRetiro.Cancelado)
+                    {
+                        <ol class="list-unstyled d-flex flex-wrap gap-2 mb-0" aria-label="Etapas del retiro">
+                            @for (var i = 0; i < SeguimientoPublico.EtapasRetiro.Count; i++)
+                            {
+                                var alcanzada = i <= etapa;
+                                <li class="badge rounded-pill @(alcanzada ? "text-bg-primary" : "text-bg-light")" aria-current="@(i == etapa ? "step" : null)">@SeguimientoPublico.EtapasRetiro[i].Nombre</li>
+                            }
+                        </ol>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Token { get; set; }
+
+    private SolicitudRetiro? retiro;
+    private Operador? operador;
+    private string? comercio;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!SeguimientoPublico.LeerTokenRetiro(Proteccion, Token, out var operadorId, out var retiroId))
+            return;
+
+        retiro = await Retiros.ObtenerAsync(operadorId, retiroId);
+        if (retiro is null)
+            return;
+
+        operador = await Operadores.ObtenerAsync(operadorId);
+        comercio = (await Comercios.ObtenerAsync(operadorId, retiro.ComercioId))?.NombreComercial;
+    }
+
+    private static string NombreEstado(EstadoRetiro estado) => estado switch
+    {
+        EstadoRetiro.EnCurso => "En camino",
+        EstadoRetiro.Completado => "Retirado",
+        _ => estado.ToString()
+    };
+}

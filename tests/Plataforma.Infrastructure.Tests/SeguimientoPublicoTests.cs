@@ -11,6 +11,7 @@ public sealed class SeguimientoPublicoTests
 {
     private readonly string _db = $"seguimiento-{Guid.NewGuid():N}";
     private readonly CacheLecturaMemoria _cache = new();
+    private readonly BanderaReprogramacion _bandera = new();
 
     [Fact]
     public async Task Detalle_MuestraMarcaEHistorialSinDatosPersonalesNiIdentificadoresInternos()
@@ -134,6 +135,22 @@ public sealed class SeguimientoPublicoTests
     }
 
     [Fact]
+    public async Task BanderaApagada_NoSeOfreceNiSeAceptaLaReprogramacion()
+    {
+        var envio = NoEntregado(intentos: 1, maximo: 3);
+        await Sembrar(envio, maximoIntentos: 3, plazoHoras: 24, (EstadoEnvio.NoEntregado, DateTime.UtcNow.AddHours(-1)));
+        Assert.True((await Consultar(envio))!.PuedeReprogramar);
+
+        // El detalle ya está en caché: apagar la bandera se ve igual en la próxima consulta.
+        _bandera.Activa = false;
+        Assert.False((await Consultar(envio))!.PuedeReprogramar);
+        Assert.Equal(ResultadoReprogramacion.NoPermitida, await Reprogramar(envio.TokenSeguimientoPublico));
+
+        _bandera.Activa = true;
+        Assert.True((await Consultar(envio))!.PuedeReprogramar);
+    }
+
+    [Fact]
     public async Task SinIntentosDisponibles_NoSePuedeReprogramar()
     {
         var envio = NoEntregado(intentos: 1, maximo: 1);
@@ -220,7 +237,8 @@ public sealed class SeguimientoPublicoTests
             new RutaRepositorio(contexto),
             new ReglaOperativaRepositorio(contexto),
             new CoberturaRepositorio(contexto),
-            _cache).PorTokenAsync(envio.TokenSeguimientoPublico);
+            _cache,
+            _bandera).PorTokenAsync(envio.TokenSeguimientoPublico);
     }
 
     private async Task<ResultadoReprogramacion> Reprogramar(string token)
@@ -237,7 +255,8 @@ public sealed class SeguimientoPublicoTests
                 new RutaRepositorio(contexto),
                 new RegistrarOutboxEstado(outbox, historial),
                 new PublicarOutboxPendientes(outbox, new PublicadorMensajesPrueba { Disponible = true }),
-                _cache)).EjecutarAsync(token);
+                _cache),
+            _bandera).EjecutarAsync(token);
     }
 
     // Sin operador: el destinatario no tiene sesión.
@@ -250,5 +269,13 @@ public sealed class SeguimientoPublicoTests
             .Options;
 
         return new PlataformaDbContext(options, operador);
+    }
+
+    private sealed class BanderaReprogramacion : IBanderasOperador
+    {
+        public bool Activa { get; set; } = true;
+
+        public Task<bool> EstaActivaAsync(Guid operadorId, string clave, CancellationToken cancellationToken = default) =>
+            Task.FromResult(clave != CatalogoBanderas.SeguimientoReprogramacion || Activa);
     }
 }

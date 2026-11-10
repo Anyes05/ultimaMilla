@@ -24,6 +24,10 @@
 {
     <div class="alert alert-danger" role="alert">@Model.Error</div>
 }
+@if (!Model.RetirosActivos)
+{
+    <div class="alert alert-info" role="status">El retiro en domicilio está apagado para este operador: los comercios no pueden pedir retiros nuevos. Los ya pedidos se siguen gestionando acá.</div>
+}
 
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">

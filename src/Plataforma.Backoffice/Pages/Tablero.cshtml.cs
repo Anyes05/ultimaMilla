@@ -24,7 +24,18 @@ public class TableroModel : PageModel
 
     private const int FilasDetalle = 20;
 
+    private readonly IBanderasOperador _banderas;
+    private readonly ListarEnviosEnRiesgo _enRiesgo;
+
+    /// <summary>Envíos que vencen dentro del margen o ya vencieron (RF 29).</summary>
+    public ResultadoEnRiesgo EnRiesgo { get; private set; } = new(0, []);
+
+    /// <summary>Bandera "retiro-domicilio" del operador.</summary>
+    public bool RetirosActivos { get; private set; } = true;
+
     public TableroModel(
+        ListarEnviosEnRiesgo enRiesgo,
+        IBanderasOperador banderas,
         IBultoRepositorio bultos,
         GestionRetiros retiros,
         GestionComercios comercios,
@@ -37,6 +48,8 @@ public class TableroModel : PageModel
         _operadores = operadores;
         _servicios = servicios;
         _logger = logger;
+        _enRiesgo = enRiesgo;
+        _banderas = banderas;
         _bultos = bultos;
         _retiros = retiros;
         _comercios = comercios;
@@ -112,6 +125,8 @@ public class TableroModel : PageModel
         }
         Parciales = filas;
 
+        EnRiesgo = await _enRiesgo.EjecutarAsync(acceso.OperadorId, DateTime.UtcNow, ListarEnviosEnRiesgo.MargenPorDefecto, FilasDetalle, ct);
+        RetirosActivos = await _banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.RetiroDomicilio, ct);
         var retiros = await _retiros.ListarAsync(acceso.OperadorId, cancellationToken: ct);
         var hoy = Operador?.DiaActual() ?? DateOnly.FromDateTime(DateTime.UtcNow);
         RetirosSolicitados = retiros.Count(retiro => retiro.Estado == EstadoRetiro.Solicitado);
@@ -123,6 +138,15 @@ public class TableroModel : PageModel
         RetirosAbiertos = abiertos.Take(FilasDetalle).ToList();
         Comercios = (await _comercios.ListarAsync(acceso.OperadorId, ct))
             .ToDictionary(comercio => comercio.Id, comercio => comercio.NombreComercial);
+    }
+
+    /// <summary>"vence en 1 h 20 min" o "venció hace 35 min", para leer de un vistazo.</summary>
+    public static string Vencimiento(DateTime compromisoUtc, DateTime ahoraUtc)
+    {
+        var diferencia = compromisoUtc - ahoraUtc;
+        var tramo = diferencia.Duration();
+        var texto = tramo.TotalHours >= 1 ? $"{(int)tramo.TotalHours} h {tramo.Minutes} min" : $"{Math.Max(1, tramo.Minutes)} min";
+        return diferencia >= TimeSpan.Zero ? $"vence en {texto}" : $"venció hace {texto}";
     }
 
     public sealed record ParcialTablero(Envio Envio, int Entregados, int Total, IReadOnlyList<Bulto> Faltantes);

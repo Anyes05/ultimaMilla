@@ -14,8 +14,10 @@ public class RetirosModel : PageModel
     private readonly GestionComercios _comercios;
     private readonly ListarRutasDelDia _rutas;
     private readonly IOperadorRepositorio _operadores;
+    private readonly IBanderasOperador _banderas;
 
     public RetirosModel(
+        IBanderasOperador banderas,
         GestionRetiros retiros,
         GestionComercios comercios,
         ListarRutasDelDia rutas,
@@ -25,7 +27,11 @@ public class RetirosModel : PageModel
         _comercios = comercios;
         _rutas = rutas;
         _operadores = operadores;
+        _banderas = banderas;
     }
+
+    /// <summary>Bandera "retiro-domicilio": apagada, los comercios no pueden pedir; lo ya pedido se sigue gestionando.</summary>
+    public bool RetirosActivos { get; private set; } = true;
 
     public Operador? Operador { get; private set; }
     public IReadOnlyList<SolicitudRetiro> Retiros { get; private set; } = [];
@@ -52,6 +58,7 @@ public class RetirosModel : PageModel
 
         var ct = HttpContext.RequestAborted;
         Operador = await _operadores.ObtenerAsync(acceso.OperadorId, ct);
+        RetirosActivos = await _banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.RetiroDomicilio, ct);
         Retiros = (await _retiros.ListarAsync(acceso.OperadorId, cancellationToken: ct))
             .OrderByDescending(retiro => retiro.FechaSolicitada)
             .ThenByDescending(retiro => retiro.CreadoEn)

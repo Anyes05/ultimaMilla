@@ -100,6 +100,28 @@
                             <ValidationMessage For="() => Formulario!.VolumenCm3" />
                         </div>
                     </div>
+                    <details class="mb-4" open="@Formulario!.Detalle.Any(bulto => bulto.TieneDatos)">
+                        <summary class="fw-semibold">Peso y medidas de cada bulto <span class="text-muted fw-normal">(opcional)</span></summary>
+                        <p class="small text-muted mt-2">Si los completás, la cantidad de bultos y el peso total se toman de acá, y el volumen se calcula con las medidas.</p>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead><tr><th>Bulto</th><th>Peso (kg)</th><th>Alto (cm)</th><th>Ancho (cm)</th><th>Largo (cm)</th></tr></thead>
+                                <tbody>
+                                    @for (var i = 0; i < Formulario!.Detalle.Count; i++)
+                                    {
+                                        var indice = i;
+                                        <tr>
+                                            <td>@(indice + 1)</td>
+                                            <td><InputNumber @bind-Value="Formulario.Detalle[indice].PesoKg" class="form-control form-control-sm" step="any" min="0" aria-label="@($"Peso del bulto {indice + 1}")" /></td>
+                                            <td><InputNumber @bind-Value="Formulario.Detalle[indice].AltoCm" class="form-control form-control-sm" step="any" min="0" aria-label="@($"Alto del bulto {indice + 1}")" /></td>
+                                            <td><InputNumber @bind-Value="Formulario.Detalle[indice].AnchoCm" class="form-control form-control-sm" step="any" min="0" aria-label="@($"Ancho del bulto {indice + 1}")" /></td>
+                                            <td><InputNumber @bind-Value="Formulario.Detalle[indice].LargoCm" class="form-control form-control-sm" step="any" min="0" aria-label="@($"Largo del bulto {indice + 1}")" /></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
                     <div class="d-flex flex-wrap gap-4 mb-4">
                         <div class="form-check">
                             <InputCheckbox id="urgente" @bind-Value="Formulario!.Urgente" class="form-check-input" />
@@ -170,6 +192,7 @@
                                 <span>Creado @envio.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
                                 <span>Tarifa <strong class="text-body">@Importe(envio.TarifaCalculada)</strong></span>
                             </div>
+                            <a class="btn btn-sm btn-outline-secondary mt-3" href="/etiquetas/@Uri.EscapeDataString(envio.NumeroSeguimiento)" target="_blank" rel="noopener">Etiquetas</a>
                         </div>
                     </article>
                 </div>
@@ -241,7 +264,8 @@
                 Formulario.CantidadBultos,
                 Formulario.ZonaId,
                 Formulario.FranjaId,
-                Formulario.VolumenCm3);
+                Formulario.VolumenCm3,
+                bultosDeclarados: Formulario.BultosDeclarados());
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
@@ -280,8 +304,53 @@
     private static string Importe(decimal valor) =>
         valor.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("es-UY"));
 
-    public class ModelForm
+    public class BultoForm
     {
+        public decimal? PesoKg { get; set; }
+        public decimal? AltoCm { get; set; }
+        public decimal? AnchoCm { get; set; }
+        public decimal? LargoCm { get; set; }
+
+        public bool TieneDatos => PesoKg > 0 || AltoCm > 0 || AnchoCm > 0 || LargoCm > 0;
+    }
+
+    public class ModelForm : System.ComponentModel.DataAnnotations.IValidatableObject
+    {
+        /// <summary>Filas para el peso y las medidas de cada bulto (RF 8); se usan las que tienen datos.</summary>
+        // El formulario puede llegar sin estas filas (alta clásica): nunca queda en null y siempre muestra 10.
+        public List<BultoForm> Detalle
+        {
+            get => detalle;
+            set
+            {
+                detalle = value ?? [];
+                while (detalle.Count < FilasDetalle)
+                    detalle.Add(new BultoForm());
+            }
+        }
+
+        private List<BultoForm> detalle = Enumerable.Range(0, FilasDetalle).Select(_ => new BultoForm()).ToList();
+        private const int FilasDetalle = 10;
+
+        public IReadOnlyList<BultoDeclarado>? BultosDeclarados()
+        {
+            var filas = Detalle.Where(bulto => bulto.TieneDatos).ToList();
+            return filas.Count == 0
+                ? null
+                : filas.Select(bulto => new BultoDeclarado(bulto.PesoKg ?? 0, bulto.AltoCm ?? 0, bulto.AnchoCm ?? 0, bulto.LargoCm ?? 0)).ToList();
+        }
+
+        public IEnumerable<System.ComponentModel.DataAnnotations.ValidationResult> Validate(System.ComponentModel.DataAnnotations.ValidationContext validationContext)
+        {
+            var filas = Detalle.Where(bulto => bulto.TieneDatos).ToList();
+            if (filas.Count == 0 && PesoKg <= 0)
+                yield return new("El peso debe ser mayor que 0 y de hasta 1000 kg.", [nameof(PesoKg)]);
+            if (filas.Any(bulto => bulto.PesoKg is not > 0))
+                yield return new("Indicá el peso de cada bulto que detallás.", [nameof(Detalle)]);
+            if (filas.Any(bulto => bulto.PesoKg > 1000 || bulto.AltoCm < 0 || bulto.AnchoCm < 0 || bulto.LargoCm < 0 || bulto.AltoCm > 500 || bulto.AnchoCm > 500 || bulto.LargoCm > 500))
+                yield return new("Revisá el peso y las medidas de los bultos.", [nameof(Detalle)]);
+        }
+
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "El destinatario es requerido.")]
         public string Destinatario { get; set; } = string.Empty;
 
@@ -298,7 +367,7 @@
 
         private string? email;
 
-        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "1000", MinimumIsExclusive = true, ErrorMessage = "El peso debe ser mayor que 0 y de hasta 1000 kg.")]
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "1000", ErrorMessage = "El peso debe ser mayor que 0 y de hasta 1000 kg.")]
         public decimal PesoKg { get; set; }
 
         [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "500", ErrorMessage = "La distancia debe estar entre 0 y 500 km.")]
