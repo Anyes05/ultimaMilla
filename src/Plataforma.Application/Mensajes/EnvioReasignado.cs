@@ -41,5 +41,5 @@ public sealed record EnvioReasignado(
             urgente);
 
     public string Serializar() =>
-        JsonSerializer.Serialize(this, ObtenerRutasDeHoy.OpcionesJson);
+        JsonSerializer.Serialize(this with { Fecha = RelojOperacion.ParaContrato(Fecha) }, ObtenerRutasDeHoy.OpcionesJson);
 }

@@ -23,5 +23,5 @@ public sealed record EnvioAdmitido(
         new(Guid.NewGuid(), RelojOperacion.Ahora(), operadorId, envioId, string.Empty, EstadoEnvio.Admitido);
 
     public string Serializar() =>
-        JsonSerializer.Serialize(this, ObtenerRutasDeHoy.OpcionesJson);
+        JsonSerializer.Serialize(this with { Fecha = RelojOperacion.ParaContrato(Fecha) }, ObtenerRutasDeHoy.OpcionesJson);
 }

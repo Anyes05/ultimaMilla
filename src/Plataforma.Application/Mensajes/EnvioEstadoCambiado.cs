@@ -35,7 +35,7 @@ public sealed record EnvioEstadoCambiado(
             estadoNuevo);
 
     public string Serializar() =>
-        JsonSerializer.Serialize(this, ObtenerRutasDeHoy.OpcionesJson);
+        JsonSerializer.Serialize(this with { Fecha = RelojOperacion.ParaContrato(Fecha) }, ObtenerRutasDeHoy.OpcionesJson);
 
     public static EnvioEstadoCambiado? Deserializar(string json) =>
         JsonSerializer.Deserialize<EnvioEstadoCambiado>(json, ObtenerRutasDeHoy.OpcionesJson);

@@ -17,7 +17,8 @@ public sealed record RetiroSolicitado(
     public static RetiroSolicitado Crear(Guid operadorId, Guid retiroId, Guid comercioId, string direccion) =>
         new(Guid.NewGuid(), RelojOperacion.Ahora(), operadorId, retiroId, comercioId, direccion);
 
-    public string Serializar() => JsonSerializer.Serialize(this, ObtenerRutasDeHoy.OpcionesJson);
+    public string Serializar() =>
+        JsonSerializer.Serialize(this with { Fecha = RelojOperacion.ParaContrato(Fecha) }, ObtenerRutasDeHoy.OpcionesJson);
 }
 
 public sealed record RetiroCompletado(
@@ -38,7 +39,8 @@ public sealed record RetiroCompletado(
         Guid? envioAsociadoId) =>
         new(Guid.NewGuid(), RelojOperacion.Ahora(), operadorId, retiroId, comercioId, envioAsociadoId);
 
-    public string Serializar() => JsonSerializer.Serialize(this, ObtenerRutasDeHoy.OpcionesJson);
+    public string Serializar() =>
+        JsonSerializer.Serialize(this with { Fecha = RelojOperacion.ParaContrato(Fecha) }, ObtenerRutasDeHoy.OpcionesJson);
 }
 
 public sealed record BultoEstadoCambiado(
@@ -61,5 +63,6 @@ public sealed record BultoEstadoCambiado(
         EstadoBulto nuevo) =>
         new(Guid.NewGuid(), RelojOperacion.Ahora(), operadorId, envioId, bultoId, anterior.ToString(), nuevo.ToString());
 
-    public string Serializar() => JsonSerializer.Serialize(this, ObtenerRutasDeHoy.OpcionesJson);
+    public string Serializar() =>
+        JsonSerializer.Serialize(this with { Fecha = RelojOperacion.ParaContrato(Fecha) }, ObtenerRutasDeHoy.OpcionesJson);
 }

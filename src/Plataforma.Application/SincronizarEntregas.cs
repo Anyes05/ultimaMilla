@@ -192,7 +192,7 @@ public sealed class SincronizarEntregas
                     envio.RegistrarIntentoFallido(operador.MaximoIntentos);
                     await _intentos.AgregarAsync(IntentoEntrega.Registrar(
                         Guid.NewGuid(), operadorId, envio.Id, envio.IntentosRealizados,
-                        RelojOperacion.ConOffsetOperacion(evento.FechaDispositivo).UtcDateTime,
+                        RelojOperacion.AUtc(evento.FechaDispositivo).UtcDateTime,
                         evento.Observaciones), cancellationToken);
                 }
 
@@ -256,7 +256,7 @@ public sealed class SincronizarEntregas
                     evento.NombreReceptor,
                     evento.Observaciones,
                     usuario,
-                    RelojOperacion.ConOffsetOperacion(evento.FechaDispositivo),
+                    RelojOperacion.AUtc(evento.FechaDispositivo),
                     evento.Foto,
                     evento.Firma,
                     evento.Latitud,
@@ -410,7 +410,7 @@ public sealed class SincronizarEntregas
                     envio.RegistrarIntentoFallido(operador.MaximoIntentos);
                     await _intentos.AgregarAsync(IntentoEntrega.Registrar(
                         Guid.NewGuid(), operadorId, envio.Id, envio.IntentosRealizados,
-                        RelojOperacion.ConOffsetOperacion(evento.FechaDispositivo).UtcDateTime,
+                        RelojOperacion.AUtc(evento.FechaDispositivo).UtcDateTime,
                         evento.Observaciones), cancellationToken);
                 }
             }
