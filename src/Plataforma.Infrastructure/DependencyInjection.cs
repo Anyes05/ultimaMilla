@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,6 +24,12 @@ public static class DependencyInjection
             options.AddInterceptors(proveedor.GetRequiredService<OperadorSaveChangesInterceptor>());
         });
 
+        // Data Protection mínimo: Identity/UserManager y hosts de test que solo llaman
+        // AddInfrastructure (FlujoEntregaPostgresTests) no registran Redis DP.
+        services.AddDataProtection();
+
+        // Sin AddDefaultTokenProviders: el login Opción A solo usa password hasher.
+        // Esos providers exigen IDataProtectionProvider y fallaban el CI de integración.
         services
             .AddIdentityCore<UsuarioIdentity>(opciones =>
             {
@@ -34,8 +41,7 @@ public static class DependencyInjection
                 opciones.Password.RequireNonAlphanumeric = false;
             })
             .AddRoles<IdentityRole<Guid>>()
-            .AddEntityFrameworkStores<PlataformaDbContext>()
-            .AddDefaultTokenProviders();
+            .AddEntityFrameworkStores<PlataformaDbContext>();
 
         services.AddCacheRedis(configuration);
         services.Configure<OpcionesRabbitMq>(configuration.GetSection(OpcionesRabbitMq.Seccion));
