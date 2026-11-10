@@ -20,7 +20,8 @@ public sealed class OperadorActualHttp : IOperadorActual
             if (principal is null || !AccesoActual.Intentar(principal, out var acceso))
                 return null;
 
-            return acceso.OperadorId;
+            // El administrador de plataforma no pertenece a un operador: sin filtro, no filtrar por Guid vacío.
+            return acceso.EsAdministradorPlataforma ? null : acceso.OperadorId;
         }
     }
 }

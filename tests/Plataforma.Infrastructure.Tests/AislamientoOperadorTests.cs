@@ -188,6 +188,21 @@ public class AislamientoOperadorTests
         Assert.Equal(DatosSemilla.OperadorNorteId, acceso.OperadorId);
     }
 
+    [Fact]
+    public void AdministradorPlataforma_NoFiltraPorOperador()
+    {
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimsPlataforma.UsuarioId, Guid.NewGuid().ToString()),
+                new Claim(ClaimsPlataforma.Rol, Roles.AdministradorPlataforma)
+            ], "Bearer"))
+        };
+
+        Assert.Null(new OperadorActualHttp(new HttpContextAccessor { HttpContext = http }).OperadorId);
+    }
+
     private static string NombreDb() => $"aislamiento-{Guid.NewGuid():N}";
 
     private static PlataformaDbContext CrearContexto(string nombreDb, Guid? operadorId)

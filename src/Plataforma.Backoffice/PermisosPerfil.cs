@@ -24,6 +24,13 @@ public static class PermisosPerfil
     /// <summary>Configuración y operación técnica: tarifas, avisos fallidos, caché.</summary>
     public const string Administracion = Roles.Administrador;
 
+    /// <summary>Administración de la plataforma, por encima de los operadores: banderas de funcionalidad.</summary>
+    public const string Plataforma = Roles.AdministradorPlataforma;
+
+    /// <summary>Página de entrada de cada perfil después del login.</summary>
+    public static string PaginaInicial(RolUsuario rol) =>
+        rol == RolUsuario.AdministradorPlataforma ? "/Banderas" : "/";
+
     private static readonly HashSet<(EstadoEnvio Desde, EstadoEnvio Hacia)> OperarioDeposito =
     [
         (EstadoEnvio.Admitido, EstadoEnvio.EnDeposito),     // 1 recepción en depósito
@@ -62,5 +69,5 @@ public static class PermisosPerfil
 
     /// <summary>Perfiles que pueden entrar al Backoffice. El comercio usa el Portal y el repartidor la app.</summary>
     public static bool PuedeEntrarAlBackoffice(RolUsuario rol) =>
-        rol is RolUsuario.Administrador or RolUsuario.Despachador or RolUsuario.OperarioDeposito;
+        rol is RolUsuario.Administrador or RolUsuario.Despachador or RolUsuario.OperarioDeposito or RolUsuario.AdministradorPlataforma;
 }

@@ -1,0 +1,79 @@
+@page
+@model BanderasModel
+@using Plataforma.Application
+@{
+    ViewData["Title"] = "Banderas";
+}
+
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-primary fw-semibold small mb-1">Plataforma</p>
+        <h1 class="display-6 fw-bold mb-1">Banderas de funcionalidad</h1>
+        <p class="text-muted mb-0">Qué funciones tiene encendidas cada operador. El cambio aplica sin volver a desplegar.</p>
+    </div>
+    <form method="post" action="/logout">
+        <button class="btn btn-outline-secondary" type="submit">Cerrar sesión</button>
+    </form>
+</div>
+
+@if (Model.Mensaje is not null)
+{
+    <div class="alert alert-success" role="status">@Model.Mensaje</div>
+}
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger" role="alert">@Model.Error</div>
+}
+
+<div class="row g-4 mb-4">
+    @foreach (var fila in Model.Operadores)
+    {
+        <div class="col-lg-6">
+            <div class="card border-0 shadow-sm h-100" data-operador="@fila.Operador.Id">
+                <div class="card-header bg-white"><h2 class="h5 mb-0">@fila.Operador.Nombre</h2></div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var bandera in fila.Banderas)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center gap-3" data-clave="@bandera.Clave">
+                            <div>
+                                <span class="fw-semibold d-block">@bandera.Descripcion</span>
+                                <span class="status-badge @(bandera.Activa ? "status-entregado" : "status-extraviado")">@(bandera.Activa ? "Activa" : "Apagada")</span>
+                            </div>
+                            <form method="post" asp-page-handler="Cambiar">
+                                <input type="hidden" name="operadorId" value="@bandera.OperadorId" />
+                                <input type="hidden" name="clave" value="@bandera.Clave" />
+                                <input type="hidden" name="activa" value="@(bandera.Activa ? "false" : "true")" />
+                                <button class="btn btn-sm @(bandera.Activa ? "btn-outline-danger" : "btn-primary")" type="submit">@(bandera.Activa ? "Apagar" : "Activar")</button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+</div>
+
+<h2 class="h5 mb-3">Últimos cambios</h2>
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light"><tr><th>Fecha</th><th>Operador</th><th>Función</th><th>Quedó</th><th>Usuario</th></tr></thead>
+            <tbody>
+            @if (Model.Cambios.Count == 0)
+            {
+                <tr><td colspan="5" class="text-center text-muted py-4">Todavía no hay cambios.</td></tr>
+            }
+            @foreach (var cambio in Model.Cambios)
+            {
+                <tr>
+                    <td>@RelojOperacion.ParaContrato(cambio.Fecha).ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@Model.NombreOperador(cambio.OperadorId)</td>
+                    <td>@BanderasModel.Descripcion(cambio.Clave)</td>
+                    <td>@(cambio.Activa ? "Activa" : "Apagada")</td>
+                    <td>@cambio.Usuario</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

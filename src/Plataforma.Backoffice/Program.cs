@@ -96,7 +96,8 @@ app.UseStatusCodePages(contexto =>
         !http.Request.Path.StartsWithSegments("/api") &&
         !http.Request.Path.StartsWithSegments("/hubs") &&
         !http.Request.Path.StartsWithSegments("/tecnico"))
-        http.Response.Redirect("/?sinPermiso=true");
+        // El administrador de plataforma no tiene Monitoreo: volver ahí lo dejaría en un bucle de redirecciones.
+        http.Response.Redirect(http.User.IsInRole(Roles.AdministradorPlataforma) ? "/Banderas" : "/?sinPermiso=true");
     return Task.CompletedTask;
 });
 
@@ -165,7 +166,7 @@ app.MapPost("/session/login", async (HttpRequest request, IniciarSesion iniciarS
             CookieAcceso.Backoffice,
             emisor.Emitir(ok.Sesion),
             CookieAcceso.Opciones);
-        return Results.Redirect("/");
+        return Results.Redirect(PermisosPerfil.PaginaInicial(ok.Sesion.Rol));
     }
 
     return Results.Redirect("/login?error=1");

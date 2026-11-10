@@ -29,11 +29,13 @@
         var puedeMonitorear = usuario.IsInRole(Roles.Administrador)
             || usuario.IsInRole(Roles.Despachador)
             || usuario.IsInRole(Roles.OperarioDeposito);
-        var mostrarBarraLateral = usuario.Identity?.IsAuthenticated == true && puedeMonitorear;
+        var esPlataforma = usuario.IsInRole(Roles.AdministradorPlataforma);
+        var mostrarBarraLateral = usuario.Identity?.IsAuthenticated == true && (puedeMonitorear || esPlataforma);
         // Perfil visible bajo el usuario: el operador (inquilino) va arriba, el usuario y su perfil abajo.
         var perfil = usuario.IsInRole(Roles.Administrador) ? "Administrador"
             : usuario.IsInRole(Roles.Despachador) ? "Despachador"
             : usuario.IsInRole(Roles.OperarioDeposito) ? "Operario de depósito"
+            : esPlataforma ? "Administrador de plataforma"
             : string.Empty;
         var paginaActual = ViewContext.RouteData.Values["page"] as string ?? string.Empty;
         string ClaseNav(string pagina) =>
@@ -64,7 +66,15 @@
 
                     <nav class="app-sidebar__nav" aria-label="Navegación principal">
                         @* Cada perfil ve solo lo que puede abrir (las páginas además lo exigen con [Authorize]). *@
-                        <a class="@ClaseNav("/Index")" asp-area="" asp-page="/Index">Monitoreo</a>
+                        @if (puedeMonitorear)
+                        {
+                            <a class="@ClaseNav("/Index")" asp-area="" asp-page="/Index">Monitoreo</a>
+                        }
+                        @if (esPlataforma)
+                        {
+                            <span class="app-sidebar__section">Plataforma</span>
+                            <a class="@ClaseNav("/Banderas")" asp-area="" asp-page="/Banderas">Banderas</a>
+                        }
                         @if (usuario.IsInRole(Roles.Administrador) || usuario.IsInRole(Roles.Despachador))
                         {
                             <a class="@ClaseNav("/Despacho")" asp-area="" asp-page="/Despacho">Despacho</a>
