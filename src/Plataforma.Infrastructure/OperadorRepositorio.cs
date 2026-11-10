@@ -23,4 +23,7 @@ public sealed class OperadorRepositorio : IOperadorRepositorio
         await _context.Operadores.IgnoreQueryFilters().AsNoTracking()
             .Select(o => o.Id)
             .ToListAsync(cancellationToken);
+
+    public Task GuardarAsync(CancellationToken cancellationToken = default) =>
+        _context.SaveChangesAsync(cancellationToken);
 }

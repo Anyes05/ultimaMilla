@@ -7,6 +7,8 @@ public class ReglaTarifaria
     public decimal PrecioBase { get; private set; }
     public decimal PrecioPorKg { get; private set; }
     public decimal PrecioPorKm { get; private set; }
+    public decimal PrecioPorCm3 { get; private set; }
+    public decimal RecargoZona { get; private set; }
     public decimal RecargoFragil { get; private set; }
     public decimal RecargoUrgente { get; private set; }
     public bool Activa { get; private set; }
@@ -22,7 +24,9 @@ public class ReglaTarifaria
         decimal precioPorKg,
         decimal precioPorKm,
         decimal recargoFragil,
-        decimal recargoUrgente)
+        decimal recargoUrgente,
+        decimal precioPorCm3 = 0,
+        decimal recargoZona = 0)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("La regla tarifaria necesita un identificador.");
@@ -30,7 +34,8 @@ public class ReglaTarifaria
         if (operadorId == Guid.Empty)
             throw new ArgumentException("La regla tarifaria necesita un operador.");
 
-        if (precioBase < 0 || precioPorKg < 0 || precioPorKm < 0 || recargoFragil < 0 || recargoUrgente < 0)
+        if (precioBase < 0 || precioPorKg < 0 || precioPorKm < 0 || recargoFragil < 0 || recargoUrgente < 0
+            || precioPorCm3 < 0 || recargoZona < 0)
             throw new ArgumentOutOfRangeException(nameof(precioBase), "Los importes de la tarifa no pueden ser negativos.");
 
         return new ReglaTarifaria
@@ -40,6 +45,8 @@ public class ReglaTarifaria
             PrecioBase = precioBase,
             PrecioPorKg = precioPorKg,
             PrecioPorKm = precioPorKm,
+            PrecioPorCm3 = precioPorCm3,
+            RecargoZona = recargoZona,
             RecargoFragil = recargoFragil,
             RecargoUrgente = recargoUrgente,
             Activa = true

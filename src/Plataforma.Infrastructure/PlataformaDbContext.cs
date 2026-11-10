@@ -102,6 +102,10 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
             entidad.HasIndex(envio => envio.NumeroSeguimiento).IsUnique();
             entidad.HasIndex(envio => envio.TokenSeguimientoPublico).IsUnique();
             entidad.Property(envio => envio.Version).IsConcurrencyToken();
+            entidad.Property(envio => envio.ClaveExterna).HasMaxLength(120);
+            entidad.HasIndex(envio => new { envio.OperadorId, envio.ComercioId, envio.ClaveExterna })
+                .IsUnique()
+                .HasFilter("\"ClaveExterna\" IS NOT NULL");
         });
 
         modelBuilder.Entity<Bulto>(entidad =>

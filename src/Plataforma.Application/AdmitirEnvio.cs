@@ -12,19 +12,22 @@ public sealed class AdmitirEnvio
     private readonly CalcularTarifa _tarifa;
     private readonly IOutboxRepositorio _outbox;
     private readonly IComercioRepositorio _comercios;
+    private readonly ICoberturaRepositorio _cobertura;
 
     public AdmitirEnvio(
         IEnvioRepositorio envios,
         IBultoRepositorio bultos,
         CalcularTarifa tarifa,
         IOutboxRepositorio outbox,
-        IComercioRepositorio comercios)
+        IComercioRepositorio comercios,
+        ICoberturaRepositorio cobertura)
     {
         _envios = envios;
         _bultos = bultos;
         _tarifa = tarifa;
         _outbox = outbox;
         _comercios = comercios;
+        _cobertura = cobertura;
     }
 
     public async Task<Envio> EjecutarAsync(
@@ -38,6 +41,10 @@ public sealed class AdmitirEnvio
         bool fragil = false,
         bool urgente = false,
         int cantidadBultos = 1,
+        Guid? zonaId = null,
+        Guid? franjaId = null,
+        decimal volumenCm3 = 0,
+        string? claveExterna = null,
         CancellationToken cancellationToken = default)
     {
         if (operadorId == Guid.Empty)
@@ -49,12 +56,28 @@ public sealed class AdmitirEnvio
         if (cantidadBultos < 1)
             throw new ArgumentOutOfRangeException(nameof(cantidadBultos), "El envío debe tener al menos un bulto.");
 
-        // También con una sesión abierta antes de la baja.
         if (!await _comercios.EstaActivoAsync(comercioId, cancellationToken))
             throw new InvalidOperationException("El comercio está dado de baja y no puede crear envíos.");
 
+        if (!string.IsNullOrWhiteSpace(claveExterna))
+        {
+            var existente = await _envios.ObtenerPorClaveExternaAsync(
+                operadorId, comercioId, claveExterna, cancellationToken);
+            if (existente is not null)
+                return existente;
+        }
+
+        await ValidarCoberturaAsync(operadorId, zonaId, franjaId, cancellationToken);
+
         var tarifa = await _tarifa.EjecutarConReferenciaAsync(
-            operadorId, pesoKg, distanciaKm, fragil, urgente, cancellationToken);
+            operadorId,
+            pesoKg,
+            distanciaKm,
+            fragil,
+            urgente,
+            cancellationToken,
+            volumenCm3,
+            zonaId.HasValue);
 
         var envio = Envio.Admitir(
             operadorId,
@@ -64,10 +87,11 @@ public sealed class AdmitirEnvio
             emailDestinatario,
             tarifa.Importe,
             tarifa.ReglaTarifariaId,
-            tarifa.VigenciaTarifaId);
+            tarifa.VigenciaTarifaId,
+            zonaId,
+            franjaId,
+            claveExterna);
 
-        // Reparte el peso del envío entre bultos (capacidad de vehículo / RF 8).
-        // El último se ajusta para que la suma coincida con pesoKg pese al redondeo.
         var pesos = RepartirPesoEntreBultos(pesoKg, cantidadBultos);
         for (var i = 1; i <= cantidadBultos; i++)
         {
@@ -77,7 +101,6 @@ public sealed class AdmitirEnvio
                 cancellationToken);
         }
 
-        // El publicador en segundo plano lo envía a la cola: si RabbitMQ está caído, el alta igual funciona.
         var admitido = EnvioAdmitido.Crear(operadorId, envio.Id);
         await _outbox.AgregarAsync(
             MensajeOutbox.CrearPendiente(
@@ -91,10 +114,33 @@ public sealed class AdmitirEnvio
                 Activity.Current?.Id),
             cancellationToken);
 
-        // Último: guarda envío, bultos y outbox en una sola transacción (letra 6.8).
         await _envios.AgregarAsync(envio);
-
         return envio;
+    }
+
+    private async Task ValidarCoberturaAsync(
+        Guid operadorId,
+        Guid? zonaId,
+        Guid? franjaId,
+        CancellationToken cancellationToken)
+    {
+        if (zonaId is Guid z)
+        {
+            _ = await _cobertura.ObtenerZonaAsync(operadorId, z, cancellationToken)
+                ?? throw new InvalidOperationException("La zona no existe para ese operador.");
+        }
+
+        if (franjaId is Guid f)
+        {
+            var franja = await _cobertura.ObtenerFranjaAsync(operadorId, f, cancellationToken)
+                ?? throw new InvalidOperationException("La franja no existe para ese operador.");
+            if (!franja.Activa)
+                throw new InvalidOperationException("La franja no está activa.");
+            if (franja.ZonaId is Guid zonaFranja && zonaId is Guid zonaEnvio && zonaFranja != zonaEnvio)
+                throw new InvalidOperationException("La franja no pertenece a la zona indicada.");
+            if (franja.ZonaId is Guid zonaObligatoria && zonaId is null)
+                throw new InvalidOperationException("La franja requiere indicar su zona.");
+        }
     }
 
     public static decimal[] RepartirPesoEntreBultos(decimal pesoKg, int cantidadBultos)

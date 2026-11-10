@@ -90,8 +90,14 @@ public static class DependencyInjection
         services.AddScoped<GestionCobertura>();
         services.AddScoped<GestionComercios>();
         services.AddScoped<GestionUsuarios>();
+        services.AddScoped<GestionRepartidores>();
         services.AddScoped<RecibirEnvioEnDeposito>();
+        services.AddScoped<RendirBulto>();
         services.AddScoped<AdmitirEnvio>();
+        services.AddScoped<ImportarEnvios>();
+        services.AddScoped<ILiquidacionRepositorio, LiquidacionRepositorio>();
+        services.AddScoped<GestionLiquidaciones>();
+        services.AddScoped<ActualizarMarcaOperador>();
         services.AddScoped<RegistrarOutboxEstado>();
         services.AddScoped<PublicarOutboxPendientes>();
         services.AddScoped<CambiarEstadoEnvio>();

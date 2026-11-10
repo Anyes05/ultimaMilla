@@ -42,4 +42,19 @@ public class Repartidor
             Activo = true
         };
     }
+
+    public void Actualizar(string nombre, string documento, string telefono, Guid? usuarioId = null)
+    {
+        if (string.IsNullOrWhiteSpace(nombre))
+            throw new ArgumentException("El nombre del repartidor es requerido.");
+
+        Nombre = nombre.Trim();
+        Documento = documento.Trim();
+        Telefono = telefono.Trim();
+        UsuarioId = usuarioId;
+    }
+
+    public void Activar() => Activo = true;
+
+    public void Desactivar() => Activo = false;
 }

@@ -25,6 +25,10 @@ public class Envio
     public int Version { get; private set; }
     public DateTime FechaCreacion { get; private set; }
     public Guid? RutaId { get; private set; }
+    public Guid? ZonaId { get; private set; }
+    public Guid? FranjaId { get; private set; }
+    /// <summary>Clave del comercio para importación idempotente (única por operador+comercio).</summary>
+    public string? ClaveExterna { get; private set; }
     public int IntentosRealizados { get; private set; }
 
     // Constructor sin parámetros requerido por EF Core
@@ -66,7 +70,10 @@ public class Envio
         string emailDestinatario = "",
         decimal tarifaCalculada = 0,
         Guid? reglaTarifariaId = null,
-        Guid? vigenciaTarifaId = null)
+        Guid? vigenciaTarifaId = null,
+        Guid? zonaId = null,
+        Guid? franjaId = null,
+        string? claveExterna = null)
     {
         var envio = new Envio(destinatario, direccionEntrega)
         {
@@ -75,7 +82,10 @@ public class Envio
             EmailDestinatario = emailDestinatario,
             TarifaCalculada = tarifaCalculada,
             ReglaTarifariaId = reglaTarifariaId,
-            VigenciaTarifaId = vigenciaTarifaId
+            VigenciaTarifaId = vigenciaTarifaId,
+            ZonaId = zonaId,
+            FranjaId = franjaId,
+            ClaveExterna = string.IsNullOrWhiteSpace(claveExterna) ? null : claveExterna.Trim()
         };
 
         return envio;

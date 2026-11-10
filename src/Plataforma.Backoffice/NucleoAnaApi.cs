@@ -435,6 +435,202 @@ public static class NucleoAnaApi
             }
         }).RequireAuthorization();
 
+        app.MapPost("/api/deposito/rendicion/bultos", async (
+            ClaimsPrincipal principal,
+            RendicionBultoSolicitud solicitud,
+            RendirBulto rendir,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.OperarioDeposito or Roles.Administrador))
+                return Results.Unauthorized();
+            try
+            {
+                ResultadoRendicionBulto r;
+                if (solicitud.BultoId is Guid id)
+                    r = await rendir.PorIdAsync(acceso.OperadorId, id, acceso.UsuarioId.ToString(), solicitud.Motivo ?? "Rendición en depósito", ct);
+                else if (!string.IsNullOrWhiteSpace(solicitud.Codigo))
+                    r = await rendir.PorCodigoAsync(acceso.OperadorId, solicitud.Codigo, acceso.UsuarioId.ToString(), solicitud.Motivo ?? "Rendición en depósito", ct);
+                else
+                    return Results.BadRequest(new { mensaje = "Indicá codigo o bultoId." });
+                return Results.Json(r, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/deposito/rendicion/bultos", async (
+            ClaimsPrincipal principal,
+            IBultoRepositorio bultos,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.OperarioDeposito or Roles.Administrador))
+                return Results.Unauthorized();
+            return Results.Json(await bultos.ListarPendientesRendicionAsync(acceso.OperadorId, ct), ObtenerRutasDeHoy.OpcionesJson);
+        }).RequireAuthorization();
+
+        app.MapPost("/api/envios", async (
+            ClaimsPrincipal principal,
+            AdmitirEnvioSolicitudApi solicitud,
+            AdmitirEnvio admitir,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso))
+                return Results.Unauthorized();
+
+            var comercioId = acceso.Rol == Roles.Comercio
+                ? acceso.ComercioId
+                : solicitud.ComercioId;
+            if (comercioId is not Guid cId)
+                return Results.BadRequest(new { mensaje = "El comercio es requerido." });
+            if (acceso.Rol is not (Roles.Comercio or Roles.Administrador or Roles.OperarioDeposito))
+                return Results.Unauthorized();
+
+            try
+            {
+                var envio = await admitir.EjecutarAsync(
+                    acceso.OperadorId,
+                    cId,
+                    solicitud.Destinatario,
+                    solicitud.DireccionEntrega,
+                    solicitud.EmailDestinatario ?? "",
+                    solicitud.PesoKg,
+                    solicitud.DistanciaKm,
+                    solicitud.Fragil,
+                    solicitud.Urgente,
+                    solicitud.CantidadBultos < 1 ? 1 : solicitud.CantidadBultos,
+                    solicitud.ZonaId,
+                    solicitud.FranjaId,
+                    solicitud.VolumenCm3,
+                    solicitud.ClaveExterna,
+                    ct);
+                return Results.Json(new
+                {
+                    envio.Id,
+                    envio.NumeroSeguimiento,
+                    envio.Estado,
+                    envio.TarifaCalculada,
+                    envio.ZonaId,
+                    envio.FranjaId,
+                    envio.ClaveExterna
+                }, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or ArgumentOutOfRangeException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPost("/api/envios/importar", async (
+            ClaimsPrincipal principal,
+            ImportarEnviosSolicitudApi solicitud,
+            ImportarEnvios importar,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso))
+                return Results.Unauthorized();
+            var comercioId = acceso.Rol == Roles.Comercio ? acceso.ComercioId : solicitud.ComercioId;
+            if (comercioId is not Guid cId)
+                return Results.BadRequest(new { mensaje = "El comercio es requerido." });
+            if (acceso.Rol is not (Roles.Comercio or Roles.Administrador))
+                return Results.Unauthorized();
+            try
+            {
+                var r = await importar.EjecutarAsync(acceso.OperadorId, cId, solicitud.Items, ct);
+                return Results.Json(r, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/reportes/resumen", async (
+            ClaimsPrincipal principal,
+            DateTime? desde,
+            DateTime? hasta,
+            Guid? comercioId,
+            GestionLiquidaciones liquidaciones,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            var resumen = await liquidaciones.ResumenAsync(acceso.OperadorId, desde, hasta, comercioId, ct);
+            return Results.Json(resumen, ObtenerRutasDeHoy.OpcionesJson);
+        }).RequireAuthorization();
+
+        app.MapGet("/api/liquidaciones", async (
+            ClaimsPrincipal principal,
+            Guid? comercioId,
+            GestionLiquidaciones liquidaciones,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            return Results.Json(await liquidaciones.ListarAsync(acceso.OperadorId, comercioId, ct), ObtenerRutasDeHoy.OpcionesJson);
+        }).RequireAuthorization();
+
+        app.MapPost("/api/liquidaciones", async (
+            ClaimsPrincipal principal,
+            LiquidacionAbrirSolicitud solicitud,
+            GestionLiquidaciones liquidaciones,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                var l = await liquidaciones.AbrirAsync(
+                    acceso.OperadorId, solicitud.ComercioId, solicitud.PeriodoDesde, solicitud.PeriodoHasta, ct);
+                return Results.Json(l, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or ArgumentOutOfRangeException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPost("/api/liquidaciones/{liquidacionId:guid}/cerrar", async (
+            Guid liquidacionId,
+            ClaimsPrincipal principal,
+            GestionLiquidaciones liquidaciones,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                await liquidaciones.CerrarAsync(acceso.OperadorId, liquidacionId, ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPut("/api/operador/marca", async (
+            ClaimsPrincipal principal,
+            MarcaOperadorSolicitud solicitud,
+            ActualizarMarcaOperador actualizar,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                await actualizar.EjecutarAsync(acceso.OperadorId, solicitud.ColorMarca, ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
         app.MapGet("/api/usuarios", async (
             ClaimsPrincipal principal, GestionUsuarios usuarios, CancellationToken ct) =>
         {
@@ -605,3 +801,21 @@ public sealed record UsuarioActualizarSolicitud(
     string Rol,
     Guid? ComercioId = null);
 public sealed record UsuarioActivoSolicitud(bool Activo);
+public sealed record RendicionBultoSolicitud(string? Codigo = null, Guid? BultoId = null, string? Motivo = null);
+public sealed record AdmitirEnvioSolicitudApi(
+    string Destinatario,
+    string DireccionEntrega,
+    Guid? ComercioId = null,
+    string? EmailDestinatario = null,
+    decimal PesoKg = 1,
+    decimal DistanciaKm = 0,
+    bool Fragil = false,
+    bool Urgente = false,
+    int CantidadBultos = 1,
+    Guid? ZonaId = null,
+    Guid? FranjaId = null,
+    decimal VolumenCm3 = 0,
+    string? ClaveExterna = null);
+public sealed record ImportarEnviosSolicitudApi(Guid? ComercioId, IReadOnlyList<EnvioImportacionItem> Items);
+public sealed record LiquidacionAbrirSolicitud(Guid ComercioId, DateTime PeriodoDesde, DateTime PeriodoHasta);
+public sealed record MarcaOperadorSolicitud(string ColorMarca);

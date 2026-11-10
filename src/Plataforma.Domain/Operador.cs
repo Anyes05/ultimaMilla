@@ -57,6 +57,14 @@ public class Operador
         MaximoIntentos = maximoIntentos;
     }
 
+    public void CambiarColorMarca(string colorMarca)
+    {
+        if (string.IsNullOrWhiteSpace(colorMarca))
+            throw new ArgumentException("El color de marca es requerido.");
+
+        ColorMarca = colorMarca.Trim().ToLowerInvariant();
+    }
+
     /// <summary>Día de operación según la zona del operador (no UTC del servidor).</summary>
     public DateOnly DiaActual(DateTime? utcAhora = null)
     {

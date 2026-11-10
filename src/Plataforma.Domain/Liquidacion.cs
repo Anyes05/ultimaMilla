@@ -48,4 +48,20 @@ public class Liquidacion
             Cerrada = false
         };
     }
+
+    public void Cerrar()
+    {
+        if (Cerrada)
+            throw new InvalidOperationException("La liquidación ya está cerrada.");
+        Cerrada = true;
+    }
+
+    public void ActualizarMonto(decimal monto)
+    {
+        if (Cerrada)
+            throw new InvalidOperationException("No se puede modificar una liquidación cerrada.");
+        if (monto < 0)
+            throw new ArgumentOutOfRangeException(nameof(monto), "El monto no puede ser negativo.");
+        Monto = monto;
+    }
 }

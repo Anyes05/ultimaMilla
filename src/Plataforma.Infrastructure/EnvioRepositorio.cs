@@ -39,6 +39,20 @@ public class EnvioRepositorio : IEnvioRepositorio
             envio => envio.NumeroSeguimiento == numeroSeguimiento,
             cancellationToken);
 
+    public Task<Envio?> ObtenerPorClaveExternaAsync(
+        Guid operadorId,
+        Guid comercioId,
+        string claveExterna,
+        CancellationToken cancellationToken = default)
+    {
+        var clave = claveExterna.Trim();
+        return _context.Envios.AsNoTracking().FirstOrDefaultAsync(
+            envio => envio.OperadorId == operadorId
+                     && envio.ComercioId == comercioId
+                     && envio.ClaveExterna == clave,
+            cancellationToken);
+    }
+
     public Task<List<Envio>> ListarAsync(Guid operadorId, Guid? comercioId, CancellationToken cancellationToken = default)
     {
         var consulta = _context.Envios.AsNoTracking().Where(envio => envio.OperadorId == operadorId);

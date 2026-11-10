@@ -9,4 +9,6 @@ public interface IOperadorRepositorio
     Task<Operador?> ObtenerParaEditarAsync(Guid operadorId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<Guid>> ListarIdsAsync(CancellationToken cancellationToken = default);
+
+    Task GuardarAsync(CancellationToken cancellationToken = default);
 }

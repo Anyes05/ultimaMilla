@@ -10,15 +10,99 @@ public static class RepartidorApi
     {
         app.MapGet("/api/repartidores", async (
             ClaimsPrincipal principal,
+            bool? incluirInactivos,
+            GestionRepartidores gestion,
             ListarRepartidoresActivos listar,
             CancellationToken cancellationToken) =>
         {
-            if (!AccesoActual.Intentar(principal, out var acceso) ||
-                acceso.Rol is not (Roles.Despachador or Roles.Administrador or Roles.OperarioDeposito))
+            if (!AccesoActual.Intentar(principal, out var acceso))
+                return Results.Unauthorized();
+
+            if (incluirInactivos == true)
+            {
+                if (acceso.Rol != Roles.Administrador)
+                    return Results.Unauthorized();
+                var todos = await gestion.ListarAsync(acceso.OperadorId, soloActivos: false, cancellationToken);
+                return Results.Json(todos, ObtenerRutasDeHoy.OpcionesJson);
+            }
+
+            if (acceso.Rol is not (Roles.Despachador or Roles.Administrador or Roles.OperarioDeposito))
                 return Results.Unauthorized();
 
             var lista = await listar.EjecutarAsync(acceso.OperadorId, cancellationToken);
             return Results.Json(lista, ObtenerRutasDeHoy.OpcionesJson);
+        }).RequireAuthorization();
+
+        app.MapPost("/api/repartidores", async (
+            ClaimsPrincipal principal,
+            RepartidorAbmSolicitud solicitud,
+            GestionRepartidores gestion,
+            CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                var r = await gestion.RegistrarAsync(
+                    acceso.OperadorId,
+                    solicitud.Nombre,
+                    solicitud.Documento ?? "",
+                    solicitud.Telefono ?? "",
+                    solicitud.UsuarioId,
+                    cancellationToken);
+                return Results.Json(r, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPut("/api/repartidores/{repartidorId:guid}", async (
+            Guid repartidorId,
+            ClaimsPrincipal principal,
+            RepartidorAbmSolicitud solicitud,
+            GestionRepartidores gestion,
+            CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                await gestion.ActualizarAsync(
+                    acceso.OperadorId,
+                    repartidorId,
+                    solicitud.Nombre,
+                    solicitud.Documento ?? "",
+                    solicitud.Telefono ?? "",
+                    solicitud.UsuarioId,
+                    cancellationToken);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPost("/api/repartidores/{repartidorId:guid}/activo", async (
+            Guid repartidorId,
+            ClaimsPrincipal principal,
+            RepartidorActivoSolicitud solicitud,
+            GestionRepartidores gestion,
+            CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                await gestion.CambiarActivoAsync(acceso.OperadorId, repartidorId, solicitud.Activo, cancellationToken);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
         }).RequireAuthorization();
 
         var repartidor = app.MapGroup("/api/repartidor");
@@ -288,3 +372,9 @@ public sealed record ReasignacionSolicitud(
 public sealed record DispositivoSolicitud(string Token, string Plataforma);
 
 public sealed record CambioEstadoSolicitud(EstadoEnvio NuevoEstado, string? Motivo = null);
+public sealed record RepartidorAbmSolicitud(
+    string Nombre,
+    string? Documento = null,
+    string? Telefono = null,
+    Guid? UsuarioId = null);
+public sealed record RepartidorActivoSolicitud(bool Activo);

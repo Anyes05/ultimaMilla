@@ -7,7 +7,9 @@ public sealed record NuevaVersionTarifa(
     decimal PrecioPorKg,
     decimal PrecioPorKm,
     decimal RecargoFragil,
-    decimal RecargoUrgente);
+    decimal RecargoUrgente,
+    decimal PrecioPorCm3 = 0,
+    decimal RecargoZona = 0);
 
 public sealed record TarifaVersionVista(
     Guid Id,
@@ -50,7 +52,9 @@ public sealed class GestionTarifas
                     v.Regla.PrecioPorKg,
                     v.Regla.PrecioPorKm,
                     v.Regla.RecargoFragil,
-                    v.Regla.RecargoUrgente),
+                    v.Regla.RecargoUrgente,
+                    v.Regla.PrecioPorCm3,
+                    v.Regla.RecargoZona),
                 v.Vigencia.VigenciaDesde <= ahora && v.Vigencia.VigenciaHasta >= ahora))
             .ToList();
     }
@@ -106,7 +110,9 @@ public sealed class GestionTarifas
             datos.PrecioPorKg,
             datos.PrecioPorKm,
             datos.RecargoFragil,
-            datos.RecargoUrgente);
+            datos.RecargoUrgente,
+            datos.PrecioPorCm3,
+            datos.RecargoZona);
 
         var vigenciaNueva = VigenciaTarifa.Crear(
             Guid.NewGuid(),

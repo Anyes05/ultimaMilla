@@ -9,6 +9,11 @@ public interface IEnvioRepositorio
     Task<Envio?> ObtenerPorOperadorAsync(Guid envioId, Guid operadorId, CancellationToken cancellationToken = default);
     Task<Envio?> ObtenerPorTokenAsync(string tokenSeguimientoPublico, CancellationToken cancellationToken = default);
     Task<Envio?> ObtenerPorNumeroAsync(string numeroSeguimiento, CancellationToken cancellationToken = default);
+    Task<Envio?> ObtenerPorClaveExternaAsync(
+        Guid operadorId,
+        Guid comercioId,
+        string claveExterna,
+        CancellationToken cancellationToken = default);
     Task<List<Envio>> ListarAsync(Guid operadorId, Guid? comercioId, CancellationToken cancellationToken = default);
     Task<ResultadoPaginado<Envio>> ListarPaginadoAsync(
         Guid operadorId,

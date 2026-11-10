@@ -18,6 +18,14 @@ public sealed class RepartidorRepositorio : IRepartidorRepositorio
             repartidor => repartidor.Id == repartidorId && repartidor.OperadorId == operadorId,
             cancellationToken);
 
+    public Task<Repartidor?> ObtenerParaEditarAsync(
+        Guid repartidorId,
+        Guid operadorId,
+        CancellationToken cancellationToken = default) =>
+        _context.Repartidores.FirstOrDefaultAsync(
+            repartidor => repartidor.Id == repartidorId && repartidor.OperadorId == operadorId,
+            cancellationToken);
+
     public Task<Repartidor?> ObtenerPorUsuarioAsync(Guid usuarioId, Guid operadorId, CancellationToken cancellationToken = default) =>
         _context.Repartidores.AsNoTracking().FirstOrDefaultAsync(
             repartidor => repartidor.UsuarioId == usuarioId && repartidor.OperadorId == operadorId,
@@ -30,4 +38,18 @@ public sealed class RepartidorRepositorio : IRepartidorRepositorio
             .Where(repartidor => repartidor.OperadorId == operadorId && repartidor.Activo)
             .OrderBy(repartidor => repartidor.Nombre)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Repartidor>> ListarAsync(
+        Guid operadorId,
+        CancellationToken cancellationToken = default) =>
+        await _context.Repartidores.AsNoTracking()
+            .Where(repartidor => repartidor.OperadorId == operadorId)
+            .OrderBy(repartidor => repartidor.Nombre)
+            .ToListAsync(cancellationToken);
+
+    public async Task AgregarAsync(Repartidor repartidor, CancellationToken cancellationToken = default) =>
+        await _context.Repartidores.AddAsync(repartidor, cancellationToken);
+
+    public Task GuardarAsync(CancellationToken cancellationToken = default) =>
+        _context.SaveChangesAsync(cancellationToken);
 }

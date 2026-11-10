@@ -460,6 +460,10 @@ namespace Plataforma.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ClaveExterna")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.Property<Guid>("ComercioId")
                         .HasColumnType("uuid");
 
@@ -480,6 +484,9 @@ namespace Plataforma.Infrastructure.Migrations
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("FranjaId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("IntentosRealizados")
                         .HasColumnType("integer");
@@ -511,6 +518,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<Guid?>("VigenciaTarifaId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ZonaId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("NumeroSeguimiento")
@@ -518,6 +528,10 @@ namespace Plataforma.Infrastructure.Migrations
 
                     b.HasIndex("TokenSeguimientoPublico")
                         .IsUnique();
+
+                    b.HasIndex("OperadorId", "ComercioId", "ClaveExterna")
+                        .IsUnique()
+                        .HasFilter("\"ClaveExterna\" IS NOT NULL");
 
                     b.ToTable("Envios");
                 });
@@ -1018,6 +1032,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<decimal>("PrecioBase")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("PrecioPorCm3")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("PrecioPorKg")
                         .HasColumnType("numeric");
 
@@ -1028,6 +1045,9 @@ namespace Plataforma.Infrastructure.Migrations
                         .HasColumnType("numeric");
 
                     b.Property<decimal>("RecargoUrgente")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("RecargoZona")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
