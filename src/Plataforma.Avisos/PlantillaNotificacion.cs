@@ -39,13 +39,41 @@ public static class PlantillaNotificacion
         var numero = WebUtility.HtmlEncode(datos.NumeroSeguimiento);
 
         var texto = $"{datos.Operador}\n\n{detalle}\n\nNúmero de seguimiento: {datos.NumeroSeguimiento}\nSeguí tu envío: {enlace}\n";
+        var color = Color(datos.ColorMarca);
+        // Tablas y estilos en línea: es lo único que respetan todos los clientes de correo.
         var html = $"""
-            <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; color: #212529">
-              <p style="font-weight: bold; color: {Color(datos.ColorMarca)}">{operador}</p>
-              <h1 style="font-size: 20px">{WebUtility.HtmlEncode(asunto)}</h1>
-              <p>{WebUtility.HtmlEncode(detalle)}</p>
-              <p>Número de seguimiento: <strong>{numero}</strong></p>
-              <p><a href="{enlace}" style="display: inline-block; padding: 10px 18px; background: {Color(datos.ColorMarca)}; color: #ffffff; text-decoration: none; border-radius: 6px">Seguir mi envío</a></p>
+            <div style="margin: 0; padding: 32px 16px; background-color: #f1f3f5; font-family: Arial, Helvetica, sans-serif">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e3e6ea">
+                <tr>
+                  <td style="padding: 20px 32px; background-color: {color}; color: #ffffff; font-size: 16px; font-weight: bold">{operador}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 32px 32px 8px">
+                    <h1 style="margin: 0 0 12px; color: #1f2933; font-size: 24px; line-height: 1.3">{WebUtility.HtmlEncode(asunto)}</h1>
+                    <p style="margin: 0; color: #52606d; font-size: 16px; line-height: 1.5">{WebUtility.HtmlEncode(detalle)}</p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px 32px 8px">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f1f3f5; border-radius: 8px">
+                      <tr>
+                        <td style="padding: 14px 16px">
+                          <div style="color: #7b8794; font-size: 13px">Número de seguimiento</div>
+                          <div style="margin-top: 4px; color: #1f2933; font-size: 14px; font-weight: bold; word-break: break-all">{numero}</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px 32px 32px">
+                    <a href="{enlace}" style="display: block; padding: 14px 18px; background-color: {color}; color: #ffffff; font-size: 16px; font-weight: bold; text-align: center; text-decoration: none; border-radius: 8px">Seguir mi envío</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 16px 32px; border-top: 1px solid #e3e6ea; color: #7b8794; font-size: 12px; line-height: 1.5">Este es un mensaje automático de {operador}. No hace falta que lo respondas.</td>
+                </tr>
+              </table>
             </div>
             """;
 
