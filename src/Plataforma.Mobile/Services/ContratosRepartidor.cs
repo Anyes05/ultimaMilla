@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Plataforma.Mobile.Models;
+using EstadoBulto = Plataforma.Domain.EstadoBulto;
+using PoliticaBultosPendientes = Plataforma.Domain.PoliticaBultosPendientes;
 
 namespace Plataforma.Mobile.Services;
 
@@ -15,7 +17,8 @@ public sealed record OperadorContrato(
     bool AdmiteEntregaParcial = false,
     bool ExigeFirma = false,
     bool ExigeFoto = false,
-    IReadOnlyList<string>? MotivosNoEntrega = null);
+    IReadOnlyList<string>? MotivosNoEntrega = null,
+    PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo);
 public sealed record BultoContrato(
     Guid Id,
     string Codigo,
@@ -48,7 +51,8 @@ public static class ContratosRepartidor
         Converters =
         {
             new JsonStringEnumConverter<EstadoEnvio>(allowIntegerValues: false),
-            new JsonStringEnumConverter<EstadoBulto>(allowIntegerValues: false)
+            new JsonStringEnumConverter<EstadoBulto>(allowIntegerValues: false),
+            new JsonStringEnumConverter<PoliticaBultosPendientes>(allowIntegerValues: false)
         }
     };
 

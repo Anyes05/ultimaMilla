@@ -1,15 +1,6 @@
 namespace Plataforma.Mobile.Models;
 
-public enum EstadoBulto
-{
-    Pendiente,
-    EnRuta,
-    Entregado,
-    NoEntregado,
-    PendienteNuevaVisita,
-    Devuelto,
-    Extraviado
-}
+using Plataforma.Domain;
 
 public sealed record BultoEnvio(
     Guid Id,
@@ -18,8 +9,17 @@ public sealed record BultoEnvio(
     EstadoBulto Estado,
     string? MotivoNoEntrega = null)
 {
-    public bool PuedeEntregarse => Estado is
-        EstadoBulto.EnRuta or EstadoBulto.Pendiente or EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita;
+    public bool PuedeEntregarse
+    {
+        get
+        {
+            var estadoDeRuta = Estado is EstadoBulto.Pendiente or EstadoBulto.PendienteNuevaVisita
+                ? EstadoBulto.EnRuta
+                : Estado;
+            return TransicionesBulto.DestinosDesde(estadoDeRuta)
+                .Contains(EstadoBulto.Entregado);
+        }
+    }
 }
 
 public sealed record ResultadoBultoEntrega(

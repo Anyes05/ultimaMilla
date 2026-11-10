@@ -59,7 +59,8 @@ public sealed class ObtenerRutasDeHoy
             AdmiteEntregaParcial = regla?.AdmiteEntregaParcial ?? false,
             ExigeFirma = regla?.ExigeFirma ?? false,
             ExigeFoto = regla?.ExigeFoto ?? false,
-            MotivosNoEntrega = regla?.MotivosNoEntrega ?? ReglaOperativa.MotivosNoEntregaPredeterminados
+            MotivosNoEntrega = regla?.MotivosNoEntrega ?? ReglaOperativa.MotivosNoEntregaPredeterminados,
+            PoliticaBultosPendientes = regla?.PoliticaBultosPendientes ?? PoliticaBultosPendientes.NuevaVisitaSinRecargo
         };
 
         var clave = Clave(operadorId, repartidorId, fecha);

@@ -1,5 +1,7 @@
 namespace Plataforma.Mobile.Models;
 
+using EstadoBulto = Plataforma.Domain.EstadoBulto;
+
 public enum EstadoEnvio
 {
     EnTransito,

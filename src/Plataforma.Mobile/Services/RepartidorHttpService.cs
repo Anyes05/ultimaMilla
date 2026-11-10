@@ -363,7 +363,8 @@ public sealed class RepartidorHttpService(
                 bulto.Id, bulto.Codigo, bulto.PesoKg, bulto.Estado, bulto.MotivoNoEntrega)).ToArray())).ToArray();
         return new Ruta(rutas[0].Id, rutas[0].Fecha, operador.Nombre, enviosDeRuta,
             operador.Funcionalidades ?? [], operador.AdmiteEntregaParcial, operador.ExigeFirma,
-            operador.ExigeFoto, operador.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados);
+            operador.ExigeFoto, operador.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados,
+            operador.PoliticaBultosPendientes);
     }
 
     private static bool MismoOperador(OperadorContrato actual, OperadorContrato esperado) =>
@@ -371,6 +372,7 @@ public sealed class RepartidorHttpService(
         actual.MaximoIntentos == esperado.MaximoIntentos &&
         actual.AdmiteEntregaParcial == esperado.AdmiteEntregaParcial &&
         actual.ExigeFirma == esperado.ExigeFirma && actual.ExigeFoto == esperado.ExigeFoto &&
+        actual.PoliticaBultosPendientes == esperado.PoliticaBultosPendientes &&
         (actual.Funcionalidades ?? []).SequenceEqual(esperado.Funcionalidades ?? []) &&
         (actual.MotivosNoEntrega ?? []).SequenceEqual(esperado.MotivosNoEntrega ?? []);
 

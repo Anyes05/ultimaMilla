@@ -5,6 +5,9 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Plataforma.Mobile.Models;
 using Plataforma.Mobile.Services;
+using EstadoBulto = Plataforma.Domain.EstadoBulto;
+using PoliticaBultosPendientes = Plataforma.Domain.PoliticaBultosPendientes;
+using DerivacionEstadoEnvio = Plataforma.Domain.DerivacionEstadoEnvio;
 
 namespace Plataforma.Mobile.ViewModels;
 
@@ -371,9 +374,19 @@ public partial class RutaViewModel(
                 var bultosEnvio = EnvioSeleccionado!.Bultos ?? [];
                 var entregadosAntes = bultosEnvio.Count(item => item.Estado == EstadoBulto.Entregado);
                 var totalEntregados = entregadosAntes + bultos.Count(item => item.Estado == EstadoBulto.Entregado);
-                var estadoEnvio = totalEntregados == bultosEnvio.Count
-                    ? EstadoEnvio.Entregado
-                    : totalEntregados > 0 ? EstadoEnvio.EntregadoParcialmente : EstadoEnvio.NoEntregado;
+                var estadosFinales = bultosEnvio.Select(bulto => bulto.Estado).ToArray();
+                for (var index = 0; index < bultosEnvio.Count; index++)
+                {
+                    var resultado = bultos.Single(item => item.BultoId == bultosEnvio[index].Id);
+                    var estadoBulto = resultado.Estado;
+                    if (estadoBulto == EstadoBulto.NoEntregado && rutaActual?.AdmiteEntregaParcial == true)
+                        estadoBulto = rutaActual.PoliticaBultosPendientes == PoliticaBultosPendientes.DevolucionAlComercio
+                            ? EstadoBulto.Devuelto
+                            : EstadoBulto.PendienteNuevaVisita;
+                    estadosFinales[index] = estadoBulto;
+                }
+                var estadoDerivado = DerivacionEstadoEnvio.DesdeBultos(estadosFinales);
+                var estadoEnvio = Enum.Parse<Plataforma.Mobile.Models.EstadoEnvio>(estadoDerivado.ToString());
                 repartidor.RegistrarEvento(new EntregaPendiente(Guid.NewGuid(), EnvioSeleccionado.Id,
                     NombreReceptor.Trim(), Observaciones.Trim(), DateTimeOffset.Now, estadoEnvio,
                     Foto, Firma, Latitud, Longitud, Bultos: bultos));

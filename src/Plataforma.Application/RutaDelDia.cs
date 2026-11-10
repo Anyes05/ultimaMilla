@@ -10,7 +10,8 @@ public sealed record OperadorVisible(
     bool AdmiteEntregaParcial = false,
     bool ExigeFirma = false,
     bool ExigeFoto = false,
-    IReadOnlyList<string>? MotivosNoEntrega = null)
+    IReadOnlyList<string>? MotivosNoEntrega = null,
+    PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo)
 {
     public static OperadorVisible Desde(Operador operador, IReadOnlyList<string>? funcionalidades = null) =>
         new(operador.Nombre, operador.ColorMarca, operador.MaximoIntentos, funcionalidades);

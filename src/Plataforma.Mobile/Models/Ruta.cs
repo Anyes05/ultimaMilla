@@ -1,5 +1,7 @@
 namespace Plataforma.Mobile.Models;
 
+using Plataforma.Domain;
+
 public sealed record Ruta(
 	Guid Id,
 	DateOnly Fecha,
@@ -9,7 +11,8 @@ public sealed record Ruta(
 	bool AdmiteEntregaParcial = false,
 	bool ExigeFirma = false,
 	bool ExigeFoto = false,
-	IReadOnlyList<string>? MotivosNoEntrega = null)
+	IReadOnlyList<string>? MotivosNoEntrega = null,
+	PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo)
 {
 	public bool EntregaParcialHabilitada => AdmiteEntregaParcial &&
 		(Funcionalidades?.Contains("entrega-parcial", StringComparer.Ordinal) ?? false);

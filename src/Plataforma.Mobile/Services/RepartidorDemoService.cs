@@ -1,5 +1,9 @@
 using Plataforma.Mobile.Models;
 using Plataforma.Mobile.Data;
+using EstadoBulto = Plataforma.Domain.EstadoBulto;
+using PoliticaBultosPendientes = Plataforma.Domain.PoliticaBultosPendientes;
+using TransicionesBulto = Plataforma.Domain.TransicionesBulto;
+using DerivacionEstadoEnvio = Plataforma.Domain.DerivacionEstadoEnvio;
 
 namespace Plataforma.Mobile.Services;
 
@@ -119,7 +123,7 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         Ruta ruta, Envio envio, EntregaPendiente evento)
     {
         var bultos = envio.Bultos ?? throw new InvalidOperationException("La ruta no contiene el detalle de bultos. Actualiza la ruta antes de registrar una entrega parcial.");
-        if (!ruta.Funcionalidades?.Contains("entrega-parcial", StringComparer.Ordinal) ?? true)
+        if (!ruta.EntregaParcialHabilitada)
             throw new InvalidOperationException("La entrega parcial no esta habilitada para este operador.");
         if (evento.Bultos!.Select(resultado => resultado.BultoId).Distinct().Count() != evento.Bultos.Count)
             throw new InvalidOperationException("No se puede registrar dos veces el mismo bulto en una parada.");
@@ -137,11 +141,14 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
             var actual = bultos.Single(bulto => bulto.Id == resultado.BultoId);
             if (!actual.PuedeEntregarse)
                 throw new InvalidOperationException($"El bulto {actual.Codigo} ya tiene un estado terminal.");
+            var estadoDeOrigen = actual.Estado is EstadoBulto.Pendiente or EstadoBulto.PendienteNuevaVisita
+                ? EstadoBulto.EnRuta
+                : actual.Estado;
+            if (!TransicionesBulto.EsValida(estadoDeOrigen, resultado.Estado))
+                throw new InvalidOperationException($"Transición de bulto inválida: {actual.Estado} -> {resultado.Estado}.");
             if (resultado.Estado == EstadoBulto.NoEntregado &&
                 !catalogoMotivos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase))
                 throw new InvalidOperationException($"Selecciona un motivo valido para el bulto {actual.Codigo}.");
-            if (resultado.Estado is not (EstadoBulto.Entregado or EstadoBulto.NoEntregado))
-                throw new InvalidOperationException("El resultado del bulto no es valido para una parada de entrega.");
             if (resultado.Estado == EstadoBulto.Entregado && ruta.ExigeFirma && string.IsNullOrWhiteSpace(resultado.Firma))
                 throw new InvalidOperationException($"La regla del operador exige firma para el bulto {actual.Codigo}.");
             if (resultado.Estado == EstadoBulto.Entregado && ruta.ExigeFoto && string.IsNullOrWhiteSpace(resultado.Foto))
@@ -151,15 +158,32 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         var estadosFinales = bultos.Select(bulto => resultados.TryGetValue(bulto.Id, out var resultado)
             ? resultado.Estado
             : bulto.Estado).ToArray();
+        if (ruta.PoliticaBultosPendientes is PoliticaBultosPendientes.NuevaVisitaSinRecargo
+            or PoliticaBultosPendientes.NuevaVisitaConRecargo)
+        {
+            for (var index = 0; index < bultos.Count; index++)
+            {
+                if (estadosFinales[index] == EstadoBulto.NoEntregado)
+                    estadosFinales[index] = EstadoBulto.PendienteNuevaVisita;
+            }
+        }
+        else if (ruta.PoliticaBultosPendientes == PoliticaBultosPendientes.DevolucionAlComercio)
+        {
+            for (var index = 0; index < bultos.Count; index++)
+            {
+                if (estadosFinales[index] == EstadoBulto.NoEntregado)
+                    estadosFinales[index] = EstadoBulto.Devuelto;
+            }
+        }
+
         var entregados = estadosFinales.Count(estado => estado == EstadoBulto.Entregado);
         var noEntregados = estadosFinales.Count(estado => estado is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita);
         if (entregados > 0 && noEntregados > 0 && !ruta.AdmiteEntregaParcial)
             throw new InvalidOperationException("Las reglas vigentes del operador no admiten entrega parcial.");
 
-        var estadoDerivado = entregados == estadosFinales.Length
-            ? EstadoEnvio.Entregado
-            : entregados > 0 ? EstadoEnvio.EntregadoParcialmente : EstadoEnvio.NoEntregado;
-        if (evento.Estado != estadoDerivado)
+        var estadoDerivado = DerivacionEstadoEnvio.DesdeBultos(estadosFinales);
+        var estadoEvento = Enum.Parse<EstadoEnvio>(estadoDerivado.ToString());
+        if (evento.Estado != estadoEvento)
             throw new InvalidOperationException("El estado del envio no coincide con los resultados de sus bultos.");
 
         return bultos.Select(bulto => resultados.TryGetValue(bulto.Id, out var resultado)
