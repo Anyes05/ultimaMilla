@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "eventId": "55555555-5555-5555-5555-555555555555",
+  "tipo": "RetiroSolicitado",
+  "fecha": "2026-11-10T09:00:00-03:00",
+  "retiro": {
+    "id": "66666666-6666-6666-6666-666666666666",
+    "comercioId": "22222222-2222-2222-2222-222222222222",
+    "direccion": "Av. Italia 1234",
+    "envioAsociadoId": null
+  }
+}

@@ -3,7 +3,11 @@ using Plataforma.Domain;
 
 namespace Plataforma.Application;
 
-public sealed record EventoSeguimiento(EstadoEnvio Estado, DateTime Fecha);
+public sealed record EventoSeguimiento(
+    EstadoEnvio Estado,
+    DateTime Fecha,
+    string Motivo = "",
+    string Responsable = "");
 
 /// <summary>Lo que ve el destinatario (letra 4, RF 25, 26 y 35): sin datos personales ni identificadores internos.</summary>
 public sealed record DetalleSeguimiento(
@@ -119,7 +123,11 @@ public sealed class ObtenerDetalleSeguimiento
             bultos.Count,
             fechaPrevista,
             estimadaAntesDe,
-            historial.Select(evento => new EventoSeguimiento(evento.Estado, evento.Fecha)).ToList(),
+            historial.Select(evento => new EventoSeguimiento(
+                evento.Estado,
+                evento.Fecha,
+                evento.Motivo,
+                evento.Responsable)).ToList(),
             regla?.PermiteReprogramar(envio.Estado, envio.IntentosRealizados, UltimoIntento(historial), ahora) == true);
     }
 

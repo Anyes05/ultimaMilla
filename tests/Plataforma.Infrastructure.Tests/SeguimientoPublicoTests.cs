@@ -63,6 +63,31 @@ public sealed class SeguimientoPublicoTests
     }
 
     [Fact]
+    public async Task Historial_ExponeMotivoYResponsable()
+    {
+        var envio = NoEntregado(intentos: 1, maximo: 3);
+        await Sembrar(envio, maximoIntentos: 3, plazoHoras: 24);
+
+        await using (var contexto = Contexto())
+        {
+            contexto.HistorialEstados.Add(HistorialEstado.Registrar(
+                Guid.NewGuid(),
+                envio.OperadorId,
+                envio.Id,
+                EstadoEnvio.NoEntregado,
+                DateTime.UtcNow.AddHours(-1),
+                "Nadie en domicilio",
+                "repartidor.norte"));
+            await contexto.SaveChangesAsync();
+        }
+
+        var detalle = await Consultar(envio);
+        var evento = Assert.Single(detalle!.Historial);
+        Assert.Equal("Nadie en domicilio", evento.Motivo);
+        Assert.Equal("repartidor.norte", evento.Responsable);
+    }
+
+    [Fact]
     public async Task NoEntregadoDentroDelPlazo_ElDestinatarioPideOtraVisita()
     {
         var envio = NoEntregado(intentos: 1, maximo: 3);

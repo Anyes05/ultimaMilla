@@ -50,6 +50,32 @@ public static class RetirosApi
             return Results.Json(lista, ObtenerRutasDeHoy.OpcionesJson);
         }).RequireAuthorization();
 
+        app.MapPost("/api/retiros/{retiroId:guid}/cancelar", async (
+            Guid retiroId,
+            ClaimsPrincipal principal,
+            CancelarRetiroPortalSolicitud? solicitud,
+            GestionRetiros retiros,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol != Roles.Comercio || acceso.ComercioId is not Guid comercioId)
+                return Results.Unauthorized();
+
+            var lista = await retiros.ListarAsync(acceso.OperadorId, comercioId, ct);
+            if (lista.All(r => r.Id != retiroId))
+                return Results.NotFound();
+
+            try
+            {
+                await retiros.CancelarAsync(acceso.OperadorId, retiroId, solicitud?.Motivo ?? "", ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
         return app;
     }
 }
@@ -59,3 +85,5 @@ public sealed record RetiroPortalSolicitud(
     DateOnly Fecha,
     string? Contacto = null,
     string? Observaciones = null);
+
+public sealed record CancelarRetiroPortalSolicitud(string? Motivo = null);

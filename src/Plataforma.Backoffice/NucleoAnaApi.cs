@@ -154,6 +154,59 @@ public static class NucleoAnaApi
             }
         }).RequireAuthorization();
 
+        app.MapPost("/api/retiros/{retiroId:guid}/completar", async (
+            Guid retiroId,
+            ClaimsPrincipal principal,
+            CompletarRetiroSolicitud? solicitud,
+            GestionRetiros retiros,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.Despachador or Roles.Administrador or Roles.OperarioDeposito))
+                return Results.Unauthorized();
+
+            try
+            {
+                await retiros.CompletarAsync(acceso.OperadorId, retiroId, solicitud?.EnvioAsociadoId, ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPost("/api/retiros/{retiroId:guid}/cancelar", async (
+            Guid retiroId,
+            ClaimsPrincipal principal,
+            CancelarRetiroSolicitud? solicitud,
+            GestionRetiros retiros,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso))
+                return Results.Unauthorized();
+
+            if (acceso.Rol is not (Roles.Administrador or Roles.Despachador or Roles.Comercio))
+                return Results.Unauthorized();
+
+            try
+            {
+                if (acceso.Rol == Roles.Comercio)
+                {
+                    var lista = await retiros.ListarAsync(acceso.OperadorId, acceso.ComercioId, ct);
+                    if (lista.All(r => r.Id != retiroId))
+                        return Results.Unauthorized();
+                }
+
+                await retiros.CancelarAsync(acceso.OperadorId, retiroId, solicitud?.Motivo ?? "", ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
         app.MapGet("/api/cobertura/zonas", async (
             ClaimsPrincipal principal, GestionCobertura cobertura, CancellationToken ct) =>
         {
@@ -320,6 +373,8 @@ public sealed record CambioBanderaSolicitud(Guid OperadorId, string Clave, bool 
 public sealed record RecepcionSolicitudApi(Guid EnvioId, int BultosRecibidos, string? Observaciones = null);
 public sealed record RetiroSolicitudApi(string Direccion, DateOnly Fecha, string? Contacto = null, string? Observaciones = null);
 public sealed record ProgramarRetiroSolicitud(Guid RutaId);
+public sealed record CompletarRetiroSolicitud(Guid? EnvioAsociadoId = null);
+public sealed record CancelarRetiroSolicitud(string? Motivo = null);
 public sealed record ZonaSolicitud(string Nombre, string? Poligono = null);
 public sealed record FranjaSolicitud(string Nombre, TimeOnly Desde, TimeOnly Hasta, Guid? ZonaId = null);
 public sealed record VehiculoSolicitud(

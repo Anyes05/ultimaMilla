@@ -55,5 +55,7 @@ Headers / metadatos de cola sugeridos (fuera del cuerpo JSON):
 
 ## Alcance fuera de v1
 
+Parcial, bulto y retiro (avisos HTTP): ver [../v2/README.md](../v2/README.md).
+
 Publicación real a RabbitMQ, reintentos/DLQ, SignalR y webhooks: iteraciones
 siguientes del worker.

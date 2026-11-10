@@ -112,4 +112,16 @@ public sealed class GestionRetiros
         await _retiros.GuardarAsync(cancellationToken);
         await _publicar.EjecutarUnoAsync(evento.EventId, cancellationToken);
     }
+
+    public async Task CancelarAsync(
+        Guid operadorId,
+        Guid retiroId,
+        string motivo = "",
+        CancellationToken cancellationToken = default)
+    {
+        var retiro = await _retiros.ObtenerAsync(operadorId, retiroId, cancellationToken)
+            ?? throw new InvalidOperationException("El retiro no existe.");
+        retiro.Cancelar(motivo);
+        await _retiros.GuardarAsync(cancellationToken);
+    }
 }

@@ -104,4 +104,49 @@ public class ContratoAvisosTests
         Assert.Equal(ContratoAvisos.V2, entrega.VersionContrato);
         Assert.Equal(ContratoAvisos.V1, suscripcion.VersionContrato);
     }
+
+    [Fact]
+    public void ArmarBulto_TieneTipoYObjetoBulto()
+    {
+        var eventId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        var envioId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var bultoId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        var fecha = new DateTimeOffset(2026, 11, 10, 12, 5, 0, TimeSpan.FromHours(-3));
+
+        using var json = JsonDocument.Parse(
+            ContratoAvisos.ArmarBulto(eventId, fecha, envioId, "ENV-E57E0001", bultoId, "EnRuta", "Entregado"));
+
+        Assert.Equal(2, json.RootElement.GetProperty("version").GetInt32());
+        Assert.Equal("BultoEstadoCambiado", json.RootElement.GetProperty("tipo").GetString());
+        Assert.Equal(bultoId.ToString(), json.RootElement.GetProperty("bulto").GetProperty("id").GetString());
+        Assert.True(Suscripcion(ContratoAvisos.V2).Acepta("BultoEstadoCambiado"));
+        Assert.False(Suscripcion(ContratoAvisos.V1).Acepta("BultoEstadoCambiado"));
+    }
+
+    [Fact]
+    public void ArmarRetiro_SolicitadoYCompletado_SoloV2()
+    {
+        var eventId = Guid.Parse("55555555-5555-5555-5555-555555555555");
+        var retiroId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+        var comercioId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var fecha = new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.FromHours(-3));
+
+        using var solicitado = JsonDocument.Parse(
+            ContratoAvisos.ArmarRetiro("RetiroSolicitado", eventId, fecha, retiroId, comercioId, "Av. Italia 1234"));
+        using var completado = JsonDocument.Parse(
+            ContratoAvisos.ArmarRetiro(
+                "RetiroCompletado",
+                eventId,
+                fecha,
+                retiroId,
+                comercioId,
+                envioAsociadoId: Guid.Parse("22222222-2222-2222-2222-222222222222")));
+
+        Assert.Equal("RetiroSolicitado", solicitado.RootElement.GetProperty("tipo").GetString());
+        Assert.Equal("Av. Italia 1234", solicitado.RootElement.GetProperty("retiro").GetProperty("direccion").GetString());
+        Assert.Equal("RetiroCompletado", completado.RootElement.GetProperty("tipo").GetString());
+        Assert.True(Suscripcion(ContratoAvisos.V2).Acepta("RetiroSolicitado"));
+        Assert.True(Suscripcion(ContratoAvisos.V2).Acepta("RetiroCompletado"));
+        Assert.False(Suscripcion(ContratoAvisos.V1).Acepta("RetiroSolicitado"));
+    }
 }

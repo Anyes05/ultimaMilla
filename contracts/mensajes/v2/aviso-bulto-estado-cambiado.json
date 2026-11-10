@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "eventId": "33333333-3333-3333-3333-333333333333",
+  "tipo": "BultoEstadoCambiado",
+  "fecha": "2026-11-10T12:05:00-03:00",
+  "envio": {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "numeroSeguimiento": "ENV-E57E0001",
+    "estadoAnterior": "EnRuta",
+    "estadoNuevo": "Entregado"
+  },
+  "bulto": {
+    "id": "44444444-4444-4444-4444-444444444444",
+    "estadoAnterior": "EnRuta",
+    "estadoNuevo": "Entregado"
+  }
+}

@@ -29,6 +29,9 @@ Ejemplo: [sincronizacion.request.json](sincronizacion.request.json).
 5. **Conflicto entre bultos del mismo evento** (dos resultados para el mismo `bultoId`) → `400` de lote inválido.
 6. Tras parcial, bultos en `PendienteNuevaVisita` quedan **disponibles para una nueva ruta** (RF 34); el envío puede quedar `EntregadoParcialmente` o `Reprogramado` según la derivación.
 
-## Fuera de este borrador
+## Relacionado (cerrado aparte)
 
-Retiro en domicilio (RF 37–41), escaneo de carga multi-bulto y PoD obligatorio por regla se integran cuando cierre v2.
+- **PoD por regla** (`ExigeFirma` / `ExigeFoto`): el servidor lo valida en `SincronizarEntregas`.
+- **Avisos v2** (parcial, bulto, retiro): `contracts/mensajes/v2/`.
+- **Retiro en domicilio** (RF 37–41): API Portal/Backoffice `/api/retiros`; no forma parte del sync del repartidor v2.
+- Escaneo de carga multi-bulto: pendiente de acuerdo con Álvaro.

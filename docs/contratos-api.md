@@ -74,6 +74,11 @@ Cuando el endpoint devuelve cuerpo de error, usa:
 | 8 | `POST /api/repartidor/dispositivos` | `repartidor` | Registrar token FCM del dispositivo |
 | 9 | `DELETE /api/repartidor/dispositivos/{token}` | `repartidor` | Quitar token del dispositivo |
 | 10 | `POST /api/envios/{envioId}/estado` | `despachador`, `administrador`, `operario_deposito` | Cambiar estado (genera outbox + `eventId`) |
+| 11 | `POST /api/retiros` | `comercio` | Solicitar retiro en domicilio (RF 37–41; bandera `retiro-domicilio`) |
+| 12 | `GET /api/retiros` | `comercio`, ops | Listar retiros (comercio: solo los propios) |
+| 13 | `POST /api/retiros/{id}/programar` | `despachador`, `administrador` | Asignar retiro a una ruta |
+| 14 | `POST /api/retiros/{id}/completar` | ops depósito/despacho | Marcar retiro completado (+ outbox `RetiroCompletado`) |
+| 15 | `POST /api/retiros/{id}/cancelar` | `comercio`, ops | Cancelar retiro |
 
 ---
 
@@ -351,9 +356,27 @@ Seguimiento visible de un envío por su **token público** (no por número de se
 
 **Caché:** la lectura se sirve desde Redis/memoria si está; al cambiar el estado (backoffice, despacho o sync) el backend republica el seguimiento al instante.
 
+El **detalle** del Portal (`ObtenerDetalleSeguimiento`) además expone `bultosEntregados` / `bultosTotal` (N de M), marca del operador y el historial con `motivo` y `responsable` por evento.
+
 ---
 
-### 5.2 `GET /tecnico/cache`
+### 5.2 Retiros en domicilio (`/api/retiros`)
+
+Requiere bandera `retiro-domicilio` activa en el operador. El comercio solicita y cancela en el **Portal**; despacho programa y completa en el **Backoffice**.
+
+| Método | Ruta | Body | Notas |
+|---|---|---|---|
+| `POST` | `/api/retiros` | `{ direccion, fecha, contacto?, observaciones? }` | Emite outbox `RetiroSolicitado` |
+| `GET` | `/api/retiros` | — | Lista del operador (filtrada por comercio si aplica) |
+| `POST` | `/api/retiros/{id}/programar` | `{ rutaId }` | Estado → `Programado` |
+| `POST` | `/api/retiros/{id}/completar` | `{ envioAsociadoId? }` | Estado → `Completado` + `RetiroCompletado` |
+| `POST` | `/api/retiros/{id}/cancelar` | `{ motivo? }` | Estado → `Cancelado` |
+
+Contrato de avisos HTTP: `contracts/mensajes/v2/aviso-retiro-*.json`.
+
+---
+
+### 5.3 `GET /tecnico/cache`
 
 Métrica del caché de lectura. Requiere sesión de `administrador` (sin sesión responde `401`; con otro perfil, `403`).
 
@@ -524,9 +547,9 @@ Diferencias con v1:
 - **`version`** viaja en el cuerpo, además de en el encabezado.
 - **Datos del envío agrupados en `envio`**: así los eventos de bulto o de retiro pueden sumar su propio objeto sin romper el formato.
 - **`numeroSeguimiento`**: es el número que el comercio le muestra a su cliente. Puede llegar `null` si todavía no está asignado.
-- **Tipos de evento**: todos los de v1, más `EntregadoParcialmente` (envíos de varios bultos, RF del cambio).
+- **Tipos de evento**: todos los de v1, más `EntregadoParcialmente`, `BultoEstadoCambiado`, `RetiroSolicitado` y `RetiroCompletado`.
 
-**v2 también incluye** `BultoEstadoCambiado`, `RetiroSolicitado` y `RetiroCompletado`. Los comercios v2 deben ignorar los `tipo` que no conocen.
+Ejemplos cerrados: `contracts/mensajes/v2/`. Los comercios v2 deben ignorar los `tipo` que no conocen.
 
 ### 10.5 Cómo elige la versión el comercio
 
