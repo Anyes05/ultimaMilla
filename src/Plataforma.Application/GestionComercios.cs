@@ -7,6 +7,12 @@ public interface IComercioRepositorio
     Task AgregarAsync(Comercio comercio, CancellationToken cancellationToken = default);
     Task<Comercio?> ObtenerAsync(Guid operadorId, Guid comercioId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Comercio>> ListarAsync(Guid operadorId, CancellationToken cancellationToken = default);
+    Task<bool> ExisteDocumentoAsync(
+        Guid operadorId,
+        string documentoFiscal,
+        Guid? excluirComercioId,
+        CancellationToken cancellationToken = default);
+    Task<bool> EstaActivoAsync(Guid comercioId, CancellationToken cancellationToken = default);
     Task GuardarAsync(CancellationToken cancellationToken = default);
 }
 
@@ -24,6 +30,8 @@ public sealed class GestionComercios
         string direccionPrincipal,
         CancellationToken cancellationToken = default)
     {
+        await ValidarDocumentoAsync(operadorId, documentoFiscal, null, cancellationToken);
+
         var comercio = Comercio.Registrar(
             Guid.NewGuid(),
             operadorId,
@@ -47,6 +55,7 @@ public sealed class GestionComercios
     {
         var comercio = await _comercios.ObtenerAsync(operadorId, comercioId, cancellationToken)
             ?? throw new InvalidOperationException("El comercio no existe para ese operador.");
+        await ValidarDocumentoAsync(operadorId, documentoFiscal, comercioId, cancellationToken);
         comercio.Actualizar(nombreComercial, razonSocial, documentoFiscal, direccionPrincipal);
         await _comercios.GuardarAsync(cancellationToken);
     }
@@ -68,4 +77,12 @@ public sealed class GestionComercios
 
     public Task<IReadOnlyList<Comercio>> ListarAsync(Guid operadorId, CancellationToken cancellationToken = default) =>
         _comercios.ListarAsync(operadorId, cancellationToken);
+
+    private async Task ValidarDocumentoAsync(Guid operadorId, string documentoFiscal, Guid? excluir, CancellationToken cancellationToken)
+    {
+        // La API admite comercios sin documento: solo se controla si viene.
+        if (!string.IsNullOrWhiteSpace(documentoFiscal) &&
+            await _comercios.ExisteDocumentoAsync(operadorId, documentoFiscal.Trim(), excluir, cancellationToken))
+            throw new InvalidOperationException("Ya hay un comercio con ese documento fiscal.");
+    }
 }

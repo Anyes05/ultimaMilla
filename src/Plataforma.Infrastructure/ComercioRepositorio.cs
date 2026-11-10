@@ -23,6 +23,18 @@ public sealed class ComercioRepositorio : IComercioRepositorio
             .OrderBy(c => c.NombreComercial)
             .ToListAsync(cancellationToken);
 
+    public Task<bool> ExisteDocumentoAsync(
+        Guid operadorId,
+        string documentoFiscal,
+        Guid? excluirComercioId,
+        CancellationToken cancellationToken = default) =>
+        _context.Comercios.AnyAsync(
+            c => c.OperadorId == operadorId && c.DocumentoFiscal == documentoFiscal && c.Id != excluirComercioId,
+            cancellationToken);
+
+    public Task<bool> EstaActivoAsync(Guid comercioId, CancellationToken cancellationToken = default) =>
+        _context.Comercios.AnyAsync(c => c.Id == comercioId && c.Activo, cancellationToken);
+
     public Task GuardarAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 }

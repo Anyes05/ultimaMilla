@@ -154,7 +154,8 @@ public class AislamientoOperadorTests
         await using var contextoLogin = CrearContexto(db, operadorId: null);
         var iniciarSesion = new IniciarSesion(
             new UsuarioRepositorio(contextoLogin),
-            new AutenticacionIdentityPrueba());
+            new AutenticacionIdentityPrueba(),
+            new ComercioRepositorio(contextoLogin));
         var resultado = await iniciarSesion.Ejecutar(
             DatosSemilla.UsuarioDespachadorNorte,
             DatosSemilla.ClaveDesarrollo);

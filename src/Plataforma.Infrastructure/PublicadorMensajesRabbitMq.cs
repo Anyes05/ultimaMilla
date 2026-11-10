@@ -24,6 +24,10 @@ public sealed class PublicadorMensajesRabbitMq : IPublicadorMensajes, IAsyncDisp
     private readonly SemaphoreSlim _lock = new(1, 1);
     private IConnection? _conexion;
     private IChannel? _canal;
+    private DateTime _pausadoHastaUtc;
+
+    /// <summary>Tiempo sin intentar conectar después de un error, para no sumar la espera de conexión a cada pedido.</summary>
+    private static readonly TimeSpan Pausa = TimeSpan.FromSeconds(15);
 
     public PublicadorMensajesRabbitMq(
         IOptions<OpcionesRabbitMq> opciones,
@@ -49,6 +53,9 @@ public sealed class PublicadorMensajesRabbitMq : IPublicadorMensajes, IAsyncDisp
         await _lock.WaitAsync(cancellationToken);
         try
         {
+            if (DateTime.UtcNow < _pausadoHastaUtc)
+                throw new InvalidOperationException("RabbitMQ no está disponible por ahora.");
+
             var canal = await ObtenerCanalAsync(cancellationToken);
             var routingKey = $"{tipo.ToLowerInvariant()}.v{version}";
             var cuerpo = Encoding.UTF8.GetBytes(payloadJson);
@@ -82,6 +89,12 @@ public sealed class PublicadorMensajesRabbitMq : IPublicadorMensajes, IAsyncDisp
             _logger.LogInformation(
                 "Publicado {Tipo} v{Version} EventId={EventId} routingKey={RoutingKey} TraceParent={TraceParent}",
                 tipo, version, eventId, routingKey, traceParent);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && DateTime.UtcNow >= _pausadoHastaUtc)
+        {
+            _pausadoHastaUtc = DateTime.UtcNow.Add(Pausa);
+            _logger.LogWarning(ex, "No se pudo publicar en RabbitMQ: queda en el outbox y no se reintenta por {Segundos} s.", Pausa.TotalSeconds);
+            throw;
         }
         finally
         {

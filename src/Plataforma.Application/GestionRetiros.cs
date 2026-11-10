@@ -21,13 +21,16 @@ public sealed class GestionRetiros
     private readonly IBanderasOperador _banderas;
     private readonly IOutboxRepositorio _outbox;
     private readonly PublicarOutboxPendientes _publicar;
+    private readonly IComercioRepositorio _comercios;
 
     public GestionRetiros(
         IRetiroRepositorio retiros,
         IBanderasOperador banderas,
         IOutboxRepositorio outbox,
-        PublicarOutboxPendientes publicar)
+        PublicarOutboxPendientes publicar,
+        IComercioRepositorio comercios)
     {
+        _comercios = comercios;
         _retiros = retiros;
         _banderas = banderas;
         _outbox = outbox;
@@ -45,6 +48,9 @@ public sealed class GestionRetiros
     {
         if (!await _banderas.EstaActivaAsync(operadorId, CatalogoBanderas.RetiroDomicilio, cancellationToken))
             throw new InvalidOperationException("El retiro en domicilio no está habilitado para este operador.");
+
+        if (!await _comercios.EstaActivoAsync(comercioId, cancellationToken))
+            throw new InvalidOperationException("El comercio está dado de baja y no puede pedir retiros.");
 
         var retiro = SolicitudRetiro.Solicitar(
             Guid.NewGuid(), operadorId, comercioId, direccion, contacto, fecha, observaciones);

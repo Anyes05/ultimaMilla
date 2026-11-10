@@ -126,6 +126,32 @@ public class OutboxEstadoTests
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => segunda.SaveChangesAsync());
     }
 
+    [Fact]
+    public async Task ConLaColaCaida_ElCambioSeGuardaYElEventoQuedaPendiente()
+    {
+        var db = $"cola-caida-{Guid.NewGuid():N}";
+        var envio = Envio.Admitir(DatosSemilla.OperadorNorteId, DatosSemilla.ComercioNorteId, "Ana", "Calle 1");
+        await using (var seed = CrearContexto(db, operadorId: null))
+        {
+            seed.Envios.Add(envio);
+            await seed.SaveChangesAsync();
+        }
+
+        await using var contexto = CrearContexto(db, DatosSemilla.OperadorNorteId);
+        var outbox = new OutboxRepositorio(contexto);
+        var casoUso = new CambiarEstadoEnvio(
+            new EnvioRepositorio(contexto),
+            new RutaRepositorio(contexto),
+            new RegistrarOutboxEstado(outbox, new HistorialEstadoRepositorio(contexto)),
+            new PublicarOutboxPendientes(outbox, new PublicadorMensajesPrueba { Disponible = true, Falla = true }),
+            new CacheLecturaMemoria());
+
+        var resultado = await casoUso.EjecutarAsync(envio.Id, DatosSemilla.OperadorNorteId, EstadoEnvio.EnDeposito);
+
+        Assert.Equal(EstadoEnvio.EnDeposito, resultado.EstadoNuevo);
+        Assert.Null(Assert.Single(await contexto.MensajesOutbox.ToListAsync()).PublicadoEn);
+    }
+
     private static PlataformaDbContext CrearContexto(string nombreDb, Guid? operadorId)
     {
         var operador = new OperadorActualFijo(operadorId);

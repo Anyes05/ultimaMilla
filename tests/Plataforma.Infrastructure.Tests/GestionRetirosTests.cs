@@ -41,6 +41,24 @@ public class GestionRetirosTests
     }
 
     [Fact]
+    public async Task Solicitar_ComercioDadoDeBaja_Rechaza()
+    {
+        await using var contexto = CrearContexto();
+        (await contexto.Comercios.SingleAsync()).Desactivar();
+        await contexto.SaveChangesAsync();
+        var gestion = CrearGestion(contexto, banderaActiva: true);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            gestion.SolicitarAsync(
+                DatosSemilla.OperadorNorteId,
+                DatosSemilla.ComercioNorteId,
+                "Calle 1",
+                "099",
+                new DateOnly(2026, 11, 12)));
+        Assert.Equal(0, await contexto.SolicitudesRetiro.CountAsync());
+    }
+
+    [Fact]
     public async Task CompletarYCancelar_CambianEstado()
     {
         await using var contexto = CrearContexto();
@@ -74,14 +92,19 @@ public class GestionRetirosTests
             new OutboxRepositorio(contexto),
             new PublicarOutboxPendientes(
                 new OutboxRepositorio(contexto),
-                new PublicadorMensajesPrueba { Disponible = false }));
+                new PublicadorMensajesPrueba { Disponible = false }),
+            new ComercioRepositorio(contexto));
 
     private static PlataformaDbContext CrearContexto()
     {
         var options = new DbContextOptionsBuilder<PlataformaDbContext>()
             .UseInMemoryDatabase($"retiros-{Guid.NewGuid():N}")
             .Options;
-        return new PlataformaDbContext(options);
+        var contexto = new PlataformaDbContext(options);
+        contexto.Comercios.Add(Comercio.Registrar(
+            DatosSemilla.ComercioNorteId, DatosSemilla.OperadorNorteId, "Comercio Norte", "Comercio Norte SA", "210000000011", "Calle 1"));
+        contexto.SaveChanges();
+        return contexto;
     }
 
     private sealed class BanderaFija(bool activa) : IBanderasOperador

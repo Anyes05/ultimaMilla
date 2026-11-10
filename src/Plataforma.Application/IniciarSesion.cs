@@ -6,11 +6,13 @@ public sealed class IniciarSesion
 {
     private readonly IUsuarioRepositorio _usuarios;
     private readonly IAutenticacionIdentity _identity;
+    private readonly IComercioRepositorio _comercios;
 
-    public IniciarSesion(IUsuarioRepositorio usuarios, IAutenticacionIdentity identity)
+    public IniciarSesion(IUsuarioRepositorio usuarios, IAutenticacionIdentity identity, IComercioRepositorio comercios)
     {
         _usuarios = usuarios;
         _identity = identity;
+        _comercios = comercios;
     }
 
     public async Task<ResultadoInicio> Ejecutar(string usuario, string clave, RolUsuario rolEsperado, CancellationToken cancellationToken = default)
@@ -35,6 +37,10 @@ public sealed class IniciarSesion
 
         var encontrado = await _usuarios.BuscarPorNombreAsync(usuario, cancellationToken);
         if (encontrado is null || !encontrado.Activo)
+            return new ResultadoInicio.CredencialesInvalidas();
+
+        // Un comercio dado de baja no opera (RF 1): sus usuarios no pueden entrar.
+        if (encontrado.ComercioId is Guid comercioId && !await _comercios.EstaActivoAsync(comercioId, cancellationToken))
             return new ResultadoInicio.CredencialesInvalidas();
 
         var ok = await _identity.VerificarAsync(

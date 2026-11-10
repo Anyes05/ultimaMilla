@@ -11,13 +11,20 @@ public sealed class AdmitirEnvio
     private readonly IBultoRepositorio _bultos;
     private readonly CalcularTarifa _tarifa;
     private readonly IOutboxRepositorio _outbox;
+    private readonly IComercioRepositorio _comercios;
 
-    public AdmitirEnvio(IEnvioRepositorio envios, IBultoRepositorio bultos, CalcularTarifa tarifa, IOutboxRepositorio outbox)
+    public AdmitirEnvio(
+        IEnvioRepositorio envios,
+        IBultoRepositorio bultos,
+        CalcularTarifa tarifa,
+        IOutboxRepositorio outbox,
+        IComercioRepositorio comercios)
     {
         _envios = envios;
         _bultos = bultos;
         _tarifa = tarifa;
         _outbox = outbox;
+        _comercios = comercios;
     }
 
     public async Task<Envio> EjecutarAsync(
@@ -41,6 +48,10 @@ public sealed class AdmitirEnvio
 
         if (cantidadBultos < 1)
             throw new ArgumentOutOfRangeException(nameof(cantidadBultos), "El envío debe tener al menos un bulto.");
+
+        // También con una sesión abierta antes de la baja.
+        if (!await _comercios.EstaActivoAsync(comercioId, cancellationToken))
+            throw new InvalidOperationException("El comercio está dado de baja y no puede crear envíos.");
 
         var tarifa = await _tarifa.EjecutarConReferenciaAsync(
             operadorId, pesoKg, distanciaKm, fragil, urgente, cancellationToken);
