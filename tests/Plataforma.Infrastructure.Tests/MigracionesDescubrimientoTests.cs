@@ -13,7 +13,7 @@ namespace Plataforma.Infrastructure.Tests;
 public class MigracionesDescubrimientoTests
 {
     [Fact]
-    public void GetMigrations_IncluyeLasOnceMigracionesConAtributos()
+    public void GetMigrations_IncluyeLasTreceMigracionesConAtributos()
     {
         // Proveedor relacional requerido por GetMigrations; no abre conexión real.
         var options = new DbContextOptionsBuilder<PlataformaDbContext>()
@@ -23,7 +23,7 @@ public class MigracionesDescubrimientoTests
         using var contexto = new PlataformaDbContext(options);
         var ids = contexto.Database.GetMigrations().ToArray();
 
-        Assert.Equal(11, ids.Length);
+        Assert.Equal(13, ids.Length);
         Assert.Contains("20261013023329_InitialCreate", ids);
         Assert.Contains("20261023010000_SeguimientoUnicoComprobanteYZona", ids);
         Assert.Contains("20261023020000_OutboxEnvioEstadoCambiado", ids);
@@ -35,6 +35,8 @@ public class MigracionesDescubrimientoTests
         Assert.Contains("20261110024141_IdentityAspNetUsers", ids);
         Assert.Contains("20261110031255_NucleoAnaBanderasRetirosCobertura", ids);
         Assert.Contains("20261110042336_NadiaRepartidoresZonaTarifaImport", ids);
+        Assert.Contains("20261110160000_MotivosNoEntregaRegla", ids);
+        Assert.Contains("20261110161000_PruebaEntregaPorBulto", ids);
     }
 
     [Fact]
@@ -52,7 +54,9 @@ public class MigracionesDescubrimientoTests
             "20261102120000_BultosParcialTarifaYOutboxTrace",
             "20261110024141_IdentityAspNetUsers",
             "20261110031255_NucleoAnaBanderasRetirosCobertura",
-            "20261110042336_NadiaRepartidoresZonaTarifaImport"
+            "20261110042336_NadiaRepartidoresZonaTarifaImport",
+            "20261110160000_MotivosNoEntregaRegla",
+            "20261110161000_PruebaEntregaPorBulto"
         };
 
         foreach (var id in esperadas)
