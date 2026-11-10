@@ -126,6 +126,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         {
             entidad.Property(regla => regla.AdmiteEntregaParcial).HasDefaultValue(false);
             entidad.Property(regla => regla.MotivosNoEntrega)
+                .IsRequired()
                 .HasColumnType("text[]")
                 .HasDefaultValueSql("ARRAY['Ausente','Destinatario ausente','Rechazo del destinatario','Domicilio no encontrado','Bulto danado']::text[]");
             entidad.Property(regla => regla.PoliticaBultosPendientes)

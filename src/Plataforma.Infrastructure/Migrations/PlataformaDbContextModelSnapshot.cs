@@ -997,6 +997,7 @@ namespace Plataforma.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string[]>("MotivosNoEntrega")
+                        .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("text[]")
                         .HasDefaultValueSql("ARRAY['Ausente','Destinatario ausente','Rechazo del destinatario','Domicilio no encontrado','Bulto danado']::text[]");
