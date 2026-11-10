@@ -14,10 +14,11 @@ public sealed record MensajeCorreo(string Asunto, string Texto, string Html);
 /// <summary>Correo al destinatario (RF 27), con la marca del operador (RF 5) y el enlace público de seguimiento.</summary>
 public static class PlantillaNotificacion
 {
-    // Estados que le importan a quien espera el paquete. AsignadoARuta es interno y Admitido no es un cambio de estado.
+    // Estados que le importan a quien espera el paquete. AsignadoARuta es interno.
     private static readonly IReadOnlyDictionary<string, (string Asunto, string Detalle)> Textos =
         new Dictionary<string, (string, string)>(StringComparer.OrdinalIgnoreCase)
         {
+            ["Admitido"] = ("Registramos tu envío", "Ya podés seguir tu envío con este número o desde el botón de abajo."),
             ["EnDeposito"] = ("Recibimos tu envío", "Tu envío está en nuestro depósito, preparándose para salir."),
             ["EnTransito"] = ("Tu envío está en camino", "Tu envío salió a reparto."),
             ["Entregado"] = ("Tu envío fue entregado", "Tu envío fue entregado."),

@@ -12,6 +12,7 @@ public class NotificacionDestinatarioTests
     private static readonly DateTime Ahora = new(2026, 11, 9, 12, 0, 0, DateTimeKind.Utc);
 
     [Theory]
+    [InlineData("Admitido", true)]
     [InlineData("EnDeposito", true)]
     [InlineData("EnTransito", true)]
     [InlineData("Entregado", true)]

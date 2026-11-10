@@ -124,6 +124,7 @@ public static class TiposDeEvento
 
     public static string Nombre(string tipo) => tipo switch
     {
+        "Admitido" => "Registrado",
         "EnDeposito" => "En depósito",
         "AsignadoARuta" => "Asignado a ruta",
         "EnTransito" => "En tránsito",

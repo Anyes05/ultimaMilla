@@ -91,7 +91,10 @@ public sealed class FlujoEntregaPostgresTests : IAsyncLifetime
             Assert.Equal(2, await db.PruebasDeEntrega.CountAsync(p => p.EnvioId == envioId));
             Assert.Equal(2, await db.EventosSincronizacionProcesados.CountAsync());
             // Un mensaje por cambio de estado: depósito, ruta, tránsito y entrega (lo que consume el worker).
-            Assert.Equal(4, await db.MensajesOutbox.CountAsync(m => m.EnvioId == envioId));
+            Assert.Equal(4, await db.MensajesOutbox.CountAsync(m => m.EnvioId == envioId && m.Tipo == MensajeOutbox.TipoEnvioEstadoCambiado));
+            // El alta guarda el evento y los bultos en la misma transacción que el envío.
+            Assert.Equal(1, await db.MensajesOutbox.CountAsync(m => m.EnvioId == envioId && m.Tipo == MensajeOutbox.TipoEnvioAdmitido));
+            Assert.Equal(1, await db.Bultos.CountAsync(b => b.EnvioId == envioId));
         }
 
         // 4. El Backoffice ve el comprobante; otro operador no ve el envío.

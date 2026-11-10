@@ -8,6 +8,8 @@ namespace Plataforma.Avisos;
 /// </summary>
 public static class TopologiaNotificaciones
 {
+    public const string RoutingEnvioAdmitido = "envioadmitido.v1";
+
     public const string ColaEventos = "plataforma.notificaciones-destinatario";
     public const string ColaFallidos = "plataforma.notificaciones-destinatario.fallidos";
 
@@ -18,6 +20,7 @@ public static class TopologiaNotificaciones
         await canal.ExchangeDeclareAsync(rabbit.Exchange, ExchangeType.Topic, durable: true, autoDelete: false, cancellationToken: cancellationToken);
         await canal.QueueDeclareAsync(ColaEventos, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
         await canal.QueueBindAsync(ColaEventos, rabbit.Exchange, TopologiaAvisos.RoutingEstadoCambiado, cancellationToken: cancellationToken);
+        await canal.QueueBindAsync(ColaEventos, rabbit.Exchange, RoutingEnvioAdmitido, cancellationToken: cancellationToken);
         await canal.QueueDeclareAsync(ColaFallidos, durable: true, exclusive: false, autoDelete: false, cancellationToken: cancellationToken);
         foreach (var segundos in avisos.Esperas)
             await canal.QueueDeclareAsync(ColaEspera(segundos), durable: true, exclusive: false, autoDelete: false,

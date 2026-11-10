@@ -19,6 +19,7 @@ Sin `RabbitMq:Host` configurado, los mensajes quedan pendientes en outbox.
 | Tipo | Versión | Ejemplo |
 |---|---|---|
 | `EnvioEstadoCambiado` | `1` | [envio-estado-cambiado.json](envio-estado-cambiado.json) |
+| `EnvioAdmitido` | `1` | [envio-admitido.json](envio-admitido.json). Routing key `envioadmitido.v1`. Lo consume la notificación al destinatario (RF 27) |
 
 ## Convenciones
 
