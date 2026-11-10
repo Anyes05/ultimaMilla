@@ -1,0 +1,27 @@
+# Autoescalado del Backoffice (opcional 7.1): recibe la carga de seguimiento, monitoreo y sincronización.
+# El Portal no se escala: su seguimiento tiene límite de tasa por IP y no se puede cargar desde un solo origen.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backoffice
+  labels:
+    app.kubernetes.io/name: backoffice
+    app.kubernetes.io/part-of: tallernet
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backoffice
+  # Mínimo 2 por la continuidad ante la caída de una instancia (6.13); máximo 4 para entrar en los 2 nodos.
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 120

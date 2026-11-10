@@ -156,6 +156,11 @@ jobs:
           kubectl -n tallernet delete job database-migration --ignore-not-found
           sed "s|tallernet/backend:bootstrap|$ECR_REGISTRY/tallernet/backend:$IMAGE_TAG|g" infra/terraform/k8s/base/migration.yaml | kubectl apply -f -
           kubectl -n tallernet wait --for=condition=complete job/database-migration --timeout=5m
+          # Replicas pasó al HPA: se saca del último manifiesto aplicado, si no, aplicar sin ese campo bajaría a 1 réplica.
+          if kubectl -n tallernet apply view-last-applied deployment/backoffice -o json > /tmp/backoffice.json 2>/dev/null; then
+            jq 'del(.spec.replicas)' /tmp/backoffice.json > /tmp/backoffice-sin-replicas.json
+            kubectl apply set-last-applied -f /tmp/backoffice-sin-replicas.json
+          fi
           kubectl kustomize infra/terraform/k8s/base \
             | sed -e "s|tallernet/backend:bootstrap|$ECR_REGISTRY/tallernet/backend:$IMAGE_TAG|g" \
                   -e "s|tallernet/frontend:bootstrap|$ECR_REGISTRY/tallernet/frontend:$IMAGE_TAG|g" \
@@ -184,3 +189,6 @@ jobs:
             kubectl -n tallernet scale deployment/queue-worker --replicas=0
             echo "Worker publicado en ECR, pero mantenido en cero replicas hasta habilitar WORKER_DEPLOY_ENABLED."
           fi
+          # Métricas de CPU que necesita el HPA.
+          kubectl apply -f infra/terraform/k8s/metrics-server/components.yaml
+          kubectl -n kube-system rollout status deployment/metrics-server --timeout=3m

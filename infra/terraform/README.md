@@ -99,6 +99,16 @@ El worker recibe `RabbitMq__Host`, `RabbitMq__Port`, `RabbitMq__Username` y `Rab
 
 Las APIs deben usar el endpoint `redis_endpoint`, obtener la clave `redis-password` desde el Secret `${project_name}-redis-credentials`, y publicar métricas de aciertos, fallos e invalidaciones con OpenTelemetry. Terraform instala la dependencia, pero esas políticas de caché e instrumentos son responsabilidades de la aplicación.
 
+## Autoescalado
+
+`k8s/base/hpa.yaml` escala el Backoffice entre 2 y 4 replicas cuando el CPU promedio supera el 70 % de lo solicitado, y `k8s/metrics-server/` aporta esas metricas. El pipeline y `Deploy-Applications.ps1` aplican los dos. Para ver el comportamiento durante una prueba de carga:
+
+```powershell
+kubectl -n tallernet get hpa backoffice --watch
+```
+
+No hay autoescalado de nodos: las replicas nuevas deben entrar en los nodos existentes.
+
 ## Limites actuales
 
 Esta carpeta incluye Dockerfiles base, `docker-compose.yml`, Redis y manifiestos Kubernetes de referencia. Todavía no contiene los proyectos .NET funcionales, imágenes de aplicación publicadas, el stack de observabilidad completo ni workflows de CI/CD. No se deben declarar como cumplidos hasta agregarlos y verificarlos con sus respectivos proyectos.

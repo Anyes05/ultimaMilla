@@ -138,6 +138,10 @@ $applicationManifest = ((& kubectl kustomize $basePath) -join [Environment]::New
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Invoke-KubectlApply -Manifest $applicationManifest
 
+# Métricas de CPU que necesita el HPA del Backoffice.
+& kubectl apply -f (Join-Path $terraformDirectory "k8s\metrics-server\components.yaml")
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 & kubectl -n $Namespace rollout status deployment/backoffice --timeout=5m
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & kubectl -n $Namespace rollout status deployment/portal --timeout=5m

@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: backoffice
     app.kubernetes.io/part-of: tallernet
 spec:
-  replicas: 2
+  # Sin replicas: las define hpa.yaml (2 a 4). Si estuvieran acá, cada deploy pisaría lo que escaló.
   selector:
     matchLabels:
       app.kubernetes.io/name: backoffice
