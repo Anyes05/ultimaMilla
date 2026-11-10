@@ -145,23 +145,51 @@ public partial class RutaPage : ContentPage
     private async void EscanearCarga(object? sender, EventArgs e)
     {
         if (viewModel.Ocupado || sender is not Button { CommandParameter: Envio envio }) return;
-        if (await Permissions.RequestAsync<Permissions.Camera>() != PermissionStatus.Granted)
+        try
         {
-            viewModel.Mensaje = "Permiso de camara denegado. No se registro carga.";
-            return;
+            var codigo = await EscanearCodigoAsync("Escanear carga", $"Escanea {envio.NumeroSeguimiento}");
+            if (codigo is not null) viewModel.RegistrarCarga(envio, codigo);
         }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudo abrir o completar el escaneo");
+            viewModel.Mensaje = "No pudimos completar el escaneo. Revisa el permiso de camara y vuelve a intentarlo. No se registro la carga.";
+        }
+    }
+
+    private async void EscanearBultoEntrega(object? sender, EventArgs e)
+    {
+        if (viewModel.Ocupado || sender is not Button { CommandParameter: BultoEntregaItem item }) return;
+        try
+        {
+            var codigo = await EscanearCodigoAsync("Entregar bulto", $"Escanea el codigo {item.Bulto.Codigo}");
+            if (codigo is not null) viewModel.RegistrarBultoEntregado(item.Bulto.Id, codigo);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudo escanear el bulto de entrega");
+            viewModel.Mensaje = "No se pudo escanear el bulto. No se marco como entregado.";
+        }
+    }
+
+    private async Task<string?> EscanearCodigoAsync(string titulo, string instruccion)
+    {
+        if (await Permissions.RequestAsync<Permissions.Camera>() != PermissionStatus.Granted)
+            throw new InvalidOperationException("Permiso de camara denegado.");
+
         viewModel.Ocupado = true;
+        var resultado = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
         try
         {
             var camera = new CameraBarcodeReaderView { IsDetecting = true, HeightRequest = 360 };
             var cerrar = new Button { Text = "Cancelar escaneo" };
-            var manual = new Button { Text = "Ingresar codigo manualmente (si camara falla)" };
+            var manual = new Button { Text = "Ingresar codigo manualmente" };
             var page = new ContentPage
             {
-                Title = "Escanear carga",
+                Title = titulo,
                 Content = new VerticalStackLayout
                 {
-                    Children = { new Label { Text = $"Escanea {envio.NumeroSeguimiento}" }, camera, manual, cerrar }
+                    Children = { new Label { Text = instruccion }, camera, manual, cerrar }
                 }
             };
             var terminado = false;
@@ -170,9 +198,8 @@ public partial class RutaPage : ContentPage
                 if (terminado) return;
                 terminado = true;
                 camera.IsDetecting = false;
-                await Navigation.PopModalAsync();
-                viewModel.Ocupado = false;
-                if (codigo is not null) viewModel.RegistrarCarga(envio, codigo);
+                try { await Navigation.PopModalAsync(); }
+                finally { resultado.TrySetResult(string.IsNullOrWhiteSpace(codigo) ? null : codigo.Trim()); }
             }
             camera.BarcodesDetected += (_, args) =>
                 MainThread.BeginInvokeOnMainThread(async () => await Terminar(args.Results.FirstOrDefault()?.Value));
@@ -180,27 +207,28 @@ public partial class RutaPage : ContentPage
             manual.Clicked += async (_, _) =>
             {
                 camera.IsDetecting = false;
-                var codigo = await page.DisplayPromptAsync("Carga manual", "Codigo exacto de seguimiento");
-                if (codigo is not null) await Terminar(codigo.Trim());
+                var codigo = await page.DisplayPromptAsync("Ingreso manual", instruccion);
+                if (codigo is not null) await Terminar(codigo);
                 else camera.IsDetecting = true;
             };
-            page.Disappearing += (_, _) => { camera.IsDetecting = false; viewModel.Ocupado = false; };
+            page.Disappearing += (_, _) =>
+            {
+                camera.IsDetecting = false;
+                if (!terminado) resultado.TrySetResult(null);
+            };
             await Navigation.PushModalAsync(page);
+            return await resultado.Task;
         }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "No se pudo abrir o completar el escaneo");
-            viewModel.Ocupado = false;
-            viewModel.Mensaje = "No pudimos completar el escaneo. Revisa el permiso de camara y vuelve a intentarlo. No se registro la carga.";
-        }
+        finally { viewModel.Ocupado = false; }
     }
 
-    protected override void OnAppearing()
+    protected override async void OnAppearing()
     {
         base.OnAppearing();
         viewModel.PantallaActiva = true;
+        viewModel.SoloRutasDeHoy = true;
         viewModel.PropertyChanged += CambioSeleccion;
-        viewModel.CargarCommand.Execute(null);
+        await viewModel.RefrescarRutaAlMostrarAsync();
     }
 
     protected override void OnDisappearing()

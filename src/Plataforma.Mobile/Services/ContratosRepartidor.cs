@@ -7,17 +7,33 @@ namespace Plataforma.Mobile.Services;
 public sealed record LoginSolicitud(string Usuario, string Clave);
 public sealed record LoginRespuesta(
     Guid RepartidorId, Guid OperadorId, string Nombre, string Rol, string Token);
-public sealed record OperadorContrato(string Nombre, string ColorMarca, int MaximoIntentos);
+public sealed record OperadorContrato(
+    string Nombre,
+    string ColorMarca,
+    int MaximoIntentos,
+    IReadOnlyList<string>? Funcionalidades = null,
+    bool AdmiteEntregaParcial = false,
+    bool ExigeFirma = false,
+    bool ExigeFoto = false,
+    IReadOnlyList<string>? MotivosNoEntrega = null);
+public sealed record BultoContrato(
+    Guid Id,
+    string Codigo,
+    decimal PesoKg,
+    EstadoBulto Estado,
+    string? MotivoNoEntrega = null);
 public sealed record EnvioContrato(
     Guid Id, string NumeroSeguimiento, string Destinatario, string DireccionEntrega,
-    string EmailDestinatario, EstadoEnvio Estado, decimal TarifaCalculada, int IntentosRealizados);
+    string EmailDestinatario, EstadoEnvio Estado, decimal TarifaCalculada, int IntentosRealizados,
+    IReadOnlyList<BultoContrato>? Bultos = null);
 public sealed record RutaContrato(
     Guid Id, DateOnly Fecha, OperadorContrato Operador, IReadOnlyList<EnvioContrato> Envios);
 public sealed record EntregaContrato(
     Guid EventoId, Guid EnvioId, EstadoEnvio Estado, string NombreReceptor,
     string Observaciones, DateTimeOffset FechaDispositivo,
     string? Foto = null, string? Firma = null, double? Latitud = null,
-    double? Longitud = null, string? CodigoEscaneado = null);
+    double? Longitud = null, string? CodigoEscaneado = null,
+    IReadOnlyList<ResultadoBultoEntrega>? Bultos = null);
 public sealed record SincronizacionSolicitud(DateOnly Fecha, IReadOnlyList<EntregaContrato> Eventos);
 public sealed record AplicadoContrato(Guid EnvioId, EstadoEnvio Estado, int IntentosRealizados);
 public sealed record RechazadoContrato(Guid EnvioId, string Motivo, EstadoEnvio? EstadoActual);
@@ -29,7 +45,11 @@ public static class ContratosRepartidor
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
         RespectRequiredConstructorParameters = true,
-        Converters = { new JsonStringEnumConverter<EstadoEnvio>(allowIntegerValues: false) }
+        Converters =
+        {
+            new JsonStringEnumConverter<EstadoEnvio>(allowIntegerValues: false),
+            new JsonStringEnumConverter<EstadoBulto>(allowIntegerValues: false)
+        }
     };
 
     public static string LeerEjemplo(string archivo)

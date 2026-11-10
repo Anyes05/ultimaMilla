@@ -61,6 +61,24 @@ public sealed class RepartidorHttpService(
     public ResultadoSincronizacion Sincronizar() =>
         throw new InvalidOperationException("La sincronizacion HTTP requiere SincronizarAsync.");
     public Ruta ObtenerRuta() => local.ObtenerRuta();
+    public IReadOnlyList<EntregaPendiente> ObtenerHistorialEntregas()
+    {
+        var estado = data.Leer();
+        var envios = estado.Ruta?.Envios.ToDictionary(envio => envio.Id) ?? new Dictionary<Guid, Envio>();
+        return ObtenerHistorialCompleto(estado, envios)
+            .Where(comprobante => comprobante.Estado is EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente)
+            .OrderByDescending(comprobante => comprobante.Fecha)
+            .ToArray();
+    }
+    public int ObtenerCantidadComprobantesFueraDeRuta() =>
+        (data.Leer().RutasPendientes ?? []).Sum(ruta => ruta.Envios.Count);
+    public int ObtenerCantidadSincronizacionesPendientes()
+    {
+        var estado = data.Leer();
+        return (estado.RutasPendientes ?? []).Append(estado.Ruta!)
+            .Where(ruta => ruta is not null)
+            .Sum(ruta => ruta!.Envios.Count(envio => envio.Sincronizacion == EstadoSincronizacion.Pendiente));
+    }
     public void RegistrarEntrega(Guid envioId, string nombreReceptor, string observaciones)
     {
         using var operacion = ExigirOperacion();
@@ -73,9 +91,6 @@ public sealed class RepartidorHttpService(
         ExigirConexion();
         _ = ObtenerRuta();
         var estado = data.Leer();
-        if (estado.Ruta!.Envios.Any(envio =>
-            envio.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado))
-            throw new InvalidOperationException("Resuelve las entregas pendientes o rechazadas antes de reemplazar la ruta. No se borraron datos.");
         var token = await LeerTokenAsync();
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Inicia sesion para actualizar tu ruta. Tus comprobantes siguen guardados.");
@@ -83,19 +98,40 @@ public sealed class RepartidorHttpService(
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var response = await EnviarAsync(request);
         ExigirExito(response);
+        var historial = ObtenerHistorialCompleto(estado,
+            estado.Ruta!.Envios.ToDictionary(envio => envio.Id));
         var ruta = ConvertirRutas(ContratosRepartidor.Leer<RutaContrato[]>(await response.Content.ReadAsStringAsync()));
+        var rutasPendientes = RepartidorLocalData.RutasConEventosSinResolver(estado);
+        var pendientesMismaFecha = rutasPendientes
+            .Where(rutaPendiente => rutaPendiente.Fecha == ruta.Fecha)
+            .SelectMany(rutaPendiente => rutaPendiente.Envios.Select(envio => (rutaPendiente.Fecha, Envio: envio)))
+            .GroupBy(item => item.Envio.Id)
+            .ToDictionary(grupo => grupo.Key, grupo => grupo.First().Envio);
+        var idsEnRutaActual = ruta.Envios.Select(envio => envio.Id).ToHashSet();
         ruta = ruta with
         {
-            Envios = ruta.Envios.Select(e => e with
+            Envios = ruta.Envios.Select(envio =>
             {
-                Historial = estado.ComprobantesConfirmados?.Where(c => c.EnvioId == e.Id).ToArray()
-                    ?? estado.Ruta.Envios.SingleOrDefault(previo => previo.Id == e.Id)?.Historial
+                var conPendientes = pendientesMismaFecha.TryGetValue(envio.Id, out var pendiente)
+                    ? pendiente
+                    : envio;
+                return conPendientes with
+                {
+                    Historial = historial.Where(comprobante => comprobante.EnvioId == envio.Id).ToArray()
+                };
             }).ToArray()
         };
+        var pendientesArchivados = rutasPendientes.Select(rutaPendiente => rutaPendiente with
+        {
+            Envios = rutaPendiente.Envios.Where(envio =>
+                rutaPendiente.Fecha != ruta.Fecha || !idsEnRutaActual.Contains(envio.Id)).ToArray()
+        }).Where(rutaPendiente => rutaPendiente.Envios.Count > 0).ToArray();
         data.Guardar(estado with
         {
             Ruta = ruta,
-            EstadosServidor = ruta.Envios.ToDictionary(envio => envio.Id, envio => envio.Estado)
+            EstadosServidor = ruta.Envios.ToDictionary(envio => envio.Id, envio => envio.Estado),
+            ComprobantesConfirmados = historial,
+            RutasPendientes = pendientesArchivados
         });
     }
 
@@ -143,20 +179,55 @@ public sealed class RepartidorHttpService(
     {
         using var operacion = ExigirOperacion();
         ExigirConexion();
-        var ruta = ObtenerRuta();
+        _ = ObtenerRuta();
+        var estado = data.Leer();
+        var rutas = (estado.RutasPendientes ?? []).Append(estado.Ruta!).ToArray();
+        var pendientesTotales = rutas.SelectMany(ruta => ruta.Envios)
+            .Where(envio => envio.Sincronizacion == EstadoSincronizacion.Pendiente).ToArray();
+        var rechazadosTotales = rutas.SelectMany(ruta => ruta.Envios)
+            .Count(envio => envio.Sincronizacion == EstadoSincronizacion.Rechazado);
+        if (pendientesTotales.Length == 0)
+            return new ResultadoSincronizacion(0, 0, rechazadosTotales);
+
         var token = await LeerTokenAsync();
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Inicia sesion para sincronizar. Tus comprobantes siguen guardados.");
-        var pendientes = ruta.Envios.Where(envio =>
-            envio.Sincronizacion == EstadoSincronizacion.Pendiente).Take(100).ToArray();
-        if (pendientes.Length == 0)
-            return new ResultadoSincronizacion(0, 0, ruta.Envios.Count(e => e.Sincronizacion == EstadoSincronizacion.Rechazado));
+
+        var totalAplicadas = 0;
+        var totalRechazadas = 0;
+        foreach (var ruta in rutas)
+        {
+            var pendientes = ruta.Envios.Where(envio =>
+                envio.Sincronizacion == EstadoSincronizacion.Pendiente).Take(100).ToArray();
+            if (pendientes.Length == 0) continue;
+
+            var resultado = await SincronizarRutaAsync(ruta, pendientes, token);
+            estado = ActualizarRutaLocal(estado, resultado.Ruta);
+            estado = estado with
+            {
+                ComprobantesConfirmados = (estado.ComprobantesConfirmados ?? [])
+                    .Concat(resultado.Confirmados).DistinctBy(comprobante => comprobante.Id).ToArray()
+            };
+            data.Guardar(estado);
+            totalAplicadas += resultado.Aplicadas;
+            totalRechazadas += resultado.Rechazadas;
+        }
+
+        var pendientesRestantes = RepartidorLocalData.RutasConEventosSinResolver(estado)
+            .Sum(ruta => ruta.Envios.Count);
+        return new ResultadoSincronizacion(totalAplicadas, totalRechazadas, pendientesRestantes);
+    }
+
+    private async Task<(Ruta Ruta, IReadOnlyList<EntregaPendiente> Confirmados, int Aplicadas, int Rechazadas)>
+        SincronizarRutaAsync(Ruta ruta, IReadOnlyList<Envio> pendientes, string token)
+    {
         var eventos = pendientes.Select(envio =>
         {
             var entrega = envio.Entrega ?? throw new InvalidOperationException("Hay un comprobante incompleto. No borres los datos; solicita ayuda al operador.");
             return new EntregaContrato(entrega.Id, envio.Id, entrega.Estado,
                 entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha.ToUniversalTime(),
-                entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado);
+                entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado,
+                entrega.Bultos);
         }).ToArray();
         using var request = new HttpRequestMessage(HttpMethod.Post, "api/repartidor/sincronizacion")
         {
@@ -171,13 +242,18 @@ public sealed class RepartidorHttpService(
             throw new InvalidOperationException("No pudimos confirmar todos los registros. Tus comprobantes siguen guardados; vuelve a sincronizar.");
         var ids = resultado.Aplicados.Select(item => item.EnvioId)
             .Concat(resultado.Rechazados.Select(item => item.EnvioId)).ToArray();
+        bool EstadoAplicadoCoincide(AplicadoContrato aplicado)
+        {
+            var evento = eventos.SingleOrDefault(item => item.EnvioId == aplicado.EnvioId);
+            return evento is not null &&
+                (evento.Bultos is { Count: > 0 } || evento.Estado == aplicado.Estado);
+        }
         if (ids.Distinct().Count() != ids.Length ||
             !ids.ToHashSet().SetEquals(pendientes.Select(envio => envio.Id)) ||
-            resultado.Aplicados.Any(item => eventos.SingleOrDefault(e => e.EnvioId == item.EnvioId)?.Estado != item.Estado) ||
+            resultado.Aplicados.Any(item => !EstadoAplicadoCoincide(item)) ||
             resultado.Rechazados.Any(item => string.IsNullOrWhiteSpace(item.Motivo)))
             throw new InvalidOperationException("La confirmacion recibida no coincide con tus registros. No se marcaron como sincronizados; contacta al operador si vuelve a ocurrir.");
-        var estado = data.Leer();
-        var envios = estado.Ruta!.Envios.Select(envio =>
+        var envios = ruta.Envios.Select(envio =>
         {
             var aplicado = resultado.Aplicados.SingleOrDefault(item => item.EnvioId == envio.Id);
             if (aplicado is not null)
@@ -195,12 +271,28 @@ public sealed class RepartidorHttpService(
                 MotivoRechazo = rechazo.Motivo
             };
         }).ToArray();
-        var confirmados = (estado.ComprobantesConfirmados ?? [])
-            .Concat(pendientes.Where(e => resultado.Aplicados.Any(a => a.EnvioId == e.Id)).Select(e => e.Entrega!))
-            .DistinctBy(e => e.Id).ToArray();
-        data.Guardar(estado with { Ruta = estado.Ruta with { Envios = envios }, ComprobantesConfirmados = confirmados });
-        return new ResultadoSincronizacion(resultado.Aplicados.Count, resultado.Rechazados.Count,
-            envios.Count(envio => envio.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado));
+        var confirmados = pendientes.Where(envio => resultado.Aplicados.Any(aplicado => aplicado.EnvioId == envio.Id))
+                .Select(e => e.Entrega! with
+                {
+                    NumeroSeguimiento = e.NumeroSeguimiento,
+                    Destinatario = e.Destinatario
+                }).ToArray();
+        return (ruta with { Envios = envios }, confirmados, resultado.Aplicados.Count, resultado.Rechazados.Count);
+    }
+
+    private static EstadoLocalDemo ActualizarRutaLocal(EstadoLocalDemo estado, Ruta rutaActualizada)
+    {
+        if (estado.Ruta?.Id == rutaActualizada.Id && estado.Ruta.Fecha == rutaActualizada.Fecha)
+            return estado with { Ruta = rutaActualizada };
+
+        var rutasPendientes = (estado.RutasPendientes ?? [])
+            .Where(ruta => ruta.Id != rutaActualizada.Id || ruta.Fecha != rutaActualizada.Fecha)
+            .ToList();
+        var enviosPendientes = rutaActualizada.Envios.Where(envio => envio.Sincronizacion is
+            EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado).ToArray();
+        if (enviosPendientes.Length > 0)
+            rutasPendientes.Add(rutaActualizada with { Envios = enviosPendientes });
+        return estado with { RutasPendientes = rutasPendientes };
     }
 
     public void CerrarSesion()
@@ -258,15 +350,50 @@ public sealed class RepartidorHttpService(
         if (rutas.Any(ruta => ruta is null || ruta.Id == Guid.Empty || ruta.Fecha == default ||
             ruta.Operador is null || string.IsNullOrWhiteSpace(ruta.Operador.Nombre) || ruta.Envios is null))
             throw new InvalidOperationException("La ruta recibida esta incompleta. Intenta actualizarla de nuevo; si continua, avisa al operador.");
-        if (rutas.Any(ruta => ruta.Fecha != rutas[0].Fecha || ruta.Operador != rutas[0].Operador))
+        if (rutas.Any(ruta => ruta.Fecha != rutas[0].Fecha || !MismoOperador(ruta.Operador, rutas[0].Operador)))
             throw new InvalidOperationException("Las rutas recibidas no corresponden a una misma jornada. Solicita al operador que revise tu asignacion.");
         var envios = rutas.SelectMany(ruta => ruta.Envios).ToArray();
         if (envios.Any(envio => envio is null || envio.Id == Guid.Empty) ||
             envios.Select(envio => envio.Id).Distinct().Count() != envios.Length)
             throw new InvalidOperationException("La ruta contiene envios incompletos o repetidos. Solicita al operador que revise tu asignacion.");
-        return new Ruta(rutas[0].Id, rutas[0].Fecha, rutas[0].Operador.Nombre,
-            envios.Select(envio => new Envio(envio.Id, envio.NumeroSeguimiento, envio.Destinatario,
-                envio.DireccionEntrega, envio.Estado, null, EstadoSincronizacion.SinCambios, null)).ToArray());
+        var operador = rutas[0].Operador;
+        var enviosDeRuta = envios.Select(envio => new Envio(envio.Id, envio.NumeroSeguimiento, envio.Destinatario,
+            envio.DireccionEntrega, envio.Estado, null, EstadoSincronizacion.SinCambios, null,
+            Bultos: envio.Bultos?.Select(bulto => new BultoEnvio(
+                bulto.Id, bulto.Codigo, bulto.PesoKg, bulto.Estado, bulto.MotivoNoEntrega)).ToArray())).ToArray();
+        return new Ruta(rutas[0].Id, rutas[0].Fecha, operador.Nombre, enviosDeRuta,
+            operador.Funcionalidades ?? [], operador.AdmiteEntregaParcial, operador.ExigeFirma,
+            operador.ExigeFoto, operador.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados);
+    }
+
+    private static bool MismoOperador(OperadorContrato actual, OperadorContrato esperado) =>
+        actual.Nombre == esperado.Nombre && actual.ColorMarca == esperado.ColorMarca &&
+        actual.MaximoIntentos == esperado.MaximoIntentos &&
+        actual.AdmiteEntregaParcial == esperado.AdmiteEntregaParcial &&
+        actual.ExigeFirma == esperado.ExigeFirma && actual.ExigeFoto == esperado.ExigeFoto &&
+        (actual.Funcionalidades ?? []).SequenceEqual(esperado.Funcionalidades ?? []) &&
+        (actual.MotivosNoEntrega ?? []).SequenceEqual(esperado.MotivosNoEntrega ?? []);
+
+    private static IReadOnlyList<EntregaPendiente> ObtenerHistorialCompleto(
+        EstadoLocalDemo estado, IReadOnlyDictionary<Guid, Envio> envios)
+    {
+        var historialEnRuta = estado.Ruta?.Envios
+            .SelectMany(envio => (envio.Historial ?? []).Select(comprobante => comprobante with
+            {
+                NumeroSeguimiento = comprobante.NumeroSeguimiento ?? envio.NumeroSeguimiento,
+                Destinatario = comprobante.Destinatario ?? envio.Destinatario
+            })) ?? [];
+
+        return (estado.ComprobantesConfirmados ?? []).Concat(historialEnRuta)
+            .DistinctBy(comprobante => comprobante.Id)
+            .Select(comprobante => envios.TryGetValue(comprobante.EnvioId, out var envio)
+                ? comprobante with
+                {
+                    NumeroSeguimiento = comprobante.NumeroSeguimiento ?? envio.NumeroSeguimiento,
+                    Destinatario = comprobante.Destinatario ?? envio.Destinatario
+                }
+                : comprobante)
+            .ToArray();
     }
 
     private void ExigirConexion()

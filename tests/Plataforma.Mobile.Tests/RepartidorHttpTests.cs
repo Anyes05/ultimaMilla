@@ -55,6 +55,58 @@ public sealed partial class RepartidorHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task DescargarRutaMapeaBanderasReglasYBultos()
+    {
+        await Login();
+        var rutaOriginal = ContratosRepartidor.Leer<RutaContrato[]>(
+            ContratosRepartidor.LeerEjemplo("rutas-hoy.response.json"))[0];
+        var envio = rutaOriginal.Envios[0] with
+        {
+            Bultos =
+            [
+                new BultoContrato(Guid.NewGuid(), "PKG-1", 1, EstadoBulto.EnRuta),
+                new BultoContrato(Guid.NewGuid(), "PKG-2", 1, EstadoBulto.EnRuta)
+            ]
+        };
+        var operador = rutaOriginal.Operador with
+        {
+            Funcionalidades = ["entrega-parcial"],
+            AdmiteEntregaParcial = true,
+            ExigeFirma = true,
+            MotivosNoEntrega = ["Destinatario ausente"]
+        };
+        handler.Respuestas.Enqueue(Ok(new[] { rutaOriginal with { Operador = operador, Envios = [envio] } }));
+
+        await service.DescargarRutaAsync();
+
+        var ruta = service.ObtenerRuta();
+        Assert.True(ruta.EntregaParcialHabilitada);
+        Assert.True(ruta.ExigeFirma);
+        Assert.Contains("Destinatario ausente", ruta.MotivosNoEntrega!);
+        Assert.Equal(2, Assert.Single(ruta.Envios).Bultos!.Count);
+    }
+
+    [Fact]
+    public async Task AlMostrarLaPaginaRefrescaLaRutaDeHoy()
+    {
+        await Login();
+        var vm = CrearRutaViewModel();
+        vm.SoloRutasDeHoy = true;
+        var ruta = ContratosRepartidor.Leer<RutaContrato[]>(
+            ContratosRepartidor.LeerEjemplo("rutas-hoy.response.json"))[0] with
+        {
+            Fecha = DateOnly.FromDateTime(DateTime.Today)
+        };
+        handler.Respuestas.Enqueue(Ok(new[] { ruta }));
+
+        await vm.RefrescarRutaAlMostrarAsync();
+
+        Assert.Equal("/api/repartidor/rutas/hoy", handler.Requests.Last().Path);
+        Assert.Equal(DateOnly.FromDateTime(DateTime.Today), service.ObtenerRuta().Fecha);
+        Assert.Equal(ruta.Envios.Count, vm.EnviosVisibles.Count);
+    }
+
+    [Fact]
     public async Task AutosyncSinPendientesNoBorraResultadoDeActualizarRuta()
     {
         await Login();
@@ -392,8 +444,27 @@ public sealed partial class RepartidorHttpTests : IDisposable
         handler.Respuestas.Enqueue(Ok(new[] { ruta, segunda }));
         await service.DescargarRutaAsync();
         Assert.Equal(4, service.ObtenerRuta().Envios.Count);
-        service.RegistrarEntrega(service.ObtenerRuta().Envios[0].Id, "Receptor", "");
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.DescargarRutaAsync());
+        var rutaAnterior = service.ObtenerRuta();
+        var envioPendiente = rutaAnterior.Envios[0];
+        service.RegistrarEntrega(envioPendiente.Id, "Receptor", "");
+
+        var rutaHoy = ruta with { Id = Guid.NewGuid(), Fecha = DateOnly.FromDateTime(DateTime.Today) };
+        handler.Respuestas.Enqueue(Ok(new[] { rutaHoy }));
+        await service.DescargarRutaAsync();
+
+        Assert.Equal(DateOnly.FromDateTime(DateTime.Today), service.ObtenerRuta().Fecha);
+        var archivada = Assert.Single(data.Leer().RutasPendientes!);
+        Assert.Equal(envioPendiente.Id, Assert.Single(archivada.Envios).Id);
+        Assert.Throws<InvalidOperationException>(() => service.CerrarSesion());
+
+        handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
+            [new AplicadoContrato(envioPendiente.Id, EstadoEnvio.Entregado, 1)], [])));
+        var viewModel = CrearRutaViewModel();
+        await viewModel.AutoSincronizarAsync();
+        var sincronizacion = ContratosRepartidor.Leer<SincronizacionSolicitud>(handler.Requests.Last().Body);
+        Assert.Equal(rutaAnterior.Fecha, sincronizacion.Fecha);
+        Assert.Equal(envioPendiente.Id, Assert.Single(sincronizacion.Eventos).EnvioId);
+        Assert.Empty(data.Leer().RutasPendientes!);
     }
 
     [Fact]

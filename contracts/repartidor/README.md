@@ -4,7 +4,7 @@ Acordados entre Álvaro (móvil) y Ana (backend). Los JSON de ejemplo son el
 contrato de intercambio; el doble móvil y los endpoints `/api/repartidor/*`
 deben respetarlos.
 
-**Borrador v2 (parcial por bulto):** ver [v2/README.md](v2/README.md). v1 no cambia.
+**Extensión v2 (parcial por bulto):** ver [v2/README.md](v2/README.md). v1 no cambia.
 
 ## Operaciones
 
@@ -40,6 +40,10 @@ deben respetarlos.
 - Lista de `RutaDelDia` (`OperadorVisible` + `EnvioDeRuta`), igual que Application.
 - Puede haber 0..N rutas; el cliente elige cómo mostrarlas.
 - Requiere Bearer del login.
+- `OperadorVisible` incluye `funcionalidades`, `admiteEntregaParcial`, `exigeFirma`,
+  `exigeFoto` y `motivosNoEntrega` de la regla vigente.
+- `EnvioDeRuta` incluye `bultos[]` con `id`, `codigo`, `pesoKg`, `estado` y
+  `motivoNoEntrega`; los campos nuevos son aditivos.
 
 ### Sincronización
 - Cada evento lleva **`eventoId`** durable (idempotencia / reintentos offline).

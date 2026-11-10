@@ -1,3 +1,16 @@
 namespace Plataforma.Mobile.Models;
 
-public sealed record Ruta(Guid Id, DateOnly Fecha, string Operador, IReadOnlyList<Envio> Envios);
+public sealed record Ruta(
+	Guid Id,
+	DateOnly Fecha,
+	string Operador,
+	IReadOnlyList<Envio> Envios,
+	IReadOnlyList<string>? Funcionalidades = null,
+	bool AdmiteEntregaParcial = false,
+	bool ExigeFirma = false,
+	bool ExigeFoto = false,
+	IReadOnlyList<string>? MotivosNoEntrega = null)
+{
+	public bool EntregaParcialHabilitada => AdmiteEntregaParcial &&
+		(Funcionalidades?.Contains("entrega-parcial", StringComparer.Ordinal) ?? false);
+}

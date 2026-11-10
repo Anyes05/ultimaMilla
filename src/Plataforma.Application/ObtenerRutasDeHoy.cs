@@ -15,19 +15,25 @@ public sealed class ObtenerRutasDeHoy
     private readonly ConfiguracionOperador _operadores;
     private readonly IBanderasOperador _banderas;
     private readonly ICacheLectura _cache;
+    private readonly IBultoRepositorio? _bultos;
+    private readonly IReglaOperativaRepositorio? _reglas;
 
     public ObtenerRutasDeHoy(
         IRutaRepositorio rutas,
         IEnvioRepositorio envios,
         ConfiguracionOperador operadores,
         IBanderasOperador banderas,
-        ICacheLectura cache)
+        ICacheLectura cache,
+        IBultoRepositorio? bultos = null,
+        IReglaOperativaRepositorio? reglas = null)
     {
         _rutas = rutas;
         _envios = envios;
         _operadores = operadores;
         _banderas = banderas;
         _cache = cache;
+        _bultos = bultos;
+        _reglas = reglas;
     }
 
     public async Task<IReadOnlyList<RutaDelDia>> Ejecutar(
@@ -36,11 +42,6 @@ public sealed class ObtenerRutasDeHoy
         DateOnly fecha,
         CancellationToken cancellationToken = default)
     {
-        var clave = Clave(operadorId, repartidorId, fecha);
-        var cacheado = await _cache.LeerAsync(clave, cancellationToken);
-        if (cacheado is not null)
-            return JsonSerializer.Deserialize<List<RutaDelDia>>(cacheado, OpcionesJson) ?? [];
-
         var operadorBase = await _operadores.ObtenerAsync(operadorId, cancellationToken);
         var activas = new List<string>();
         foreach (var def in CatalogoBanderas.Todas)
@@ -48,24 +49,53 @@ public sealed class ObtenerRutasDeHoy
             if (await _banderas.EstaActivaAsync(operadorId, def.Clave, cancellationToken))
                 activas.Add(def.Clave);
         }
+        var regla = _reglas is null
+            ? null
+            : await _reglas.ObtenerVigenteAsync(operadorId, DateTime.UtcNow, cancellationToken);
+        var operador = operadorBase with
+        {
+            Funcionalidades = activas,
+            AdmiteEntregaParcial = regla?.AdmiteEntregaParcial ?? false,
+            ExigeFirma = regla?.ExigeFirma ?? false,
+            ExigeFoto = regla?.ExigeFoto ?? false,
+            MotivosNoEntrega = regla?.MotivosNoEntrega ?? ReglaOperativa.MotivosNoEntregaPredeterminados
+        };
 
-        var operador = operadorBase with { Funcionalidades = activas };
+        var clave = Clave(operadorId, repartidorId, fecha);
+        var cacheado = await _cache.LeerAsync(clave, cancellationToken);
+        if (cacheado is not null)
+        {
+            var rutasCacheadas = JsonSerializer.Deserialize<List<RutaDelDia>>(cacheado, OpcionesJson) ?? [];
+            return rutasCacheadas.Select(ruta => ruta with { Operador = operador }).ToList();
+        }
+
         var rutas = await _rutas.ObtenerDeHoyAsync(operadorId, repartidorId, fecha, cancellationToken);
         var resultado = new List<RutaDelDia>(rutas.Count);
         foreach (var ruta in rutas)
         {
             var envios = await _envios.ObtenerPorRutaAsync(operadorId, ruta.Id, cancellationToken);
+            var enviosDeRuta = new List<EnvioDeRuta>(envios.Count);
+            foreach (var envio in envios)
+            {
+                IReadOnlyList<BultoDeRuta> bultos = _bultos is null
+                    ? []
+                    : (await _bultos.ListarPorEnvioAsync(operadorId, envio.Id, cancellationToken))
+                        .Select(bulto => new BultoDeRuta(
+                            bulto.Id, bulto.Codigo, bulto.PesoKg, bulto.Estado, bulto.MotivoNoEntrega))
+                        .ToArray();
+                enviosDeRuta.Add(EnvioDeRuta.Desde(envio) with { Bultos = bultos });
+            }
             resultado.Add(new RutaDelDia(
                 ruta.Id,
                 ruta.Fecha,
                 operador,
-                envios.Select(EnvioDeRuta.Desde).ToList()));
+                enviosDeRuta));
         }
 
-        await _cache.GuardarAsync(clave, JsonSerializer.Serialize(resultado, OpcionesJson), TimeSpan.FromHours(12), cancellationToken);
+        await _cache.GuardarAsync(clave, JsonSerializer.Serialize(resultado, OpcionesJson), TimeSpan.FromSeconds(30), cancellationToken);
         return resultado;
     }
 
     public static string Clave(Guid operadorId, Guid repartidorId, DateOnly fecha) =>
-        $"rutas:hoy:{operadorId:N}:{repartidorId:N}:{fecha:yyyy-MM-dd}";
+        $"rutas:hoy:v2:{operadorId:N}:{repartidorId:N}:{fecha:yyyy-MM-dd}";
 }

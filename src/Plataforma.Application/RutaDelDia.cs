@@ -6,7 +6,11 @@ public sealed record OperadorVisible(
     string Nombre,
     string ColorMarca,
     int MaximoIntentos,
-    IReadOnlyList<string>? Funcionalidades = null)
+    IReadOnlyList<string>? Funcionalidades = null,
+    bool AdmiteEntregaParcial = false,
+    bool ExigeFirma = false,
+    bool ExigeFoto = false,
+    IReadOnlyList<string>? MotivosNoEntrega = null)
 {
     public static OperadorVisible Desde(Operador operador, IReadOnlyList<string>? funcionalidades = null) =>
         new(operador.Nombre, operador.ColorMarca, operador.MaximoIntentos, funcionalidades);
@@ -20,7 +24,8 @@ public sealed record EnvioDeRuta(
     string EmailDestinatario,
     EstadoEnvio Estado,
     decimal TarifaCalculada,
-    int IntentosRealizados)
+    int IntentosRealizados,
+    IReadOnlyList<BultoDeRuta>? Bultos = null)
 {
     public static EnvioDeRuta Desde(Envio envio) =>
         new(
@@ -33,6 +38,13 @@ public sealed record EnvioDeRuta(
             envio.TarifaCalculada,
             envio.IntentosRealizados);
 }
+
+public sealed record BultoDeRuta(
+    Guid Id,
+    string Codigo,
+    decimal PesoKg,
+    EstadoBulto Estado,
+    string? MotivoNoEntrega = null);
 
 public sealed record RutaDelDia(Guid Id, DateOnly Fecha, OperadorVisible Operador, IReadOnlyList<EnvioDeRuta> Envios);
 

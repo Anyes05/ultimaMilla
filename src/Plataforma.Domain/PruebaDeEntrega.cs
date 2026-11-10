@@ -5,6 +5,7 @@ public class PruebaDeEntrega
     public Guid Id { get; private set; }
     public Guid OperadorId { get; private set; }
     public Guid EnvioId { get; private set; }
+    public Guid? BultoId { get; private set; }
     public string Foto { get; private set; } = string.Empty;
     public string Firma { get; private set; } = string.Empty;
     public string? CodigoEscaneado { get; private set; }
@@ -66,7 +67,8 @@ public class PruebaDeEntrega
         string? firma = null,
         decimal? latitud = null,
         decimal? longitud = null,
-        string? codigoEscaneado = null)
+        string? codigoEscaneado = null,
+        Guid? bultoId = null)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("La prueba de entrega necesita un identificador.");
@@ -79,12 +81,15 @@ public class PruebaDeEntrega
 
         if (string.IsNullOrWhiteSpace(usuario))
             throw new ArgumentException("El usuario del comprobante es requerido.");
+        if (bultoId == Guid.Empty)
+            throw new ArgumentException("El bulto asociado debe ser un identificador válido.", nameof(bultoId));
 
         return new PruebaDeEntrega
         {
             Id = id,
             OperadorId = operadorId,
             EnvioId = envioId,
+            BultoId = bultoId,
             NombreReceptor = (nombreReceptor ?? string.Empty).Trim(),
             Observaciones = (observaciones ?? string.Empty).Trim(),
             Usuario = usuario.Trim(),

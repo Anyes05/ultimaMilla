@@ -18,19 +18,28 @@ public partial class App : Application
 		var window = new Window(services.GetRequiredService<AppShell>());
 		var vm = services.GetRequiredService<ViewModels.RutaViewModel>();
 		var timer = Dispatcher.CreateTimer();
-		timer.Interval = TimeSpan.FromSeconds(45);
+		timer.Interval = TimeSpan.FromSeconds(30);
 		var activa = false;
 		async void Sincronizar(object? sender, EventArgs e)
 		{
 			if (!activa || Connectivity.Current.NetworkAccess != NetworkAccess.Internet) return;
-			await MainThread.InvokeOnMainThreadAsync(vm.AutoSincronizarAsync);
+			await MainThread.InvokeOnMainThreadAsync(async () =>
+			{
+				await vm.AutoSincronizarAsync();
+				await vm.RefrescarRutaAlMostrarAsync();
+			});
 		}
 		void Conexion(object? sender, ConnectivityChangedEventArgs e) => Sincronizar(sender, e);
-		void Activar(object? sender, EventArgs e)
+		async void Activar(object? sender, EventArgs e)
 		{
 			activa = true;
 			timer.Start();
-			Sincronizar(sender, e);
+			await MainThread.InvokeOnMainThreadAsync(async () =>
+			{
+				vm.SoloRutasDeHoy = true;
+				await vm.AutoSincronizarAsync();
+				await vm.RefrescarRutaAlMostrarAsync();
+			});
 		}
 		timer.Tick += Sincronizar;
 		window.Activated += Activar;

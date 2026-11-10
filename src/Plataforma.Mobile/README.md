@@ -207,7 +207,8 @@ el bloqueo si existen pendientes o rechazos; no es una salida que omita ese cont
 - **Intento fallido** guarda NoEntregado y exige motivo en Observaciones.
   El backend debe aceptar el evento antes de marcarlo como sincronizado.
 - Con la pantalla de ruta activa, auto-sync al volver Internet, activar/reanudar
-  ventana y cada 45 segundos con Internet. No corre con app cerrada ni garantiza
+  ventana y cada 30 segundos con Internet. También revalida la ruta y sus banderas
+  mientras la app está activa. No corre con app cerrada ni garantiza
   background Android; no usa WorkManager. Respeta la disponibilidad de Internet,
   no interrumpe formulario ni captura. Manual y automatico comparten guards;
   el servicio impide registro/descarga/login/logout concurrentes durante await.

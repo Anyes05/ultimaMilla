@@ -113,7 +113,8 @@ public sealed class SincronizarEntregas
                 continue;
             }
 
-            if (evento.Estado == EstadoEnvio.NoEntregado && string.IsNullOrWhiteSpace(evento.Observaciones))
+            if (evento.Bultos is not { Count: > 0 } &&
+                evento.Estado == EstadoEnvio.NoEntregado && string.IsNullOrWhiteSpace(evento.Observaciones))
             {
                 rechazados.Add(new EventoRechazado(evento.EnvioId, "El intento fallido requiere un motivo en observaciones."));
                 continue;
@@ -126,7 +127,9 @@ public sealed class SincronizarEntregas
                 continue;
             }
 
-            if (evento.Estado == EstadoEnvio.Entregado && string.IsNullOrWhiteSpace(evento.NombreReceptor))
+            if ((evento.Estado is EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente) &&
+                (evento.Estado == EstadoEnvio.Entregado || evento.Bultos?.Any(bulto => bulto.Estado == EstadoBulto.Entregado) == true) &&
+                string.IsNullOrWhiteSpace(evento.NombreReceptor))
             {
                 rechazados.Add(new EventoRechazado(evento.EnvioId, "La entrega requiere el nombre del receptor."));
                 continue;
@@ -258,21 +261,29 @@ public sealed class SincronizarEntregas
                     await _rutas.QuitarParadaAsync(parada, cancellationToken);
             }
 
-            await _pruebas.AgregarAsync(
-                PruebaDeEntrega.DesdeSincronizacion(
-                    Guid.NewGuid(),
-                    operadorId,
-                    envio.Id,
-                    evento.NombreReceptor,
-                    evento.Observaciones,
-                    usuario,
-                    RelojOperacion.AUtc(evento.FechaDispositivo),
-                    evento.Foto,
-                    evento.Firma,
-                    evento.Latitud,
-                    evento.Longitud,
-                    evento.CodigoEscaneado),
-                cancellationToken);
+            var bultosEntregados = evento.Bultos?.Where(bulto => bulto.Estado == EstadoBulto.Entregado).ToArray() ?? [];
+            if (bultosEntregados.Length > 0)
+            {
+                foreach (var bulto in bultosEntregados)
+                {
+                    await _pruebas.AgregarAsync(
+                        PruebaDeEntrega.DesdeSincronizacion(
+                            Guid.NewGuid(), operadorId, envio.Id, evento.NombreReceptor, evento.Observaciones,
+                            usuario, RelojOperacion.AUtc(evento.FechaDispositivo),
+                            bulto.Foto ?? evento.Foto, bulto.Firma ?? evento.Firma,
+                            evento.Latitud, evento.Longitud, evento.CodigoEscaneado, bulto.BultoId),
+                        cancellationToken);
+                }
+            }
+            else
+            {
+                await _pruebas.AgregarAsync(
+                    PruebaDeEntrega.DesdeSincronizacion(
+                        Guid.NewGuid(), operadorId, envio.Id, evento.NombreReceptor, evento.Observaciones,
+                        usuario, RelojOperacion.AUtc(evento.FechaDispositivo), evento.Foto, evento.Firma,
+                        evento.Latitud, evento.Longitud, evento.CodigoEscaneado),
+                    cancellationToken);
+            }
 
             await _eventosProcesados.AgregarAsync(
                 EventoSincronizacionProcesado.Registrar(
@@ -332,6 +343,16 @@ public sealed class SincronizarEntregas
 
         var regla = await _reglas.ObtenerVigenteAsync(operadorId, DateTime.UtcNow, cancellationToken);
         var admiteParcial = regla?.AdmiteEntregaParcial ?? false;
+        var motivosValidos = regla?.MotivosNoEntrega ?? ReglaOperativa.MotivosNoEntregaPredeterminados;
+        if (resultados.Any(resultado =>
+            resultado.Estado is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita
+            && !motivosValidos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase)))
+        {
+            return new EventoRechazado(
+            envio.Id,
+            "El motivo de uno o más bultos no pertenece al catálogo vigente del operador.",
+            envio.Estado);
+        }
 
         // Proyectar estados finales del lote (los no mencionados quedan igual).
         var proyectados = bultos.ToDictionary(b => b.Id, b => b.Estado);
@@ -366,7 +387,7 @@ public sealed class SincronizarEntregas
                 var anteriorBulto = bulto.Estado;
 
                 // Si todavía está Pendiente y el envío ya salió, lo pasamos a EnRuta antes del resultado.
-                if (bulto.Estado == EstadoBulto.Pendiente &&
+                if (bulto.Estado is EstadoBulto.Pendiente or EstadoBulto.PendienteNuevaVisita &&
                     resultado.Estado is EstadoBulto.Entregado or EstadoBulto.NoEntregado
                         or EstadoBulto.PendienteNuevaVisita or EstadoBulto.Extraviado)
                 {
@@ -471,17 +492,21 @@ public sealed class SincronizarEntregas
         if (regla is null)
             return null;
 
+        var bultosEntregados = evento.Bultos?.Where(bulto => bulto.Estado == EstadoBulto.Entregado).ToArray() ?? [];
         var esEntrega = evento.Estado == EstadoEnvio.Entregado
-            || (evento.Bultos?.Any(b => b.Estado == EstadoBulto.Entregado) ?? false);
+            || evento.Estado == EstadoEnvio.EntregadoParcialmente
+            || bultosEntregados.Length > 0;
         if (!esEntrega)
             return null;
 
-        if (regla.ExigeFirma && string.IsNullOrWhiteSpace(evento.Firma)
-            && !(evento.Bultos?.Any(b => !string.IsNullOrWhiteSpace(b.Firma)) ?? false))
+        if (regla.ExigeFirma && (bultosEntregados.Length > 0
+                ? bultosEntregados.Any(bulto => string.IsNullOrWhiteSpace(bulto.Firma))
+                : string.IsNullOrWhiteSpace(evento.Firma)))
             return "La regla del operador exige firma en la entrega.";
 
-        if (regla.ExigeFoto && string.IsNullOrWhiteSpace(evento.Foto)
-            && !(evento.Bultos?.Any(b => !string.IsNullOrWhiteSpace(b.Foto)) ?? false))
+        if (regla.ExigeFoto && (bultosEntregados.Length > 0
+                ? bultosEntregados.Any(bulto => string.IsNullOrWhiteSpace(bulto.Foto))
+                : string.IsNullOrWhiteSpace(evento.Foto)))
             return "La regla del operador exige foto en la entrega.";
 
         return null;
@@ -524,6 +549,12 @@ public sealed class SincronizarEntregas
             {
                 return "La foto no es base64 válido.";
             }
+        }
+        foreach (var bulto in evento.Bultos ?? [])
+        {
+            var errorBulto = ValidarEvidencia(evento with { Foto = bulto.Foto, Firma = bulto.Firma, Bultos = null });
+            if (errorBulto is not null)
+                return $"La evidencia del bulto {bulto.BultoId} no es válida: {errorBulto}";
         }
         return null;
     }

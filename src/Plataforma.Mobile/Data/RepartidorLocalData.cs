@@ -11,11 +11,31 @@ public sealed record EstadoLocalDemo(
     Guid? RepartidorId = null,
     Guid? OperadorId = null,
     IReadOnlyList<EntregaPendiente>? ComprobantesConfirmados = null,
-    bool RequiereAutenticacion = false);
+    bool RequiereAutenticacion = false,
+    IReadOnlyList<Ruta>? RutasPendientes = null);
 
 public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? cipher = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { IgnoreReadOnlyProperties = true };
+
+    public static IReadOnlyList<Ruta> RutasConEventosSinResolver(EstadoLocalDemo estado)
+    {
+        var rutas = (estado.RutasPendientes ?? []).Append(estado.Ruta)
+            .Where(ruta => ruta is not null)
+            .Select(ruta => ruta!)
+            .Select(ruta => ruta with
+            {
+                Envios = ruta.Envios.Where(envio => envio.Sincronizacion is
+                    EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado).ToArray()
+            })
+            .Where(ruta => ruta.Envios.Count > 0);
+
+        return rutas.GroupBy(ruta => (ruta.Id, ruta.Fecha)).Select(grupo =>
+        {
+            var ruta = grupo.First();
+            return ruta with { Envios = grupo.SelectMany(item => item.Envios).DistinctBy(envio => envio.Id).ToArray() };
+        }).ToArray();
+    }
 
     public EstadoLocalDemo Leer()
     {

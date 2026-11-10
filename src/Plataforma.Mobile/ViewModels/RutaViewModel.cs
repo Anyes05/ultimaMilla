@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
@@ -14,11 +15,19 @@ public partial class RutaViewModel(
 {
     public ObservableCollection<Envio> Envios { get; } = new();
     public ObservableCollection<Envio> EnviosVisibles { get; } = new();
+    public ObservableCollection<EntregaPendiente> EntregasHistorial { get; } = new();
+    public ObservableCollection<BultoEntregaItem> BultosEntrega { get; } = new();
     private Guid[] recorrido = [];
     private int paradaActual;
+    private Ruta? rutaActual;
+    private bool entregaParcialHabilitada;
+    private IReadOnlyList<EntregaPendiente> historialCompleto = [];
+    private IReadOnlyList<EntregaPendiente> historialFiltrado = [];
+    private const int TamanoPaginaHistorial = 10;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MostrarListaDiaria))]
+    [NotifyPropertyChangedFor(nameof(PuedeEmpezarRecorrido))]
     private bool recorridoActivo;
 
     [ObservableProperty]
@@ -115,6 +124,8 @@ public partial class RutaViewModel(
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HaySeleccion))]
     [NotifyPropertyChangedFor(nameof(MostrarRuta))]
+    [NotifyPropertyChangedFor(nameof(UsaEntregaParcial))]
+    [NotifyPropertyChangedFor(nameof(UsaEntregaCompleta))]
     private Envio? envioSeleccionado;
 
     [ObservableProperty]
@@ -129,11 +140,129 @@ public partial class RutaViewModel(
     [ObservableProperty]
     private bool mostrarOpciones;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MostrarRuta))]
+    private bool mostrarHistorial;
+
+    [ObservableProperty]
+    private bool menuAbierto;
+
+    [ObservableProperty]
+    private DateTime fechaHistorial = DateTime.Today;
+
+    [ObservableProperty]
+    private string textoFechaHistorial = string.Empty;
+
+    [ObservableProperty]
+    private string mensajeFiltroHistorial = string.Empty;
+
+    [ObservableProperty]
+    private string resumenHistorial = string.Empty;
+
+    partial void OnFechaHistorialChanged(DateTime value) => ActualizarHistorialVisible();
+
+    partial void OnTextoFechaHistorialChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            FiltrarHistorialPorFecha = false;
+            MensajeFiltroHistorial = string.Empty;
+            ActualizarHistorialVisible();
+            return;
+        }
+
+        if (DateOnly.TryParseExact(value.Trim(), ["dd/MM/yyyy", "d/M/yyyy", "yyyy-MM-dd"],
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var fecha))
+        {
+            FechaHistorial = fecha.ToDateTime(TimeOnly.MinValue);
+            FiltrarHistorialPorFecha = true;
+            MensajeFiltroHistorial = string.Empty;
+            ActualizarHistorialVisible();
+            return;
+        }
+
+        FiltrarHistorialPorFecha = false;
+        MensajeFiltroHistorial = "Usa el formato dd/MM/aaaa.";
+        ActualizarHistorialVisible();
+    }
+
+    public bool FiltrarHistorialPorFecha { get; private set; }
+
     [RelayCommand]
     private void AlternarOpciones() => MostrarOpciones = !MostrarOpciones;
 
+    [RelayCommand]
+    private void AlternarMenu() => MenuAbierto = !MenuAbierto;
+
+    [RelayCommand]
+    private void AbrirHistorial()
+    {
+        if (Ocupado || HaySeleccion) return;
+        MenuAbierto = false;
+        TextoFechaHistorial = string.Empty;
+        historialCompleto = repartidor.ObtenerHistorialEntregas()
+            .OrderByDescending(comprobante => comprobante.Fecha)
+            .ToArray();
+        MostrarHistorial = true;
+        ActualizarHistorialVisible();
+    }
+
+    [RelayCommand]
+    private async Task VolverARutaAsync()
+    {
+        MostrarHistorial = false;
+        await RefrescarRutaAlMostrarAsync();
+    }
+
+    [RelayCommand]
+    private void LimpiarFiltroHistorial() => TextoFechaHistorial = string.Empty;
+
+    [RelayCommand]
+    private void CargarMasHistorial()
+    {
+        var visibles = EntregasHistorial.Count;
+        foreach (var comprobante in historialFiltrado.Skip(visibles).Take(TamanoPaginaHistorial))
+            EntregasHistorial.Add(comprobante);
+        ActualizarResumenHistorial();
+    }
+
+    private void ActualizarHistorialVisible()
+    {
+        historialFiltrado = FiltrarHistorialPorFecha
+            ? historialCompleto.Where(comprobante => comprobante.Fecha.LocalDateTime.Date == FechaHistorial.Date).ToArray()
+            : historialCompleto;
+        EntregasHistorial.Clear();
+        foreach (var comprobante in historialFiltrado.Take(TamanoPaginaHistorial))
+            EntregasHistorial.Add(comprobante);
+        ActualizarResumenHistorial();
+    }
+
+    private void ActualizarResumenHistorial()
+    {
+        var etiquetaEntregas = historialFiltrado.Count == 1 ? "entrega" : "entregas";
+        ResumenHistorial = $"Mostrando {EntregasHistorial.Count} de {historialFiltrado.Count} {etiquetaEntregas}";
+    }
+
     public bool HaySeleccion => EnvioSeleccionado is not null;
+    public bool SinEnvios => Envios.Count == 0;
+    public bool PuedeEmpezarRecorrido => MostrarListaDiaria && Envios.Count > 0;
+    public bool UsaEntregaParcial => entregaParcialHabilitada &&
+        (EnvioSeleccionado?.Bultos?.Any(bulto => bulto.PuedeEntregarse) ?? false);
+    public bool UsaEntregaCompleta => !UsaEntregaParcial;
+    public string EvidenciaRequeridaTexto => rutaActual is null
+        ? string.Empty
+        : $"Firma: {(rutaActual.ExigeFirma ? "obligatoria" : "opcional")} | Foto: {(rutaActual.ExigeFoto ? "obligatoria" : "opcional")}";
+    public string ResumenBultosEntrega
+    {
+        get
+        {
+            var total = EnvioSeleccionado?.Bultos?.Count ?? BultosEntrega.Count;
+            var entregadosAntes = EnvioSeleccionado?.Bultos?.Count(item => item.Estado == EstadoBulto.Entregado) ?? 0;
+            return $"{entregadosAntes + BultosEntrega.Count(item => item.Entregado)} de {total} bultos entregados";
+        }
+    }
     public bool PantallaActiva { get; set; }
+    public bool SoloRutasDeHoy { get; set; }
     public string? Foto { get; set; }
     public string? Firma { get; set; }
     public double? Latitud { get; set; }
@@ -142,7 +271,7 @@ public partial class RutaViewModel(
     private bool intentoFallido;
     [ObservableProperty]
     private string tokenDispositivo = string.Empty;
-    public bool MostrarRuta => !HaySeleccion;
+    public bool MostrarRuta => !HaySeleccion && !MostrarHistorial;
     public string ModoTexto => "Tu ruta de reparto";
 
     partial void OnConexionSimuladaChanged(bool value) => repartidor.ConexionSimulada = value;
@@ -156,6 +285,20 @@ public partial class RutaViewModel(
         CancelarEntrega();
         ConexionSimulada = repartidor.ConexionSimulada;
         Ejecutar(ActualizarRuta);
+    }
+
+    public async Task RefrescarRutaAlMostrarAsync()
+    {
+        if (Ocupado || RecorridoActivo || HaySeleccion || !repartidor.HaySesion) return;
+        ConexionSimulada = repartidor.ConexionSimulada;
+        try { ActualizarRuta(); }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning(ex, "No se pudo mostrar la ruta local antes de actualizarla");
+            Mensaje = ex.Message;
+            return;
+        }
+        await DescargarRutaAsync();
     }
 
     [RelayCommand]
@@ -174,6 +317,15 @@ public partial class RutaViewModel(
         Foto = Firma = null;
         Latitud = Longitud = null;
         IntentoFallido = false;
+        BultosEntrega.Clear();
+        var bultosEnvio = envio.Bultos ?? [];
+        if (entregaParcialHabilitada && bultosEnvio.Count > 0)
+        {
+            var motivos = rutaActual?.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados;
+            foreach (var bulto in bultosEnvio.Where(bulto => bulto.PuedeEntregarse))
+                BultosEntrega.Add(new BultoEntregaItem(bulto, motivos));
+        }
+        OnPropertyChanged(nameof(ResumenBultosEntrega));
     }
 
     [RelayCommand]
@@ -183,6 +335,8 @@ public partial class RutaViewModel(
         EnvioSeleccionado = null;
         NombreReceptor = string.Empty;
         Observaciones = string.Empty;
+        BultosEntrega.Clear();
+        OnPropertyChanged(nameof(ResumenBultosEntrega));
     }
 
     [RelayCommand]
@@ -197,7 +351,34 @@ public partial class RutaViewModel(
 
         Ejecutar(() =>
         {
-            if (Foto is null && Firma is null && Latitud is null && !IntentoFallido)
+            if (UsaEntregaParcial)
+            {
+                if (BultosEntrega.Any(item => !item.Entregado && string.IsNullOrWhiteSpace(item.MotivoNoEntrega)))
+                    throw new InvalidOperationException("Selecciona un motivo del catálogo para cada bulto no entregado.");
+                if (BultosEntrega.Any(item => item.Entregado) && string.IsNullOrWhiteSpace(NombreReceptor))
+                    throw new InvalidOperationException("Ingresa el nombre de quien recibe los bultos entregados.");
+                if (BultosEntrega.Any(item => item.Entregado) && rutaActual?.ExigeFirma == true && string.IsNullOrWhiteSpace(Firma))
+                    throw new InvalidOperationException("La regla del operador exige registrar la firma antes de guardar.");
+                if (BultosEntrega.Any(item => item.Entregado) && rutaActual?.ExigeFoto == true && string.IsNullOrWhiteSpace(Foto))
+                    throw new InvalidOperationException("La regla del operador exige una foto antes de guardar.");
+
+                var bultos = BultosEntrega.Select(item => new ResultadoBultoEntrega(
+                    item.Bulto.Id,
+                    item.Entregado ? EstadoBulto.Entregado : EstadoBulto.NoEntregado,
+                    item.Entregado ? null : item.MotivoNoEntrega,
+                    item.Entregado ? Foto : null,
+                    item.Entregado ? Firma : null)).ToArray();
+                var bultosEnvio = EnvioSeleccionado!.Bultos ?? [];
+                var entregadosAntes = bultosEnvio.Count(item => item.Estado == EstadoBulto.Entregado);
+                var totalEntregados = entregadosAntes + bultos.Count(item => item.Estado == EstadoBulto.Entregado);
+                var estadoEnvio = totalEntregados == bultosEnvio.Count
+                    ? EstadoEnvio.Entregado
+                    : totalEntregados > 0 ? EstadoEnvio.EntregadoParcialmente : EstadoEnvio.NoEntregado;
+                repartidor.RegistrarEvento(new EntregaPendiente(Guid.NewGuid(), EnvioSeleccionado.Id,
+                    NombreReceptor.Trim(), Observaciones.Trim(), DateTimeOffset.Now, estadoEnvio,
+                    Foto, Firma, Latitud, Longitud, Bultos: bultos));
+            }
+            else if (Foto is null && Firma is null && Latitud is null && !IntentoFallido)
                 repartidor.RegistrarEntrega(EnvioSeleccionado.Id, NombreReceptor, Observaciones);
             else
                 repartidor.RegistrarEvento(new EntregaPendiente(Guid.NewGuid(), EnvioSeleccionado.Id,
@@ -209,6 +390,22 @@ public partial class RutaViewModel(
             Mensaje = "Comprobante guardado. Pendiente de sincronizar.";
             AvanzarRecorrido();
         });
+    }
+
+    public void RegistrarBultoEntregado(Guid bultoId, string codigoEscaneado)
+    {
+        if (Ocupado || !UsaEntregaParcial) return;
+        var item = BultosEntrega.SingleOrDefault(bulto => bulto.Bulto.Id == bultoId);
+        if (item is null) return;
+        if (!string.Equals(item.Bulto.Codigo, codigoEscaneado, StringComparison.Ordinal))
+        {
+            Mensaje = "El codigo escaneado no corresponde a este bulto. No se marco como entregado.";
+            return;
+        }
+        item.Entregado = true;
+        item.MotivoNoEntrega = null;
+        OnPropertyChanged(nameof(ResumenBultosEntrega));
+        Mensaje = $"Bulto {item.Bulto.Codigo} marcado como entregado.";
     }
 
     public void RegistrarCarga(Envio envio, string codigo)
@@ -228,7 +425,7 @@ public partial class RutaViewModel(
         try
         {
             if (!PantallaActiva || Ocupado || HaySeleccion || !repartidor.HaySesion || !ConexionSimulada) return;
-            if (!repartidor.ObtenerRuta().Envios.Any(e => e.Sincronizacion == EstadoSincronizacion.Pendiente)) return;
+            if (repartidor.ObtenerCantidadSincronizacionesPendientes() == 0) return;
             await SincronizarColaAsync(automatica: true);
         }
         catch (InvalidOperationException ex)
@@ -264,6 +461,7 @@ public partial class RutaViewModel(
 
     private async Task SincronizarColaAsync(bool automatica)
     {
+        MenuAbierto = false;
         if (Ocupado)
         {
             if (!automatica) Mensaje = "Hay una operacion en curso. Espera a que termine antes de sincronizar.";
@@ -275,6 +473,8 @@ public partial class RutaViewModel(
         try
         {
             var resultado = await repartidor.SincronizarAsync();
+            if (resultado.Aplicadas > 0)
+                await repartidor.DescargarRutaAsync();
             ActualizarRuta();
             Mensaje = resultado.Rechazadas > 0
                 ? "Hay registros rechazados. Revisa el motivo en cada envio; los comprobantes se conservan."
@@ -305,6 +505,7 @@ public partial class RutaViewModel(
     [RelayCommand]
     private async Task DescargarRutaAsync()
     {
+        MenuAbierto = false;
         if (Ocupado)
         {
             Mensaje = "Hay una operacion en curso. Cuando termine la rueda, vuelve a pulsar Actualizar ruta.";
@@ -321,7 +522,11 @@ public partial class RutaViewModel(
         {
             await repartidor.DescargarRutaAsync();
             ActualizarRuta();
-            Mensaje = "Ruta actualizada.";
+            var anteriores = repartidor.ObtenerCantidadComprobantesFueraDeRuta();
+            var etiquetaComprobantes = anteriores == 1 ? "comprobante anterior" : "comprobantes anteriores";
+            Mensaje = anteriores > 0
+                ? $"Ruta actualizada. Se conservan {anteriores} {etiquetaComprobantes} sin resolver."
+                : "Ruta actualizada.";
         }
         catch (SesionRepartidorVencidaException ex)
         {
@@ -330,6 +535,14 @@ public partial class RutaViewModel(
         catch (InvalidOperationException ex)
         {
             logger.LogWarning(ex, "No se pudo descargar la ruta");
+            if (SoloRutasDeHoy)
+            {
+                try { ActualizarRuta(); }
+                catch (InvalidOperationException actualizarEx)
+                {
+                    logger.LogWarning(actualizarEx, "No se pudo actualizar la ruta local despues del fallo remoto");
+                }
+            }
             Mensaje = ex.Message;
         }
         finally { Ocupado = false; }
@@ -338,6 +551,7 @@ public partial class RutaViewModel(
     [RelayCommand]
     private async Task CerrarSesionAsync()
     {
+        MenuAbierto = false;
         if (Ocupado)
             return;
         Ocupado = true;
@@ -363,10 +577,21 @@ public partial class RutaViewModel(
     private void ActualizarRuta()
     {
         var ruta = repartidor.ObtenerRuta();
-        Titulo = $"Ruta {ruta.Fecha:dd/MM/yyyy} - {ruta.Operador}";
+        rutaActual = ruta;
+        entregaParcialHabilitada = ruta.EntregaParcialHabilitada;
+        OnPropertyChanged(nameof(UsaEntregaParcial));
+        OnPropertyChanged(nameof(UsaEntregaCompleta));
+        OnPropertyChanged(nameof(EvidenciaRequeridaTexto));
+        Titulo = "Ruta del dia";
         Envios.Clear();
-        foreach (var envio in ruta.Envios)
+        var esRutaDeHoy = !SoloRutasDeHoy || ruta.Fecha == DateOnly.FromDateTime(DateTime.Today);
+        foreach (var envio in esRutaDeHoy ? ruta.Envios : [])
             Envios.Add(envio);
+        OnPropertyChanged(nameof(SinEnvios));
+        OnPropertyChanged(nameof(PuedeEmpezarRecorrido));
+
+        if (!esRutaDeHoy)
+            Mensaje = "La ruta guardada corresponde a otra fecha. Se conservan sus comprobantes; actualiza para consultar los envios de hoy.";
 
         Resumen = $"{Envios.Count} envios | " +
                   $"{Envios.Count(item => item.Estado == EstadoEnvio.Entregado)} entregados | " +

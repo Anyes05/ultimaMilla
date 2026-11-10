@@ -869,6 +869,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<Guid>("EnvioId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BultoId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("Fecha")
                         .HasColumnType("timestamp with time zone");
 
@@ -905,6 +908,7 @@ namespace Plataforma.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+                    b.HasIndex("OperadorId", "BultoId");
 
                     b.ToTable("PruebasDeEntrega");
                 });
@@ -991,6 +995,11 @@ namespace Plataforma.Infrastructure.Migrations
 
                     b.Property<int>("MaximoIntentos")
                         .HasColumnType("integer");
+
+                    b.Property<string[]>("MotivosNoEntrega")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasDefaultValueSql("ARRAY['Ausente','Destinatario ausente','Rechazo del destinatario','Domicilio no encontrado','Bulto danado']::text[]");
 
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");

@@ -11,7 +11,8 @@ public enum EstadoEnvio
     NoEntregado,
     Reprogramado,
     EnDevolucion,
-    Devuelto
+    Devuelto,
+    EntregadoParcialmente
 }
 
 public enum EstadoSincronizacion
@@ -31,11 +32,13 @@ public sealed record Envio(
     EntregaPendiente? Entrega,
     EstadoSincronizacion Sincronizacion,
     string? MotivoRechazo,
-    IReadOnlyList<EntregaPendiente>? Historial = null)
+    IReadOnlyList<EntregaPendiente>? Historial = null,
+    IReadOnlyList<BultoEnvio>? Bultos = null)
 {
     public string EstadoServidorTexto => Estado switch
     {
         EstadoEnvio.Entregado => "Entrega registrada",
+        EstadoEnvio.EntregadoParcialmente => "Entrega parcial registrada",
         EstadoEnvio.EnTransito => "En camino",
         EstadoEnvio.AsignadoARuta => "Pendiente de carga",
         EstadoEnvio.NoEntregado => "Intento fallido registrado",
@@ -59,6 +62,10 @@ public sealed record Envio(
     public string ComprobanteTexto => Entrega is null
         ? string.Empty
         : $"Recibio: {Entrega.NombreReceptor} | {Entrega.Fecha:dd/MM HH:mm} | {Entrega.Observaciones}";
+
+    public string ResumenBultos => Bultos is { Count: > 0 }
+        ? $"{Bultos.Count(bulto => bulto.Estado == EstadoBulto.Entregado)} de {Bultos.Count} bultos entregados"
+        : string.Empty;
 
     public bool PuedeEntregar => Estado == EstadoEnvio.EnTransito && Entrega is null;
     public bool PuedeCargar => Estado == EstadoEnvio.AsignadoARuta && Entrega is null;

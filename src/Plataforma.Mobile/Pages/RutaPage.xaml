@@ -13,8 +13,9 @@
         <VerticalStackLayout Spacing="8">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
                 <Label Text="MI JORNADA" Style="{StaticResource SectionLabel}" VerticalOptions="Center" />
-                <Button Grid.Column="1" Text="Cerrar sesion" Command="{Binding CerrarSesionCommand}"
-                        Style="{StaticResource SecondaryButton}" FontSize="12" />
+                <Button Grid.Column="1" Text="⋮" Command="{Binding AlternarMenuCommand}"
+                    Style="{StaticResource SecondaryButton}" FontSize="24" WidthRequest="52"
+                    SemanticProperties.Description="Abrir menu de jornada" />
             </Grid>
             <Label Text="{Binding Titulo}" Style="{StaticResource HeadingLabel}" FontSize="22" />
             <Label Text="{Binding Resumen}" AutomationId="RutaResumen" FontAttributes="Bold" />
@@ -36,15 +37,6 @@
             </Label.Triggers>
         </Label>
         <CollectionView Grid.Row="2" ItemsSource="{Binding EnviosVisibles}" SelectionMode="None" ItemSizingStrategy="MeasureAllItems">
-            <CollectionView.EmptyView>
-                <Border Padding="24" Margin="0,8">
-                    <VerticalStackLayout Spacing="8">
-                        <Label Text="Tu ruta esta vacia" Style="{StaticResource HeadingLabel}" FontSize="20" />
-                        <Label Text="Pulsa Actualizar ruta para consultar tus envios asignados."
-                               Style="{StaticResource MutedLabel}" />
-                    </VerticalStackLayout>
-                </Border>
-            </CollectionView.EmptyView>
             <CollectionView.Footer>
                 <VerticalStackLayout Spacing="12" Padding="0,12" IsVisible="{Binding MostrarListaDiaria}">
                     <Button Text="Opciones de sincronizacion y dispositivo"
@@ -78,6 +70,13 @@
                             <Label Text="{Binding Destinatario}" FontAttributes="Bold" FontSize="16" />
                             <Label Text="{Binding Direccion}" Style="{StaticResource MutedLabel}" FontSize="14" />
                             <Label Text="{Binding EstadoServidorTexto}" Style="{StaticResource EnvioStatusLabel}" />
+                            <Label Text="{Binding ResumenBultos}" Style="{StaticResource MutedLabel}">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding ResumenBultos}" Value="">
+                                        <Setter Property="IsVisible" Value="False" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
                             <Label Text="{Binding EstadoLocalTexto}" FontAttributes="Bold" LineBreakMode="WordWrap">
                                 <Label.Triggers>
                                     <DataTrigger TargetType="Label" Binding="{Binding EstadoLocalTexto}" Value="">
@@ -102,42 +101,79 @@
                 </DataTemplate>
             </CollectionView.ItemTemplate>
         </CollectionView>
+            <VerticalStackLayout Grid.Row="2" IsVisible="{Binding SinEnvios}" VerticalOptions="Center"
+                         HorizontalOptions="Center" Margin="24,20" Spacing="6"
+                         InputTransparent="True" ZIndex="1">
+                <Label Text="Hoy no tienes envios asignados" Style="{StaticResource HeadingLabel}"
+                   FontSize="20" HorizontalTextAlignment="Center" />
+                <Label Text="Si esperabas una ruta, revisa tu conexion y actualiza. Los comprobantes locales se conservan."
+                   Style="{StaticResource MutedLabel}" HorizontalTextAlignment="Center" />
+            </VerticalStackLayout>
         <VerticalStackLayout Grid.Row="3" Spacing="8">
             <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" />
             <Button Text="Empezar recorrido" Command="{Binding EmpezarRecorridoCommand}"
-                    IsVisible="{Binding MostrarListaDiaria}" />
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="6">
-                <VisualStateManager.VisualStateGroups>
-                    <VisualStateGroup>
-                        <VisualState x:Name="Estrecha">
-                            <VisualState.StateTriggers>
-                                <AdaptiveTrigger MinWindowWidth="0" />
-                            </VisualState.StateTriggers>
-                            <VisualState.Setters>
-                                <Setter TargetName="ActualizarRutaBoton" Property="Grid.ColumnSpan" Value="2" />
-                                <Setter TargetName="SincronizarBoton" Property="Grid.Row" Value="1" />
-                                <Setter TargetName="SincronizarBoton" Property="Grid.Column" Value="0" />
-                                <Setter TargetName="SincronizarBoton" Property="Grid.ColumnSpan" Value="2" />
-                            </VisualState.Setters>
-                        </VisualState>
-                        <VisualState x:Name="Amplia">
-                            <VisualState.StateTriggers>
-                                <AdaptiveTrigger MinWindowWidth="380" />
-                            </VisualState.StateTriggers>
-                            <VisualState.Setters>
-                                <Setter TargetName="ActualizarRutaBoton" Property="Grid.ColumnSpan" Value="1" />
-                                <Setter TargetName="SincronizarBoton" Property="Grid.Row" Value="0" />
-                                <Setter TargetName="SincronizarBoton" Property="Grid.Column" Value="1" />
-                                <Setter TargetName="SincronizarBoton" Property="Grid.ColumnSpan" Value="1" />
-                            </VisualState.Setters>
-                        </VisualState>
-                    </VisualStateGroup>
-                </VisualStateManager.VisualStateGroups>
-                <Button x:Name="ActualizarRutaBoton" Text="Actualizar ruta" Command="{Binding DescargarRutaCommand}" Style="{StaticResource SecondaryButton}" />
-                <Button x:Name="SincronizarBoton" Grid.Column="1" Text="Sincronizar" Command="{Binding SincronizarCommand}" />
-            </Grid>
+                    IsVisible="{Binding PuedeEmpezarRecorrido}" />
+            <Button Text="Actualizar ruta" Command="{Binding DescargarRutaCommand}"
+                    Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
       </Grid>
+        <Border IsVisible="{Binding MenuAbierto}" HorizontalOptions="End" VerticalOptions="Start"
+            Margin="0,56,12,0" Padding="8" ZIndex="10">
+            <VerticalStackLayout Spacing="6">
+            <Button Text="Sincronizar" Command="{Binding SincronizarCommand}"
+                Style="{StaticResource SecondaryButton}" />
+            <Button Text="Historial de entregas" Command="{Binding AbrirHistorialCommand}"
+                Style="{StaticResource SecondaryButton}" />
+            <Button Text="Cerrar sesion" Command="{Binding CerrarSesionCommand}"
+                Style="{StaticResource SecondaryButton}" />
+            </VerticalStackLayout>
+        </Border>
+        <Grid IsVisible="{Binding MostrarHistorial}" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="12">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <Label Text="Historial de entregas" Style="{StaticResource HeadingLabel}" FontSize="22"
+                       VerticalOptions="Center" />
+                <Button Grid.Column="1" Text="Volver" Command="{Binding VolverARutaCommand}"
+                        Style="{StaticResource SecondaryButton}" />
+            </Grid>
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                <SearchBar Text="{Binding TextoFechaHistorial}" Placeholder="Filtrar por fecha (dd/MM/aaaa)"
+                           Keyboard="Text" AutomationId="HistorialFiltroFecha" />
+                <Button Grid.Column="1" Text="×" Command="{Binding LimpiarFiltroHistorialCommand}"
+                        Style="{StaticResource SecondaryButton}" FontSize="22" WidthRequest="48"
+                        SemanticProperties.Description="Limpiar filtro de fecha" />
+            </Grid>
+            <VerticalStackLayout Grid.Row="2" Spacing="4">
+                <Label Text="{Binding ResumenHistorial}" Style="{StaticResource MutedLabel}" />
+                <Label Text="{Binding MensajeFiltroHistorial}" Style="{StaticResource MutedLabel}">
+                    <Label.Triggers>
+                        <DataTrigger TargetType="Label" Binding="{Binding MensajeFiltroHistorial}" Value="">
+                            <Setter Property="IsVisible" Value="False" />
+                        </DataTrigger>
+                    </Label.Triggers>
+                </Label>
+            </VerticalStackLayout>
+            <CollectionView Grid.Row="3" ItemsSource="{Binding EntregasHistorial}" ItemSizingStrategy="MeasureAllItems"
+                            RemainingItemsThreshold="2"
+                            RemainingItemsThresholdReachedCommand="{Binding CargarMasHistorialCommand}">
+                <CollectionView.EmptyView>
+                    <Label Text="No hay entregas confirmadas para este filtro."
+                           Style="{StaticResource MutedLabel}" HorizontalOptions="Center" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="models:EntregaPendiente">
+                        <Border Padding="12" Margin="0,4">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="{Binding NumeroSeguimiento}" FontAttributes="Bold" FontSize="16" />
+                                <Label Text="{Binding Destinatario}" Style="{StaticResource MutedLabel}" />
+                                <Label Text="{Binding FechaTexto}" />
+                                <Label Text="{Binding NombreReceptor}" />
+                                <Label Text="{Binding Observaciones}" Style="{StaticResource MutedLabel}" />
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </Grid>
         <Grid IsVisible="{Binding HaySeleccion}"
               BackgroundColor="{AppThemeBinding Light={StaticResource AppBackground}, Dark={StaticResource AppBackgroundDark}}">
             <ScrollView>
@@ -149,14 +185,39 @@
                     <Label Text="Nombre de quien recibe" FontAttributes="Bold" />
                     <Entry Text="{Binding NombreReceptor}" MaxLength="100"
                            Placeholder="Nombre del receptor" AutomationId="EntregaReceptor" />
-                    <Label Text="Observaciones / motivo del intento fallido" FontAttributes="Bold" />
+                    <Label Text="Observaciones de la parada" FontAttributes="Bold" />
                     <Editor Text="{Binding Observaciones}" MaxLength="500" HeightRequest="90"
                             AutomationId="EntregaObservaciones" />
-                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <Label Text="Intento fallido" VerticalOptions="Center" FontAttributes="Bold" />
-                        <Switch Grid.Column="1" IsToggled="{Binding IntentoFallido}" />
-                    </Grid>
-                    <Label Text="EVIDENCIA OPCIONAL" Style="{StaticResource SectionLabel}" />
+                    <VerticalStackLayout IsVisible="{Binding UsaEntregaParcial}" Spacing="8">
+                        <Label Text="RESULTADO POR BULTO" Style="{StaticResource SectionLabel}" />
+                        <Label Text="{Binding ResumenBultosEntrega}" Style="{StaticResource MutedLabel}" />
+                        <VerticalStackLayout BindableLayout.ItemsSource="{Binding BultosEntrega}" Spacing="8">
+                            <BindableLayout.ItemTemplate>
+                                <DataTemplate x:DataType="vm:BultoEntregaItem">
+                                    <Border Padding="12">
+                                        <VerticalStackLayout Spacing="6">
+                                            <Label Text="{Binding Bulto.Codigo}" FontAttributes="Bold" />
+                                            <Button Text="Escanear bulto entregado" Clicked="EscanearBultoEntrega"
+                                                    CommandParameter="{Binding .}" IsVisible="{Binding PuedeEntregarse}" />
+                                            <Label Text="Bulto marcado como entregado" IsVisible="{Binding Entregado}"
+                                                   Style="{StaticResource MutedLabel}" />
+                                            <Picker Title="Motivo de no entrega" ItemsSource="{Binding MotivosNoEntrega}"
+                                                    SelectedItem="{Binding MotivoNoEntrega}"
+                                                    IsVisible="{Binding RequiereMotivo}" />
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </DataTemplate>
+                            </BindableLayout.ItemTemplate>
+                        </VerticalStackLayout>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout IsVisible="{Binding UsaEntregaCompleta}" Spacing="8">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                            <Label Text="Intento fallido" VerticalOptions="Center" FontAttributes="Bold" />
+                            <Switch Grid.Column="1" IsToggled="{Binding IntentoFallido}" />
+                        </Grid>
+                    </VerticalStackLayout>
+                    <Label Text="{Binding EvidenciaRequeridaTexto}" Style="{StaticResource MutedLabel}" />
+                    <Label Text="EVIDENCIA DE ENTREGA" Style="{StaticResource SectionLabel}" />
                     <Button Text="Tomar foto" Clicked="TomarFoto" Style="{StaticResource SecondaryButton}" />
                     <Image x:Name="VistaPreviaFoto" IsVisible="False" HeightRequest="220"
                            Aspect="AspectFit" SemanticProperties.Description="Foto adjunta al comprobante" />

@@ -117,9 +117,17 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
             entidad.HasIndex(bulto => new { bulto.OperadorId, bulto.Estado });
         });
 
+        modelBuilder.Entity<PruebaDeEntrega>(entidad =>
+        {
+            entidad.HasIndex(prueba => new { prueba.OperadorId, prueba.BultoId });
+        });
+
         modelBuilder.Entity<ReglaOperativa>(entidad =>
         {
             entidad.Property(regla => regla.AdmiteEntregaParcial).HasDefaultValue(false);
+            entidad.Property(regla => regla.MotivosNoEntrega)
+                .HasColumnType("text[]")
+                .HasDefaultValueSql("ARRAY['Ausente','Destinatario ausente','Rechazo del destinatario','Domicilio no encontrado','Bulto danado']::text[]");
             entidad.Property(regla => regla.PoliticaBultosPendientes)
                 .HasConversion<int>()
                 .HasDefaultValue(PoliticaBultosPendientes.NuevaVisitaSinRecargo);

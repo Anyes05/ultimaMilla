@@ -51,6 +51,13 @@
                     <label class="form-label fw-semibold" asp-for="Nueva.PoliticaBultosPendientes">Bultos pendientes</label>
                     <select class="form-select" asp-for="Nueva.PoliticaBultosPendientes" asp-items="ReglasModel.Politicas"></select>
                 </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" asp-for="Nueva.MotivosNoEntrega">Motivos de no entrega</label>
+                    <textarea class="form-control" asp-for="Nueva.MotivosNoEntrega" rows="4" maxlength="1000"
+                              placeholder="Un motivo por línea"></textarea>
+                    <span asp-validation-for="Nueva.MotivosNoEntrega" class="text-danger"></span>
+                    <div class="form-text">El repartidor seleccionará uno de estos motivos para cada bulto no entregado.</div>
+                </div>
             </div>
             <div class="d-flex flex-wrap gap-4 mt-3">
                 <div class="form-check">
@@ -88,6 +95,7 @@
                         <th>Prueba exigida</th>
                         <th>Parcial</th>
                         <th>Bultos pendientes</th>
+                        <th>Motivos no entrega</th>
                         <th>Estado</th>
                     </tr>
                 </thead>
@@ -95,7 +103,7 @@
                 @if (Model.Versiones.Count == 0)
                 {
                     <tr>
-                        <td colspan="9" class="text-center text-muted py-5">Todavía no hay versiones publicadas.</td>
+                        <td colspan="10" class="text-center text-muted py-5">Todavía no hay versiones publicadas.</td>
                     </tr>
                 }
                 @foreach (var version in Model.Versiones)
@@ -109,6 +117,7 @@
                         <td>@(version.ExigeFirma ? "Firma" : "")@(version.ExigeFirma && version.ExigeFoto ? " y " : "")@(version.ExigeFoto ? "Foto" : "")@(version.ExigeFirma || version.ExigeFoto ? "" : "—")</td>
                         <td>@(version.AdmiteEntregaParcial ? "Sí" : "No")</td>
                         <td>@ReglasModel.NombrePolitica(version.PoliticaBultosPendientes)</td>
+                        <td>@string.Join(", ", version.MotivosNoEntrega)</td>
                         <td>
                             @if (ReglasModel.EsVigente(version))
                             {

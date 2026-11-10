@@ -1,6 +1,6 @@
 # Contratos del repartidor — borrador v2 (sincronización por bulto)
 
-**Estado:** **acordado** Ana + Álvaro (03/11/2026). Listo para que Álvaro implemente offline por bulto.  
+**Estado:** **acordado** Ana + Álvaro (03/11/2026). El cliente MAUI registra resultados offline por bulto.
 **v1 permanece inmutable.** El servidor (`SincronizarEntregas`) aplica `bultos[]` cuando viene en el evento; ausente/vacío = v1.
 
 ## Qué agrega v2
@@ -34,4 +34,4 @@ Ejemplo: [sincronizacion.request.json](sincronizacion.request.json).
 - **PoD por regla** (`ExigeFirma` / `ExigeFoto`): el servidor lo valida en `SincronizarEntregas`.
 - **Avisos v2** (parcial, bulto, retiro): `contracts/mensajes/v2/`.
 - **Retiro en domicilio** (RF 37–41): API Portal/Backoffice `/api/retiros`; no forma parte del sync del repartidor v2.
-- Escaneo de carga multi-bulto: pendiente de acuerdo con Álvaro.
+- Escaneo multi-bulto durante la carga del vehículo sigue fuera de este contrato; la sincronización v2 describe resultados por bulto en la parada.

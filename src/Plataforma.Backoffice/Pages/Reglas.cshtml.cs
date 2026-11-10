@@ -72,7 +72,8 @@ public class ReglasModel : PageModel
                     Nueva.ExigeFirma,
                     Nueva.ExigeFoto,
                     Nueva.AdmiteEntregaParcial,
-                    Nueva.PoliticaBultosPendientes),
+                    Nueva.PoliticaBultosPendientes,
+                    Nueva.MotivosNoEntrega.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)),
                 HttpContext.RequestAborted);
 
             TempData["Mensaje"] = "Nueva versión de las reglas publicada. Ya está vigente.";
@@ -120,7 +121,8 @@ public class ReglasModel : PageModel
                 ExigeFirma = vigente.ExigeFirma,
                 ExigeFoto = vigente.ExigeFoto,
                 AdmiteEntregaParcial = vigente.AdmiteEntregaParcial,
-                PoliticaBultosPendientes = vigente.PoliticaBultosPendientes
+                PoliticaBultosPendientes = vigente.PoliticaBultosPendientes,
+                MotivosNoEntrega = string.Join(Environment.NewLine, vigente.MotivosNoEntrega)
             };
         }
     }
@@ -143,5 +145,9 @@ public class ReglasModel : PageModel
         public bool AdmiteEntregaParcial { get; set; }
 
         public PoliticaBultosPendientes PoliticaBultosPendientes { get; set; }
+
+        [StringLength(1000, ErrorMessage = "El catálogo de motivos no puede superar 1000 caracteres.")]
+        public string MotivosNoEntrega { get; set; } = string.Join(
+            Environment.NewLine, ReglaOperativa.MotivosNoEntregaPredeterminados);
     }
 }

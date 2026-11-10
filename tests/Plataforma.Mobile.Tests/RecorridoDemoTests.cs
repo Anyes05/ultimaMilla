@@ -151,7 +151,7 @@ public sealed class RecorridoDemoTests : IDisposable
         Assert.True(service.HaySesion);
         vm.ConexionSimulada = true;
         vm.SincronizarCommand.Execute(null);
-        Assert.Contains("1 registros sincronizados", vm.Mensaje);
+        Assert.Equal("Sincronizacion completada.", vm.Mensaje);
         await vm.CerrarSesionCommand.ExecuteAsync(null);
         Assert.Equal(1, navigation.Logins);
         Assert.False(service.HaySesion);
@@ -224,6 +224,106 @@ public sealed class RecorridoDemoTests : IDisposable
         Assert.True(service.IniciarSesion("alvaro@demo.test", "Demo123!"));
         Assert.Equal(ruta.Id, service.ObtenerRuta().Id);
         Assert.All(service.ObtenerRuta().Envios, envio => Assert.Null(envio.Entrega));
+    }
+
+    [Fact]
+    public void HistorialDeEntregasPermiteFiltrarPorFecha()
+    {
+        var service = CrearSesion();
+        var envio = service.ObtenerRuta().Envios[0];
+        service.RegistrarEntrega(envio.Id, "Receptor", "Entregado en puerta");
+        Assert.Equal(new ResultadoSincronizacion(1, 0, 0), service.Sincronizar());
+
+        var viewModel = new RutaViewModel(service, new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
+        viewModel.AlternarMenuCommand.Execute(null);
+        viewModel.AbrirHistorialCommand.Execute(null);
+
+        Assert.True(viewModel.MostrarHistorial);
+        Assert.False(viewModel.MenuAbierto);
+        Assert.Equal(envio.NumeroSeguimiento, Assert.Single(viewModel.EntregasHistorial).NumeroSeguimiento);
+        Assert.Equal("Mostrando 1 de 1 entrega", viewModel.ResumenHistorial);
+
+        viewModel.TextoFechaHistorial = DateTime.Today.AddDays(-1).ToString("dd/MM/yyyy");
+        Assert.Empty(viewModel.EntregasHistorial);
+        viewModel.TextoFechaHistorial = DateTime.Today.ToString("dd/MM/yyyy");
+        Assert.Single(viewModel.EntregasHistorial);
+        viewModel.LimpiarFiltroHistorialCommand.Execute(null);
+        Assert.Single(viewModel.EntregasHistorial);
+    }
+
+    [Fact]
+    public void HistorialCargaDiezEntregasYLuegoLasSiguientesEnOrdenReciente()
+    {
+        var path = Path.Combine(directory, "historial.db");
+        var data = new RepartidorLocalData(path);
+        var service = new RepartidorDemoService(data);
+        Assert.True(service.IniciarSesion("alvaro@demo.test", "Demo123!"));
+        var estado = data.Leer();
+        var envio = estado.Ruta!.Envios[0];
+        var comprobantes = Enumerable.Range(0, 12).Select(indice => new EntregaPendiente(
+            Guid.NewGuid(), envio.Id, $"Receptor {indice}", "", DateTimeOffset.Now.AddMinutes(-indice),
+            EstadoEnvio.Entregado, NumeroSeguimiento: $"HIST-{indice:00}", Destinatario: "Destinatario de prueba"))
+            .ToArray();
+        data.Guardar(estado with { ComprobantesConfirmados = comprobantes });
+
+        var viewModel = new RutaViewModel(service, new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
+        viewModel.AbrirHistorialCommand.Execute(null);
+
+        Assert.Equal(10, viewModel.EntregasHistorial.Count);
+        Assert.Equal("HIST-00", viewModel.EntregasHistorial[0].NumeroSeguimiento);
+        Assert.Equal("HIST-09", viewModel.EntregasHistorial[^1].NumeroSeguimiento);
+        viewModel.CargarMasHistorialCommand.Execute(null);
+        Assert.Equal(12, viewModel.EntregasHistorial.Count);
+        Assert.Equal("HIST-11", viewModel.EntregasHistorial[^1].NumeroSeguimiento);
+    }
+
+    [Fact]
+    public void EntregaParcialGuardaResultadosPorBultoYMotivoEnLaColaOffline()
+    {
+        var service = CrearSesion();
+        var estado = service.ObtenerRuta();
+        var envio = estado.Envios[0];
+        var bultos = new[]
+        {
+            new BultoEnvio(Guid.NewGuid(), "PKG-1", 1, EstadoBulto.EnRuta),
+            new BultoEnvio(Guid.NewGuid(), "PKG-2", 1, EstadoBulto.EnRuta)
+        };
+        var actualizado = estado with
+        {
+            Envios = estado.Envios.Select(item => item.Id == envio.Id ? item with { Bultos = bultos } : item).ToArray()
+        };
+        var data = new RepartidorLocalData(Path.Combine(directory, "demo.db"));
+        data.Guardar(data.Leer() with
+        {
+            Ruta = actualizado with
+            {
+                Funcionalidades = ["entrega-parcial"],
+                AdmiteEntregaParcial = true,
+                MotivosNoEntrega = ["Destinatario ausente"]
+            }
+        });
+        var vm = new RutaViewModel(new RepartidorDemoService(data), new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
+        vm.CargarCommand.Execute(null);
+        vm.SeleccionarEntregaCommand.Execute(vm.Envios.Single(item => item.Id == envio.Id));
+        Assert.True(vm.UsaEntregaParcial);
+        Assert.Equal(2, vm.BultosEntrega.Count);
+        vm.NombreReceptor = "Receptor de prueba";
+        vm.RegistrarBultoEntregado(bultos[0].Id, "PKG-1");
+        vm.BultosEntrega.Single(item => item.Bulto.Id == bultos[1].Id).MotivoNoEntrega = "Destinatario ausente";
+
+        vm.GuardarEntregaCommand.Execute(null);
+
+        var guardado = new RepartidorLocalData(Path.Combine(directory, "demo.db")).Leer().Ruta!
+            .Envios.Single(item => item.Id == envio.Id);
+        Assert.Equal(EstadoEnvio.EntregadoParcialmente, guardado.Entrega!.Estado);
+        Assert.Equal(EstadoSincronizacion.Pendiente, guardado.Sincronizacion);
+        Assert.Collection(guardado.Entrega.Bultos!,
+            entregado => Assert.Equal(EstadoBulto.Entregado, entregado.Estado),
+            pendiente =>
+            {
+                Assert.Equal(EstadoBulto.NoEntregado, pendiente.Estado);
+                Assert.Equal("Destinatario ausente", pendiente.MotivoNoEntrega);
+            });
     }
 
     [Fact]

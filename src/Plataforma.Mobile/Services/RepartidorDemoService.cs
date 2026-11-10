@@ -36,16 +36,29 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         return ExigirSesion().Ruta!;
     }
 
+    public IReadOnlyList<EntregaPendiente> ObtenerHistorialEntregas()
+    {
+        var estado = ExigirSesion();
+        var envios = estado.Ruta!.Envios.ToDictionary(envio => envio.Id);
+        return ObtenerHistorialCompleto(estado, envios)
+            .Where(comprobante => comprobante.Estado is EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente)
+            .OrderByDescending(comprobante => comprobante.Fecha)
+            .ToArray();
+    }
+
     public void ReintentarRechazados()
     {
         var estado = ExigirSesion();
+        static Ruta Reintentar(Ruta ruta) => ruta with
+        {
+            Envios = ruta.Envios.Select(envio => envio.Sincronizacion == EstadoSincronizacion.Rechazado
+                ? envio with { Sincronizacion = EstadoSincronizacion.Pendiente }
+                : envio).ToArray()
+        };
         data.Guardar(estado with
         {
-            Ruta = estado.Ruta! with
-            {
-                Envios = estado.Ruta.Envios.Select(e => e.Sincronizacion == EstadoSincronizacion.Rechazado
-                    ? e with { Sincronizacion = EstadoSincronizacion.Pendiente } : e).ToArray()
-            }
+            Ruta = Reintentar(estado.Ruta!),
+            RutasPendientes = (estado.RutasPendientes ?? []).Select(Reintentar).ToArray()
         });
     }
 
@@ -60,11 +73,12 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
             if (!envio.PuedeCargar || evento.CodigoEscaneado != envio.NumeroSeguimiento)
                 throw new InvalidOperationException("La carga exige un envio asignado y su codigo exacto.");
         }
-        else if (!envio.PuedeEntregar || evento.Estado is not (EstadoEnvio.Entregado or EstadoEnvio.NoEntregado))
+        else if (!envio.PuedeEntregar || evento.Estado is not (EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente or EstadoEnvio.NoEntregado))
             throw new InvalidOperationException("Primero confirma la carga con el servidor antes de registrar la entrega.");
-        if (evento.Estado == EstadoEnvio.NoEntregado && string.IsNullOrWhiteSpace(evento.Observaciones))
+        if (evento.Bultos is null && evento.Estado == EstadoEnvio.NoEntregado && string.IsNullOrWhiteSpace(evento.Observaciones))
             throw new InvalidOperationException("Ingresa el motivo del intento fallido.");
-        if (evento.Estado == EstadoEnvio.Entregado && string.IsNullOrWhiteSpace(evento.NombreReceptor))
+        if (evento.Estado is (EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente) &&
+            string.IsNullOrWhiteSpace(evento.NombreReceptor))
             throw new InvalidOperationException("Ingresa quien recibe.");
         if (evento.NombreReceptor.Length > 100 || evento.Observaciones.Length > 500 ||
             (evento.Latitud is null) != (evento.Longitud is null) ||
@@ -91,10 +105,66 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         {
             throw new InvalidOperationException("La evidencia no tiene un formato valido.", ex);
         }
+        var bultosActualizados = evento.Bultos is { Count: > 0 }
+            ? ValidarYAplicarResultadosBulto(estado.Ruta!, envio, evento)
+            : envio.Bultos;
         data.Guardar(Reemplazar(estado, envio with
         {
-            Entrega = evento, Sincronizacion = EstadoSincronizacion.Pendiente, MotivoRechazo = null
+            Entrega = evento, Sincronizacion = EstadoSincronizacion.Pendiente, MotivoRechazo = null,
+            Bultos = bultosActualizados
         }));
+    }
+
+    private static IReadOnlyList<BultoEnvio> ValidarYAplicarResultadosBulto(
+        Ruta ruta, Envio envio, EntregaPendiente evento)
+    {
+        var bultos = envio.Bultos ?? throw new InvalidOperationException("La ruta no contiene el detalle de bultos. Actualiza la ruta antes de registrar una entrega parcial.");
+        if (!ruta.Funcionalidades?.Contains("entrega-parcial", StringComparer.Ordinal) ?? true)
+            throw new InvalidOperationException("La entrega parcial no esta habilitada para este operador.");
+        if (evento.Bultos!.Select(resultado => resultado.BultoId).Distinct().Count() != evento.Bultos.Count)
+            throw new InvalidOperationException("No se puede registrar dos veces el mismo bulto en una parada.");
+
+        var resultados = evento.Bultos.ToDictionary(resultado => resultado.BultoId);
+        if (resultados.Keys.Any(id => bultos.All(bulto => bulto.Id != id)))
+            throw new InvalidOperationException("Un bulto seleccionado no pertenece a este envio.");
+        var bultosActivos = bultos.Where(bulto => bulto.PuedeEntregarse).Select(bulto => bulto.Id).ToHashSet();
+        if (!bultosActivos.SetEquals(resultados.Keys))
+            throw new InvalidOperationException("Registra el resultado de cada bulto pendiente de esta parada.");
+
+        var catalogoMotivos = ruta.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados;
+        foreach (var resultado in evento.Bultos)
+        {
+            var actual = bultos.Single(bulto => bulto.Id == resultado.BultoId);
+            if (!actual.PuedeEntregarse)
+                throw new InvalidOperationException($"El bulto {actual.Codigo} ya tiene un estado terminal.");
+            if (resultado.Estado == EstadoBulto.NoEntregado &&
+                !catalogoMotivos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Selecciona un motivo valido para el bulto {actual.Codigo}.");
+            if (resultado.Estado is not (EstadoBulto.Entregado or EstadoBulto.NoEntregado))
+                throw new InvalidOperationException("El resultado del bulto no es valido para una parada de entrega.");
+            if (resultado.Estado == EstadoBulto.Entregado && ruta.ExigeFirma && string.IsNullOrWhiteSpace(resultado.Firma))
+                throw new InvalidOperationException($"La regla del operador exige firma para el bulto {actual.Codigo}.");
+            if (resultado.Estado == EstadoBulto.Entregado && ruta.ExigeFoto && string.IsNullOrWhiteSpace(resultado.Foto))
+                throw new InvalidOperationException($"La regla del operador exige foto para el bulto {actual.Codigo}.");
+        }
+
+        var estadosFinales = bultos.Select(bulto => resultados.TryGetValue(bulto.Id, out var resultado)
+            ? resultado.Estado
+            : bulto.Estado).ToArray();
+        var entregados = estadosFinales.Count(estado => estado == EstadoBulto.Entregado);
+        var noEntregados = estadosFinales.Count(estado => estado is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita);
+        if (entregados > 0 && noEntregados > 0 && !ruta.AdmiteEntregaParcial)
+            throw new InvalidOperationException("Las reglas vigentes del operador no admiten entrega parcial.");
+
+        var estadoDerivado = entregados == estadosFinales.Length
+            ? EstadoEnvio.Entregado
+            : entregados > 0 ? EstadoEnvio.EntregadoParcialmente : EstadoEnvio.NoEntregado;
+        if (evento.Estado != estadoDerivado)
+            throw new InvalidOperationException("El estado del envio no coincide con los resultados de sus bultos.");
+
+        return bultos.Select(bulto => resultados.TryGetValue(bulto.Id, out var resultado)
+            ? bulto with { Estado = resultado.Estado, MotivoNoEntrega = resultado.MotivoNoEntrega }
+            : bulto).ToArray();
     }
 
     public void RegistrarEntrega(Guid envioId, string nombreReceptor, string observaciones)
@@ -111,7 +181,8 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
             throw new InvalidOperationException("El envio ya tiene una entrega local o no esta en transito.");
 
         var entrega = new EntregaPendiente(
-            Guid.NewGuid(), envioId, nombreReceptor.Trim(), observaciones.Trim(), DateTimeOffset.Now);
+            Guid.NewGuid(), envioId, nombreReceptor.Trim(), observaciones.Trim(), DateTimeOffset.Now,
+            NumeroSeguimiento: envio.NumeroSeguimiento, Destinatario: envio.Destinatario);
         data.Guardar(Reemplazar(estado,
             envio with { Entrega = entrega, Sincronizacion = EstadoSincronizacion.Pendiente }));
     }
@@ -130,7 +201,8 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
                 ?? throw new InvalidOperationException("La cola contiene un envio sin comprobante local.");
             return new EntregaContrato(entrega.Id, envio.Id, entrega.Estado,
                 entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha,
-                entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado);
+                entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado,
+                entrega.Bultos);
         }).ToArray();
         var estadosServidor = estado.EstadosServidor.ToDictionary();
         var solicitud = new SincronizacionSolicitud(estado.Ruta.Fecha, eventos);
@@ -164,7 +236,12 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         {
             EstadosServidor = estadosServidor,
             ComprobantesConfirmados = (estado.ComprobantesConfirmados ?? [])
-                .Concat(pendientes.Where(e => respuesta.Aplicados.Any(a => a.EnvioId == e.Id)).Select(e => e.Entrega!))
+                .Concat(pendientes.Where(e => respuesta.Aplicados.Any(a => a.EnvioId == e.Id))
+                    .Select(e => e.Entrega! with
+                    {
+                        NumeroSeguimiento = e.NumeroSeguimiento,
+                        Destinatario = e.Destinatario
+                    }))
                 .DistinctBy(e => e.Id).ToArray()
         });
         return new ResultadoSincronizacion(respuesta.Aplicados.Count, respuesta.Rechazados.Count,
@@ -174,8 +251,7 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
     public void CerrarSesion()
     {
         var estado = ExigirSesion();
-        if (estado.Ruta!.Envios.Any(item =>
-                item.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado))
+        if (RepartidorLocalData.RutasConEventosSinResolver(estado).Count > 0)
             throw new InvalidOperationException("Hay entregas pendientes o rechazadas. Se conserva la sesion para no perderlas.");
 
         data.Guardar(new EstadoLocalDemo(null, false, new Dictionary<Guid, EstadoEnvio>()));
@@ -204,9 +280,14 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
                 _ => envio.Estado
             });
             return new Envio(envio.Id, envio.NumeroSeguimiento, envio.Destinatario,
-                envio.DireccionEntrega, envio.Estado, null, EstadoSincronizacion.SinCambios, null);
+                envio.DireccionEntrega, envio.Estado, null, EstadoSincronizacion.SinCambios, null,
+                Bultos: envio.Bultos?.Select(bulto => new BultoEnvio(
+                    bulto.Id, bulto.Codigo, bulto.PesoKg, bulto.Estado, bulto.MotivoNoEntrega)).ToArray());
         }).ToArray();
-        var ruta = new Ruta(contrato.Id, contrato.Fecha, contrato.Operador.Nombre, envios);
+        var operador = contrato.Operador;
+        var ruta = new Ruta(contrato.Id, contrato.Fecha, operador.Nombre, envios,
+            operador.Funcionalidades ?? [], operador.AdmiteEntregaParcial, operador.ExigeFirma,
+            operador.ExigeFoto, operador.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados);
         return new EstadoLocalDemo(ruta, true, estadosServidor);
     }
 
@@ -219,6 +300,28 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
                 Envios = estado.Ruta.Envios.Select(item => item.Id == envio.Id ? envio : item).ToArray()
             }
         };
+    }
+
+    private static IReadOnlyList<EntregaPendiente> ObtenerHistorialCompleto(
+        EstadoLocalDemo estado, IReadOnlyDictionary<Guid, Envio> envios)
+    {
+        var historialEnRuta = estado.Ruta!.Envios
+            .SelectMany(envio => (envio.Historial ?? []).Select(comprobante => comprobante with
+            {
+                NumeroSeguimiento = comprobante.NumeroSeguimiento ?? envio.NumeroSeguimiento,
+                Destinatario = comprobante.Destinatario ?? envio.Destinatario
+            }));
+
+        return (estado.ComprobantesConfirmados ?? []).Concat(historialEnRuta)
+            .DistinctBy(comprobante => comprobante.Id)
+            .Select(comprobante => envios.TryGetValue(comprobante.EnvioId, out var envio)
+                ? comprobante with
+                {
+                    NumeroSeguimiento = comprobante.NumeroSeguimiento ?? envio.NumeroSeguimiento,
+                    Destinatario = comprobante.Destinatario ?? envio.Destinatario
+                }
+                : comprobante)
+            .ToArray();
     }
 
     private EstadoLocalDemo ExigirSesion()

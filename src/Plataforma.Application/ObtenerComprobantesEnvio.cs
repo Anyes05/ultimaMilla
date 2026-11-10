@@ -54,7 +54,8 @@ public sealed record ComprobanteVisible(
     DateTimeOffset FechaDispositivo,
     decimal? Latitud,
     decimal? Longitud,
-    string? CodigoEscaneado)
+    string? CodigoEscaneado,
+    Guid? BultoId = null)
 {
     public static ComprobanteVisible Desde(PruebaDeEntrega prueba) => new(
         EsBase64(prueba.Foto) ? prueba.Foto : null,
@@ -65,7 +66,8 @@ public sealed record ComprobanteVisible(
         prueba.FechaDispositivo,
         prueba.Latitud,
         prueba.Longitud,
-        prueba.CodigoEscaneado);
+        prueba.CodigoEscaneado,
+        prueba.BultoId);
 
     // La app manda el JPEG en base64; cualquier otra cosa no se muestra como imagen.
     private static bool EsBase64(string valor) =>

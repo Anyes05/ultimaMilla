@@ -64,6 +64,22 @@ public class EntregaParcialE2ETests
         envioTrasDespacho.CambiarEstado(EstadoEnvio.EnTransito);
         await contexto.SaveChangesAsync();
 
+        var configuracion = new ConfiguracionOperador(new OperadorRepositorio(contexto), cache);
+        var rutasMovil = await new ObtenerRutasDeHoy(
+            new RutaRepositorio(contexto),
+            new EnvioRepositorio(contexto),
+            configuracion,
+            new BanderasSiempreActivas(),
+            cache,
+            new BultoRepositorio(contexto),
+            new ReglaOperativaRepositorio(contexto))
+            .Ejecutar(DatosSemilla.OperadorNorteId, DatosSemilla.RepartidorNorteId, fecha);
+        var rutaMovil = Assert.Single(rutasMovil);
+        Assert.Contains("entrega-parcial", rutaMovil.Operador.Funcionalidades!);
+        Assert.True(rutaMovil.Operador.AdmiteEntregaParcial);
+        Assert.Contains("Ausente", rutaMovil.Operador.MotivosNoEntrega!);
+        Assert.Equal(2, Assert.Single(rutaMovil.Envios).Bultos!.Count);
+
         var sync = new SincronizarEntregas(
             new RutaRepositorio(contexto),
             new EnvioRepositorio(contexto),
@@ -110,6 +126,8 @@ public class EntregaParcialE2ETests
         var bultos = await contexto.Bultos.Where(b => b.EnvioId == envioId).ToListAsync();
         Assert.Contains(bultos, b => b.Id == bulto1 && b.Estado == EstadoBulto.Entregado);
         Assert.Contains(bultos, b => b.Id == bulto2 && b.Estado == EstadoBulto.PendienteNuevaVisita);
+        var pruebaBulto = await contexto.PruebasDeEntrega.SingleAsync();
+        Assert.Equal(bulto1, pruebaBulto.BultoId);
 
         await new DespacharRuta(
             new RutaRepositorio(contexto),
