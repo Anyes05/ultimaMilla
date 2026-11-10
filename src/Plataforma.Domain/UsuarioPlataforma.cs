@@ -63,4 +63,28 @@ public class UsuarioPlataforma
             Activo = true
         };
     }
+
+    public void Actualizar(string nombre, string email, RolUsuario rol, Guid? comercioId)
+    {
+        if (string.IsNullOrWhiteSpace(nombre))
+            throw new ArgumentException("El nombre es requerido.");
+
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("El email es requerido.");
+
+        if (rol == RolUsuario.Comercio && comercioId is null)
+            throw new ArgumentException("El usuario de comercio necesita un comercio.");
+
+        if (rol != RolUsuario.Comercio && comercioId is not null)
+            throw new ArgumentException("Solo el usuario de comercio lleva un comercio.");
+
+        Nombre = nombre.Trim();
+        Email = email.Trim();
+        Rol = rol;
+        ComercioId = comercioId;
+    }
+
+    public void Activar() => Activo = true;
+
+    public void Desactivar() => Activo = false;
 }

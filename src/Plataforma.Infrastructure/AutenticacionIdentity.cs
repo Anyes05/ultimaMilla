@@ -62,4 +62,32 @@ public sealed class AutenticacionIdentity : IAutenticacionIdentity
         var creado = await _users.CreateAsync(identity, clave);
         return creado.Succeeded;
     }
+
+    public async Task CrearAsync(
+        Guid usuarioId,
+        string nombreUsuario,
+        string email,
+        string clave,
+        CancellationToken cancellationToken = default)
+    {
+        _ = cancellationToken;
+        if (await _users.FindByIdAsync(usuarioId.ToString()) is not null)
+            return;
+
+        var identity = new UsuarioIdentity
+        {
+            Id = usuarioId,
+            UserName = nombreUsuario,
+            NormalizedUserName = _users.NormalizeName(nombreUsuario),
+            Email = string.IsNullOrWhiteSpace(email) ? $"{nombreUsuario}@local" : email,
+            NormalizedEmail = _users.NormalizeEmail(
+                string.IsNullOrWhiteSpace(email) ? $"{nombreUsuario}@local" : email),
+            EmailConfirmed = true,
+            SecurityStamp = Guid.NewGuid().ToString("N")
+        };
+
+        var creado = await _users.CreateAsync(identity, clave);
+        if (!creado.Succeeded)
+            throw new InvalidOperationException(string.Join("; ", creado.Errors.Select(e => e.Description)));
+    }
 }

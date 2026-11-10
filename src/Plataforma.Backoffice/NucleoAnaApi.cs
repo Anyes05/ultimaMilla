@@ -435,7 +435,129 @@ public static class NucleoAnaApi
             }
         }).RequireAuthorization();
 
+        app.MapGet("/api/usuarios", async (
+            ClaimsPrincipal principal, GestionUsuarios usuarios, CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            var lista = await usuarios.ListarAsync(acceso.OperadorId, ct);
+            return Results.Json(lista.Select(u => new
+            {
+                u.Id,
+                u.Nombre,
+                u.Email,
+                u.NombreUsuario,
+                Rol = Roles.De(u.Rol),
+                u.ComercioId,
+                u.Activo
+            }), ObtenerRutasDeHoy.OpcionesJson);
+        }).RequireAuthorization();
+
+        app.MapPost("/api/usuarios", async (
+            ClaimsPrincipal principal, UsuarioSolicitudApi solicitud, GestionUsuarios usuarios, CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                if (!IntentarParsearRol(solicitud.Rol, out var rol))
+                    return Results.BadRequest(new { mensaje = "Rol inválido." });
+
+                var u = await usuarios.RegistrarAsync(
+                    acceso.OperadorId,
+                    solicitud.Nombre,
+                    solicitud.Email,
+                    solicitud.NombreUsuario,
+                    solicitud.Clave,
+                    rol,
+                    solicitud.ComercioId,
+                    ct);
+                return Results.Json(new
+                {
+                    u.Id,
+                    u.Nombre,
+                    u.Email,
+                    u.NombreUsuario,
+                    Rol = Roles.De(u.Rol),
+                    u.ComercioId,
+                    u.Activo
+                }, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPut("/api/usuarios/{usuarioId:guid}", async (
+            Guid usuarioId,
+            ClaimsPrincipal principal,
+            UsuarioActualizarSolicitud solicitud,
+            GestionUsuarios usuarios,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                if (!IntentarParsearRol(solicitud.Rol, out var rol))
+                    return Results.BadRequest(new { mensaje = "Rol inválido." });
+
+                await usuarios.ActualizarAsync(
+                    acceso.OperadorId,
+                    usuarioId,
+                    solicitud.Nombre,
+                    solicitud.Email,
+                    rol,
+                    solicitud.ComercioId,
+                    ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        app.MapPost("/api/usuarios/{usuarioId:guid}/activo", async (
+            Guid usuarioId,
+            ClaimsPrincipal principal,
+            UsuarioActivoSolicitud solicitud,
+            GestionUsuarios usuarios,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Administrador)
+                return Results.Unauthorized();
+            try
+            {
+                await usuarios.CambiarActivoAsync(acceso.OperadorId, usuarioId, solicitud.Activo, ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
         return app;
+    }
+
+    private static bool IntentarParsearRol(string valor, out RolUsuario rol)
+    {
+        if (Enum.TryParse(valor, ignoreCase: true, out rol))
+            return true;
+
+        foreach (RolUsuario candidato in Enum.GetValues<RolUsuario>())
+        {
+            if (string.Equals(Roles.De(candidato), valor, StringComparison.OrdinalIgnoreCase))
+            {
+                rol = candidato;
+                return true;
+            }
+        }
+
+        rol = default;
+        return false;
     }
 }
 
@@ -470,3 +592,16 @@ public sealed record ComercioSolicitudApi(
     string? DocumentoFiscal = null,
     string? DireccionPrincipal = null);
 public sealed record ComercioActivoSolicitud(bool Activo);
+public sealed record UsuarioSolicitudApi(
+    string Nombre,
+    string Email,
+    string NombreUsuario,
+    string Clave,
+    string Rol,
+    Guid? ComercioId = null);
+public sealed record UsuarioActualizarSolicitud(
+    string Nombre,
+    string Email,
+    string Rol,
+    Guid? ComercioId = null);
+public sealed record UsuarioActivoSolicitud(bool Activo);

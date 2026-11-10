@@ -38,6 +38,7 @@ public sealed class ObtenerDetalleSeguimiento
     private readonly IOperadorRepositorio _operadores;
     private readonly IRutaRepositorio _rutas;
     private readonly IReglaOperativaRepositorio _reglas;
+    private readonly ICoberturaRepositorio _cobertura;
     private readonly ICacheLectura _cache;
 
     public ObtenerDetalleSeguimiento(
@@ -47,6 +48,7 @@ public sealed class ObtenerDetalleSeguimiento
         IOperadorRepositorio operadores,
         IRutaRepositorio rutas,
         IReglaOperativaRepositorio reglas,
+        ICoberturaRepositorio cobertura,
         ICacheLectura cache)
     {
         _envios = envios;
@@ -55,6 +57,7 @@ public sealed class ObtenerDetalleSeguimiento
         _operadores = operadores;
         _rutas = rutas;
         _reglas = reglas;
+        _cobertura = cobertura;
         _cache = cache;
     }
 
@@ -108,7 +111,7 @@ public sealed class ObtenerDetalleSeguimiento
         var ahora = DateTime.UtcNow;
         var historial = await _historial.ListarPorEnvioAsync(envio.OperadorId, envio.Id, cancellationToken);
         var bultos = await _bultos.ListarPorEnvioAsync(envio.OperadorId, envio.Id, cancellationToken);
-        var (fechaPrevista, estimadaAntesDe) = await EstimarAsync(envio, historial, ahora, cancellationToken);
+        var (fechaPrevista, estimadaAntesDe) = await EstimarAsync(envio, operador, historial, ahora, cancellationToken);
         var regla = await _reglas.ObtenerVigenteAsync(envio.OperadorId, ahora, cancellationToken);
 
         return new DetalleSeguimiento(
@@ -132,11 +135,12 @@ public sealed class ObtenerDetalleSeguimiento
     }
 
     /// <summary>
-    /// Sin franjas horarias todavía (RF 2), la ventana es el día de la ruta o, sin ruta, el plazo comprometido por el
-    /// operador desde el alta o la última reprogramación, con la regla vigente al crear el envío (letra 6.6).
+    /// Ventana estimada (RF 2 / RF 25): día de la ruta si hay una; si no, fin de la primera franja activa
+    /// del operador en su zona horaria; si tampoco hay franjas, plazo de la regla vigente al alta.
     /// </summary>
     private async Task<(DateOnly? Fecha, DateTime? AntesDe)> EstimarAsync(
         Envio envio,
+        Operador operador,
         IReadOnlyList<HistorialEstado> historial,
         DateTime ahora,
         CancellationToken cancellationToken)
@@ -148,6 +152,26 @@ public sealed class ObtenerDetalleSeguimiento
         if (envio.RutaId is Guid rutaId &&
             await _rutas.ObtenerAsync(envio.OperadorId, rutaId, cancellationToken) is { } ruta)
             return (ruta.Fecha, null);
+
+        var franjas = (await _cobertura.ListarFranjasAsync(envio.OperadorId, cancellationToken))
+            .Where(f => f.Activa)
+            .OrderBy(f => f.Desde)
+            .ToList();
+        if (franjas.Count > 0)
+        {
+            var tz = TimeZoneInfo.FindSystemTimeZoneById(operador.ZonaHoraria);
+            var localAhora = TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(ahora, DateTimeKind.Utc), tz);
+            var franja = franjas[0];
+            var dia = DateOnly.FromDateTime(localAhora);
+            if (TimeOnly.FromDateTime(localAhora) > franja.Hasta)
+                dia = dia.AddDays(1);
+
+            var localFin = dia.ToDateTime(franja.Hasta);
+            var utcFin = TimeZoneInfo.ConvertTimeToUtc(
+                DateTime.SpecifyKind(localFin, DateTimeKind.Unspecified), tz);
+            return (dia, utcFin);
+        }
 
         var regla = await _reglas.ObtenerVigenteAsync(envio.OperadorId, envio.FechaCreacion, cancellationToken);
         if (regla is null)

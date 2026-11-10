@@ -15,6 +15,8 @@ public sealed class HashClave : IVerificadorClave
         return $"pbkdf2${Iteraciones}${Convert.ToBase64String(sal)}${Convert.ToBase64String(hash)}";
     }
 
+    public string Generar(string clave) => Crear(clave);
+
     public bool Coincide(string clave, string hashAlmacenado)
     {
         var partes = hashAlmacenado.Split('$');

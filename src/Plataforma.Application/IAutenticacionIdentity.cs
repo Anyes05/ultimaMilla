@@ -13,4 +13,12 @@ public interface IAutenticacionIdentity
         string clave,
         string hashLegado,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Alta de usuario Identity alineada al Id de <c>UsuarioPlataforma</c>.</summary>
+    Task CrearAsync(
+        Guid usuarioId,
+        string nombreUsuario,
+        string email,
+        string clave,
+        CancellationToken cancellationToken = default);
 }

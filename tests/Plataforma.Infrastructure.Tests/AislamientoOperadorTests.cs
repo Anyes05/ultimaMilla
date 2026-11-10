@@ -214,5 +214,13 @@ public class AislamientoOperadorTests
             string hashLegado,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(_legado.Coincide(clave, hashLegado));
+
+        public Task CrearAsync(
+            Guid usuarioId,
+            string nombreUsuario,
+            string email,
+            string clave,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

@@ -48,6 +48,33 @@ public sealed class SeguimientoPublicoTests
     }
 
     [Fact]
+    public async Task SinRutaConFranja_LaVentanaUsaFinDeFranjaLocal()
+    {
+        var envio = Envio.Admitir(DatosSemilla.OperadorNorteId, DatosSemilla.ComercioNorteId, "Ana Norte", "Calle Norte 1");
+        envio.CambiarEstado(EstadoEnvio.EnDeposito);
+        await Sembrar(envio, maximoIntentos: 3, plazoHoras: 24);
+        await using (var contexto = Contexto())
+        {
+            contexto.FranjasHorarias.Add(FranjaHoraria.Definir(
+                Guid.NewGuid(),
+                DatosSemilla.OperadorNorteId,
+                "Mañana",
+                new TimeOnly(9, 0),
+                new TimeOnly(13, 0)));
+            await contexto.SaveChangesAsync();
+        }
+
+        var detalle = await Consultar(envio);
+
+        Assert.NotNull(detalle!.FechaPrevista);
+        Assert.NotNull(detalle.EstimadaAntesDeUtc);
+        var tz = TimeZoneInfo.FindSystemTimeZoneById(Operador.ZonaHorariaUruguay);
+        var localFin = TimeZoneInfo.ConvertTimeFromUtc(
+            DateTime.SpecifyKind(detalle.EstimadaAntesDeUtc.Value, DateTimeKind.Utc), tz);
+        Assert.Equal(new TimeOnly(13, 0), TimeOnly.FromDateTime(localFin));
+    }
+
+    [Fact]
     public async Task Bultos_MuestraCuantosSeEntregaron()
     {
         var envio = EnTransito(Guid.NewGuid());
@@ -192,6 +219,7 @@ public sealed class SeguimientoPublicoTests
             new OperadorRepositorio(contexto),
             new RutaRepositorio(contexto),
             new ReglaOperativaRepositorio(contexto),
+            new CoberturaRepositorio(contexto),
             _cache).PorTokenAsync(envio.TokenSeguimientoPublico);
     }
 
