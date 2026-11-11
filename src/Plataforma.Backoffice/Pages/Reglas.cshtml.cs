@@ -19,6 +19,12 @@ public class ReglasModel : PageModel
         new("Devolución al comercio", nameof(PoliticaBultosPendientes.DevolucionAlComercio))
     ];
 
+    public static readonly IReadOnlyList<SelectListItem> PoliticasDevolucion =
+    [
+        new("Devolver automáticamente", nameof(PoliticaDevolucion.Automatica)),
+        new("Esperar decisión del operador", nameof(PoliticaDevolucion.EsperarDecision))
+    ];
+
     private readonly GestionReglasOperativas _gestion;
     private readonly IOperadorRepositorio _operadores;
 
@@ -73,7 +79,11 @@ public class ReglasModel : PageModel
                     Nueva.ExigeFoto,
                     Nueva.AdmiteEntregaParcial,
                     Nueva.PoliticaBultosPendientes,
-                    Nueva.MotivosNoEntrega.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)),
+                    Nueva.MotivosNoEntrega.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+                    Nueva.ExigeDocumentoReceptor,
+                    Nueva.PlazoEntreIntentosHoras,
+                    Nueva.PoliticaDevolucion,
+                    Nueva.PlazoEntregaUrgenteHoras),
                 HttpContext.RequestAborted);
 
             TempData["Mensaje"] = "Nueva versión de las reglas publicada. Ya está vigente.";
@@ -95,6 +105,18 @@ public class ReglasModel : PageModel
 
     public static string NombrePolitica(PoliticaBultosPendientes politica) =>
         Politicas.First(item => item.Value == politica.ToString()).Text;
+
+    public static string NombrePoliticaDevolucion(PoliticaDevolucion politica) =>
+        PoliticasDevolucion.First(item => item.Value == politica.ToString()).Text;
+
+    public static string PruebaExigida(ReglaOperativa regla)
+    {
+        var pruebas = new List<string>();
+        if (regla.ExigeFirma) pruebas.Add("Firma");
+        if (regla.ExigeFoto) pruebas.Add("Foto");
+        if (regla.ExigeDocumentoReceptor) pruebas.Add("Documento");
+        return pruebas.Count == 0 ? "Nombre" : "Nombre, " + string.Join(", ", pruebas);
+    }
 
     public string HoraOperador(DateTime utc) =>
         TimeZoneInfo.ConvertTimeFromUtc(
@@ -122,7 +144,11 @@ public class ReglasModel : PageModel
                 ExigeFoto = vigente.ExigeFoto,
                 AdmiteEntregaParcial = vigente.AdmiteEntregaParcial,
                 PoliticaBultosPendientes = vigente.PoliticaBultosPendientes,
-                MotivosNoEntrega = string.Join(Environment.NewLine, vigente.MotivosNoEntrega)
+                MotivosNoEntrega = string.Join(Environment.NewLine, vigente.MotivosNoEntrega),
+                ExigeDocumentoReceptor = vigente.ExigeDocumentoReceptor,
+                PlazoEntreIntentosHoras = vigente.PlazoEntreIntentosHoras,
+                PoliticaDevolucion = vigente.PoliticaDevolucion,
+                PlazoEntregaUrgenteHoras = vigente.PlazoEntregaUrgenteHoras
             };
         }
     }
@@ -141,6 +167,16 @@ public class ReglasModel : PageModel
         public bool ExigeFirma { get; set; }
 
         public bool ExigeFoto { get; set; }
+
+        public bool ExigeDocumentoReceptor { get; set; }
+
+        [Range(0, 720, ErrorMessage = "El plazo entre intentos debe estar entre 0 y 720 horas.")]
+        public int PlazoEntreIntentosHoras { get; set; }
+
+        public PoliticaDevolucion PoliticaDevolucion { get; set; }
+
+        [Range(1, 720, ErrorMessage = "El plazo urgente debe estar entre 1 y 720 horas.")]
+        public int? PlazoEntregaUrgenteHoras { get; set; }
 
         public bool AdmiteEntregaParcial { get; set; }
 

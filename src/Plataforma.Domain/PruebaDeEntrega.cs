@@ -13,6 +13,7 @@ public class PruebaDeEntrega
     public decimal? Longitud { get; private set; }
     public DateTime Fecha { get; private set; }
     public string NombreReceptor { get; private set; } = string.Empty;
+    public string DocumentoReceptor { get; private set; } = string.Empty;
     public string Observaciones { get; private set; } = string.Empty;
     public string Usuario { get; private set; } = string.Empty;
     public DateTimeOffset FechaDispositivo { get; private set; }
@@ -68,7 +69,8 @@ public class PruebaDeEntrega
         decimal? latitud = null,
         decimal? longitud = null,
         string? codigoEscaneado = null,
-        Guid? bultoId = null)
+        Guid? bultoId = null,
+        string? documentoReceptor = null)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("La prueba de entrega necesita un identificador.");
@@ -91,6 +93,7 @@ public class PruebaDeEntrega
             EnvioId = envioId,
             BultoId = bultoId,
             NombreReceptor = (nombreReceptor ?? string.Empty).Trim(),
+            DocumentoReceptor = (documentoReceptor ?? string.Empty).Trim(),
             Observaciones = (observaciones ?? string.Empty).Trim(),
             Usuario = usuario.Trim(),
             Foto = foto ?? string.Empty,

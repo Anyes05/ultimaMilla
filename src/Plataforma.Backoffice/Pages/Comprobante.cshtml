@@ -42,6 +42,11 @@
                     <dl class="row mb-3">
                         <dt class="col-sm-4">Recibió</dt>
                         <dd class="col-sm-8">@(string.IsNullOrWhiteSpace(comprobante.NombreReceptor) ? "—" : comprobante.NombreReceptor)</dd>
+                        @if (!string.IsNullOrWhiteSpace(comprobante.DocumentoReceptor))
+                        {
+                            <dt class="col-sm-4">Documento</dt>
+                            <dd class="col-sm-8" data-documento-receptor>@comprobante.DocumentoReceptor</dd>
+                        }
                         <dt class="col-sm-4">Hora del dispositivo</dt>
                         <dd class="col-sm-8">@comprobante.FechaDispositivo.ToString("dd/MM/yyyy HH:mm") (UTC@(comprobante.FechaDispositivo.Offset >= TimeSpan.Zero ? "+" : "-")@comprobante.FechaDispositivo.Offset.ToString(@"hh\:mm"))</dd>
                         <dt class="col-sm-4">Repartidor</dt>

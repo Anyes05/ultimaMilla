@@ -11,7 +11,8 @@ public sealed record OperadorVisible(
     bool ExigeFirma = false,
     bool ExigeFoto = false,
     IReadOnlyList<string>? MotivosNoEntrega = null,
-    PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo)
+    PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo,
+    bool ExigeDocumentoReceptor = false)
 {
     public static OperadorVisible Desde(Operador operador, IReadOnlyList<string>? funcionalidades = null) =>
         new(operador.Nombre, operador.ColorMarca, operador.MaximoIntentos, funcionalidades);
@@ -71,7 +72,9 @@ public sealed record ComprobanteEntrega(
     decimal? Longitud = null,
     string? CodigoEscaneado = null,
     /// <summary>v2: resultados por bulto. Ausente o vacío = comportamiento v1 (estado a nivel envío).</summary>
-    IReadOnlyList<ResultadoBultoSync>? Bultos = null);
+    IReadOnlyList<ResultadoBultoSync>? Bultos = null,
+    /// <summary>Documento de quien recibe; obligatorio en la entrega si la regla lo exige.</summary>
+    string? DocumentoReceptor = null);
 
 public sealed record EventoAplicado(Guid EnvioId, EstadoEnvio Estado, int IntentosRealizados);
 

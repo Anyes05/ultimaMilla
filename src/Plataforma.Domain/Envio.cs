@@ -27,6 +27,9 @@ public class Envio
     public Guid? RutaId { get; private set; }
     public Guid? ZonaId { get; private set; }
     public Guid? FranjaId { get; private set; }
+
+    /// <summary>Modalidad de servicio (RF 3 y 4): define el plazo comprometido.</summary>
+    public bool Urgente { get; private set; }
     /// <summary>Clave del comercio para importación idempotente (única por operador+comercio).</summary>
     public string? ClaveExterna { get; private set; }
     public int IntentosRealizados { get; private set; }
@@ -73,7 +76,8 @@ public class Envio
         Guid? vigenciaTarifaId = null,
         Guid? zonaId = null,
         Guid? franjaId = null,
-        string? claveExterna = null)
+        string? claveExterna = null,
+        bool urgente = false)
     {
         var envio = new Envio(destinatario, direccionEntrega)
         {
@@ -85,7 +89,8 @@ public class Envio
             VigenciaTarifaId = vigenciaTarifaId,
             ZonaId = zonaId,
             FranjaId = franjaId,
-            ClaveExterna = string.IsNullOrWhiteSpace(claveExterna) ? null : claveExterna.Trim()
+            ClaveExterna = string.IsNullOrWhiteSpace(claveExterna) ? null : claveExterna.Trim(),
+            Urgente = urgente
         };
 
         return envio;

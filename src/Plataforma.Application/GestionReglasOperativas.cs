@@ -10,7 +10,11 @@ public sealed record NuevaVersionRegla(
     bool ExigeFoto,
     bool AdmiteEntregaParcial,
     PoliticaBultosPendientes PoliticaBultosPendientes,
-    IReadOnlyList<string>? MotivosNoEntrega = null);
+    IReadOnlyList<string>? MotivosNoEntrega = null,
+    bool ExigeDocumentoReceptor = false,
+    int PlazoEntreIntentosHoras = 0,
+    PoliticaDevolucion PoliticaDevolucion = PoliticaDevolucion.Automatica,
+    int? PlazoEntregaUrgenteHoras = null);
 
 /// <summary>
 /// Reglas operativas editables en tiempo de ejecución (RF 4, letra 6.6). Publicar crea una versión nueva y cierra
@@ -72,7 +76,11 @@ public sealed class GestionReglasOperativas
                 GestionTarifas.VigenciaAbiertaHasta,
                 datos.AdmiteEntregaParcial,
                 datos.PoliticaBultosPendientes,
-                datos.MotivosNoEntrega),
+                datos.MotivosNoEntrega,
+                datos.ExigeDocumentoReceptor,
+                datos.PlazoEntreIntentosHoras,
+                datos.PoliticaDevolucion,
+                datos.PlazoEntregaUrgenteHoras),
             cancellationToken);
 
         // La sincronización de la app valida contra el operador: los dos tienen que decir lo mismo.

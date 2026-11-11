@@ -160,7 +160,10 @@ Devuelve las rutas del día del repartidor autenticado.
     "operador": {
       "nombre": "Operador de demostracion",
       "colorMarca": "#512BD4",
-      "maximoIntentos": 3
+      "maximoIntentos": 3,
+      "exigeFirma": false,
+      "exigeFoto": false,
+      "exigeDocumentoReceptor": false
     },
     "envios": [
       {
@@ -223,8 +226,12 @@ Archivo completo: `contracts/repartidor/sincronizacion.request.json`
 | `eventos[].envioId` | UUID | Envío de la ruta |
 | `eventos[].estado` | enum string | Estado que el móvil quiere aplicar |
 | `eventos[].nombreReceptor` | string | Requerido si `estado` es `Entregado`; máx. 100 caracteres |
+| `eventos[].documentoReceptor` | string | Opcional. Documento de quien recibe; **requerido en una entrega si la regla del operador lo exige** (si falta, el evento vuelve en `rechazados` con el motivo). La ruta del día lo informa en `operador.exigeDocumentoReceptor` (§3.2) |
 | `eventos[].observaciones` | string | Máx. 500 caracteres |
 | `eventos[].fechaDispositivo` | datetime con offset | Hora del teléfono al registrar |
+
+Reglas operativas que afectan la sincronización (RF 4): si la política de devolución es "Esperar decisión del operador",
+al agotar los intentos el envío queda `NoEntregado` en lugar de pasar solo a `EnDevolucion`; el operador decide desde Monitoreo.
 
 **Response `200`**
 

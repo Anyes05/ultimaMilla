@@ -216,8 +216,10 @@ public sealed class SincronizarEntregas
 
                 // Transición 11: al agotar intentos tras NoEntregado, paso automático a EnDevolucion.
                 // Convive con "Pedir otra visita" (10): esa sigue siendo Reprogramado explícito, solo con intentos.
+                // Con la política "Esperar decisión", queda No entregado y el operador decide en Monitoreo.
                 if (envio.Estado == EstadoEnvio.NoEntregado
                     && envio.IntentosRealizados >= operador.MaximoIntentos
+                    && (reglaSync?.DevuelveAlAgotarIntentos ?? true)
                     && TransicionesEnvio.EsValida(envio.Estado, EstadoEnvio.EnDevolucion))
                 {
                     var antesDev = envio.Estado;
@@ -271,7 +273,7 @@ public sealed class SincronizarEntregas
                             Guid.NewGuid(), operadorId, envio.Id, evento.NombreReceptor, evento.Observaciones,
                             usuario, RelojOperacion.AUtc(evento.FechaDispositivo),
                             bulto.Foto ?? evento.Foto, bulto.Firma ?? evento.Firma,
-                            evento.Latitud, evento.Longitud, evento.CodigoEscaneado, bulto.BultoId),
+                            evento.Latitud, evento.Longitud, evento.CodigoEscaneado, bulto.BultoId, evento.DocumentoReceptor),
                         cancellationToken);
                 }
             }
@@ -281,7 +283,7 @@ public sealed class SincronizarEntregas
                     PruebaDeEntrega.DesdeSincronizacion(
                         Guid.NewGuid(), operadorId, envio.Id, evento.NombreReceptor, evento.Observaciones,
                         usuario, RelojOperacion.AUtc(evento.FechaDispositivo), evento.Foto, evento.Firma,
-                        evento.Latitud, evento.Longitud, evento.CodigoEscaneado),
+                        evento.Latitud, evento.Longitud, evento.CodigoEscaneado, null, evento.DocumentoReceptor),
                     cancellationToken);
             }
 
@@ -450,6 +452,7 @@ public sealed class SincronizarEntregas
 
             if (envio.Estado == EstadoEnvio.NoEntregado
                 && envio.IntentosRealizados >= operador.MaximoIntentos
+                && (regla?.DevuelveAlAgotarIntentos ?? true)
                 && TransicionesEnvio.EsValida(envio.Estado, EstadoEnvio.EnDevolucion))
             {
                 envio.CambiarEstado(EstadoEnvio.EnDevolucion, "sistema", "Máximo de intentos: paso automático a devolución");
@@ -508,6 +511,9 @@ public sealed class SincronizarEntregas
                 ? bultosEntregados.Any(bulto => string.IsNullOrWhiteSpace(bulto.Foto))
                 : string.IsNullOrWhiteSpace(evento.Foto)))
             return "La regla del operador exige foto en la entrega.";
+
+        if (regla.ExigeDocumentoReceptor && string.IsNullOrWhiteSpace(evento.DocumentoReceptor))
+            return "La regla del operador exige el documento del receptor en la entrega.";
 
         return null;
     }

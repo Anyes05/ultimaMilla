@@ -207,7 +207,7 @@ public sealed class ObtenerDetalleSeguimiento
         var desde = historial.Where(evento => evento.Estado == EstadoEnvio.Reprogramado)
             .Select(evento => (DateTime?)evento.Fecha)
             .Max() ?? envio.FechaCreacion;
-        var antesDe = desde.AddHours(regla.PlazoEntregaHoras);
+        var antesDe = desde.AddHours(regla.PlazoEntregaPara(envio.Urgente));
         return antesDe > ahora ? (null, antesDe) : (null, null);
     }
 }

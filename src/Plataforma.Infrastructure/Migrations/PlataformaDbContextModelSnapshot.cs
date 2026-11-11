@@ -511,6 +511,9 @@ namespace Plataforma.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool>("Urgente")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("integer");
@@ -877,6 +880,10 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<string>("CodigoEscaneado")
                         .HasColumnType("text");
 
+                    b.Property<string>("DocumentoReceptor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<Guid>("EnvioId")
                         .HasColumnType("uuid");
 
@@ -993,6 +1000,9 @@ namespace Plataforma.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("ExigeDocumentoReceptor")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("ExigeFirma")
                         .HasColumnType("boolean");
 
@@ -1014,7 +1024,13 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");
 
+                    b.Property<int>("PlazoEntreIntentosHoras")
+                        .HasColumnType("integer");
+
                     b.Property<int>("PlazoEntregaHoras")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PlazoEntregaUrgenteHoras")
                         .HasColumnType("integer");
 
                     b.Property<int>("PlazoReprogramacionHoras")
@@ -1024,6 +1040,9 @@ namespace Plataforma.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
+
+                    b.Property<int>("PoliticaDevolucion")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("VigenciaDesde")
                         .HasColumnType("timestamp with time zone");

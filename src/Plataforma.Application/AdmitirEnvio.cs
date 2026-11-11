@@ -112,7 +112,8 @@ public sealed class AdmitirEnvio
             tarifa.VigenciaTarifaId,
             zonaId,
             franjaId,
-            claveExterna);
+            claveExterna,
+            urgente);
 
         var pesos = RepartirPesoEntreBultos(pesoKg, cantidadBultos);
         for (var i = 1; i <= cantidadBultos; i++)

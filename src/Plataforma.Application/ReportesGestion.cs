@@ -125,7 +125,7 @@ public sealed class ObtenerReportesGestion
             var eventos = historial.TryGetValue(envio.Id, out var lista) ? lista : [];
             var entregaUtc = eventos.FirstOrDefault(evento => evento.Estado == EstadoEnvio.Entregado)?.Fecha;
             var regla = ReglaVigente(reglas, envio.FechaCreacion);
-            var plazo = regla is null ? (DateTime?)null : envio.FechaCreacion.AddHours(regla.PlazoEntregaHoras);
+            var plazo = regla is null ? (DateTime?)null : envio.FechaCreacion.AddHours(regla.PlazoEntregaPara(envio.Urgente));
             return new Fila(
                 envio,
                 envio.ZonaId is Guid z && zonas.TryGetValue(z, out var nombreZona) ? nombreZona : "Sin zona",
@@ -323,8 +323,9 @@ public sealed class ListarEnviosEnRiesgo
             if (ObtenerReportesGestion.ReglaVigente(reglas, envio.FechaCreacion) is { } regla)
             {
                 var desde = ultimaReprogramacion.TryGetValue(envio.Id, out var reprogramado) ? reprogramado : envio.FechaCreacion;
-                compromiso = desde.AddHours(regla.PlazoEntregaHoras);
-                criterio = $"Plazo de {regla.PlazoEntregaHoras} h";
+                var horas = regla.PlazoEntregaPara(envio.Urgente);
+                compromiso = desde.AddHours(horas);
+                criterio = envio.Urgente ? $"Plazo urgente de {horas} h" : $"Plazo de {horas} h";
             }
 
             if (envio.FranjaId is Guid franjaId && franjas.TryGetValue(franjaId, out var franja) && envio.RutaId is Guid rutaId)

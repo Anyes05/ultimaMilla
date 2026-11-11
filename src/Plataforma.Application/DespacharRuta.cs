@@ -15,6 +15,8 @@ public sealed class DespacharRuta
     private readonly RegistrarOutboxEstado _outbox;
     private readonly PublicarOutboxPendientes _publicar;
     private readonly ICacheLectura _cache;
+    private readonly IHistorialEstadoRepositorio? _historial;
+    private readonly IReglaOperativaRepositorio? _reglas;
 
     public DespacharRuta(
         IRutaRepositorio rutas,
@@ -24,8 +26,12 @@ public sealed class DespacharRuta
         ICoberturaRepositorio cobertura,
         RegistrarOutboxEstado outbox,
         PublicarOutboxPendientes publicar,
-        ICacheLectura cache)
+        ICacheLectura cache,
+        IHistorialEstadoRepositorio? historial = null,
+        IReglaOperativaRepositorio? reglas = null)
     {
+        _historial = historial;
+        _reglas = reglas;
         _rutas = rutas;
         _envios = envios;
         _repartidores = repartidores;
@@ -103,6 +109,7 @@ public sealed class DespacharRuta
         }
 
         await ValidarFranjasAsync(operadorId, fecha, envioIds, cancellationToken);
+        await ValidarPlazoEntreIntentosAsync(operadorId, envioIds, cancellationToken);
 
         var ruta = Ruta.Programar(operadorId, repartidorId, fecha);
         var paradas = new List<Parada>(envioIds.Count);
@@ -144,6 +151,38 @@ public sealed class DespacharRuta
         await _cache.QuitarAsync(ObtenerRutasDeHoy.Clave(operadorId, repartidorId, fecha), cancellationToken);
 
         return ruta;
+    }
+
+    /// <summary>
+    /// RF 4, plazo entre intentos: un envío que tuvo un intento fallido (no entregado o entregado en parte) no vuelve
+    /// a salir hasta que pase el plazo de la regla vigente.
+    /// </summary>
+    private async Task ValidarPlazoEntreIntentosAsync(Guid operadorId, IReadOnlyList<Guid> envioIds, CancellationToken cancellationToken)
+    {
+        if (_historial is null || _reglas is null)
+            return;
+
+        var ahora = DateTime.UtcNow;
+        var regla = await _reglas.ObtenerVigenteAsync(operadorId, ahora, cancellationToken);
+        if (regla is null || regla.PlazoEntreIntentosHoras <= 0)
+            return;
+
+        var ultimos = (await _historial.ListarPorEnviosAsync(operadorId, envioIds, cancellationToken))
+            .Where(evento => evento.Estado is EstadoEnvio.NoEntregado or EstadoEnvio.EntregadoParcialmente)
+            .GroupBy(evento => evento.EnvioId)
+            .ToDictionary(grupo => grupo.Key, grupo => grupo.Max(evento => evento.Fecha));
+
+        foreach (var (envioId, ultimoIntento) in ultimos)
+        {
+            var habilitado = DateTime.SpecifyKind(ultimoIntento, DateTimeKind.Utc).AddHours(regla.PlazoEntreIntentosHoras);
+            if (habilitado <= ahora)
+                continue;
+
+            var envio = await _envios.ObtenerPorOperadorAsync(envioId, operadorId, cancellationToken);
+            var local = new DateTimeOffset(habilitado).ToOffset(RelojOperacion.Offset);
+            throw new InvalidOperationException(
+                $"El envío {envio?.NumeroSeguimiento} tuvo un intento fallido hace poco: puede volver a salir desde el {local:dd/MM HH\\:mm}.");
+        }
     }
 
     /// <summary>

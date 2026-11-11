@@ -81,4 +81,25 @@ public class OperadorIdTests
     [InlineData("con espacio@norte.test")]
     public void Contacto_EmailInvalido_SeRechaza(string email) =>
         Assert.Throws<ArgumentException>(() => Operador.Crear(_operadorId, "Norte", "azul", 3).CambiarContacto("", email));
+
+    [Fact]
+    public void Regla_PlazoSegunModalidad()
+    {
+        var conUrgente = ReglaOperativa.Crear(_id(), _operadorId, 3, 48, false, false, false, 24, DateTime.UtcNow, DateTime.UtcNow.AddDays(1),
+            plazoEntregaUrgenteHoras: 6);
+        var sinUrgente = ReglaOperativa.Crear(_id(), _operadorId, 3, 48, false, false, false, 24, DateTime.UtcNow, DateTime.UtcNow.AddDays(1));
+
+        Assert.Equal((6, 48), (conUrgente.PlazoEntregaPara(true), conUrgente.PlazoEntregaPara(false)));
+        Assert.Equal(48, sinUrgente.PlazoEntregaPara(true));
+        Assert.True(sinUrgente.DevuelveAlAgotarIntentos);
+    }
+
+    [Fact]
+    public void Regla_ValoresFueraDeRango_SeRechazan()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => ReglaOperativa.Crear(_id(), _operadorId, 3, 48, false, false, false, 24,
+            DateTime.UtcNow, DateTime.UtcNow.AddDays(1), plazoEntreIntentosHoras: -1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ReglaOperativa.Crear(_id(), _operadorId, 3, 48, false, false, false, 24,
+            DateTime.UtcNow, DateTime.UtcNow.AddDays(1), plazoEntregaUrgenteHoras: 0));
+    }
 }
