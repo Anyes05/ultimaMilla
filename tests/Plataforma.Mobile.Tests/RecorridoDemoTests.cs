@@ -308,7 +308,12 @@ public sealed class RecorridoDemoTests : IDisposable
         Assert.True(vm.UsaEntregaParcial);
         Assert.Equal(2, vm.BultosEntrega.Count);
         vm.NombreReceptor = "Receptor de prueba";
+        vm.RegistrarBultoEntregado(bultos[0].Id, "CODIGO-INCORRECTO");
+        Assert.False(vm.BultosEntrega.Single(item => item.Bulto.Id == bultos[0].Id).Entregado);
         vm.RegistrarBultoEntregado(bultos[0].Id, "PKG-1");
+        var entregado = vm.BultosEntrega.Single(item => item.Bulto.Id == bultos[0].Id);
+        Assert.True(entregado.Entregado);
+        Assert.False(entregado.PuedeEscanear);
         vm.BultosEntrega.Single(item => item.Bulto.Id == bultos[1].Id).MotivoNoEntrega = "Destinatario ausente";
 
         vm.GuardarEntregaCommand.Execute(null);

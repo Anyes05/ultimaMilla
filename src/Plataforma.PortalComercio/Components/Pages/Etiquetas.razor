@@ -2,6 +2,7 @@
 @attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = Plataforma.Domain.Roles.Comercio)]
 @using Plataforma.Application
 @using Plataforma.Domain
+@using QRCoder
 @inject IHttpContextAccessor HttpContextAccessor
 @inject IEnvioRepositorio Envios
 @inject IBultoRepositorio Bultos
@@ -12,7 +13,7 @@
 
 <style>
     .etiqueta { width: 100mm; min-height: 150mm; border: 1px dashed #adb5bd; padding: 6mm; margin: 0 auto 8mm; background: #fff; color: #000; }
-    .etiqueta .codigo svg { width: 100%; height: 22mm; }
+    .etiqueta .codigo svg { display: block; width: 35mm; height: 35mm; max-width: 100%; margin: 0 auto; }
     @@media print {
         .no-imprimir, .sidebar, .top-row { display: none !important; }
         main, article, .content { padding: 0 !important; margin: 0 !important; }
@@ -57,7 +58,7 @@ else
                     <span> · Medidas: <strong>@bulto.AltoCm.ToString("0.#") × @bulto.AnchoCm.ToString("0.#") × @bulto.LargoCm.ToString("0.#") cm</strong></span>
                 }
             </p>
-            <div class="codigo mb-1">@((MarkupString)CodigoBarras.Svg(bulto.Codigo))</div>
+            <div class="codigo mb-1" role="img" aria-label="Código QR del bulto @bulto.Codigo">@((MarkupString)GenerarQr(bulto.Codigo))</div>
             <p class="text-center font-monospace small mb-3">@bulto.Codigo</p>
             <p class="small mb-0">Seguimiento: <strong class="font-monospace">@envio.NumeroSeguimiento</strong></p>
         </section>
@@ -72,6 +73,14 @@ else
     private Operador? operador;
     private string? comercio;
     private IReadOnlyList<Bulto> bultos = [];
+
+    private static string GenerarQr(string codigo)
+    {
+        using var generador = new QRCodeGenerator();
+        using var datos = generador.CreateQrCode(codigo, QRCodeGenerator.ECCLevel.M);
+        using var imagen = new SvgQRCode(datos);
+        return imagen.GetGraphic(5);
+    }
 
     protected override async Task OnInitializedAsync()
     {

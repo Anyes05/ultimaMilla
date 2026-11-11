@@ -9,9 +9,11 @@ public partial class BultoEntregaItem : ObservableObject
     public BultoEnvio Bulto { get; }
     public IReadOnlyList<string> MotivosNoEntrega { get; }
     public bool PuedeEntregarse => Bulto.PuedeEntregarse;
+    public bool PuedeEscanear => PuedeEntregarse && !Entregado;
     public bool RequiereMotivo => PuedeEntregarse && !Entregado;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PuedeEscanear))]
     [NotifyPropertyChangedFor(nameof(RequiereMotivo))]
     private bool entregado;
 

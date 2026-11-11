@@ -198,8 +198,8 @@
                                         <VerticalStackLayout Spacing="6">
                                             <Label Text="{Binding Bulto.Codigo}" FontAttributes="Bold" />
                                             <Button Text="Escanear bulto entregado" Clicked="EscanearBultoEntrega"
-                                                    CommandParameter="{Binding .}" IsVisible="{Binding PuedeEntregarse}" />
-                                            <Label Text="Bulto marcado como entregado" IsVisible="{Binding Entregado}"
+                                                    CommandParameter="{Binding .}" IsVisible="{Binding PuedeEscanear}" />
+                                                <Label Text="Bulto escaneado" IsVisible="{Binding Entregado}"
                                                    Style="{StaticResource MutedLabel}" />
                                             <Picker Title="Motivo de no entrega" ItemsSource="{Binding MotivosNoEntrega}"
                                                     SelectedItem="{Binding MotivoNoEntrega}"

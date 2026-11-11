@@ -1,5 +1,6 @@
 using Plataforma.Mobile.ViewModels;
 using Plataforma.Mobile.Models;
+using ZXing.Net.Maui;
 using ZXing.Net.Maui.Controls;
 using Microsoft.Extensions.Logging;
 
@@ -181,7 +182,18 @@ public partial class RutaPage : ContentPage
         var resultado = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
         try
         {
-            var camera = new CameraBarcodeReaderView { IsDetecting = true, HeightRequest = 360 };
+            var camera = new CameraBarcodeReaderView
+            {
+                IsDetecting = true,
+                HeightRequest = 360,
+                Options = new BarcodeReaderOptions
+                {
+                    Formats = BarcodeFormats.All,
+                    AutoRotate = true,
+                    TryHarder = true,
+                    Multiple = false
+                }
+            };
             var cerrar = new Button { Text = "Cancelar escaneo" };
             var manual = new Button { Text = "Ingresar codigo manualmente" };
             var page = new ContentPage
