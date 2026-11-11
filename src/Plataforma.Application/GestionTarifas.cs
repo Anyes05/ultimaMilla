@@ -11,7 +11,8 @@ public sealed record NuevaVersionTarifa(
     decimal PrecioPorCm3 = 0,
     decimal RecargoZona = 0,
     IReadOnlyList<RecargoZonaDato>? RecargosZona = null,
-    IReadOnlyList<BonificacionDato>? Bonificaciones = null);
+    IReadOnlyList<BonificacionDato>? Bonificaciones = null,
+    decimal PrecioRetiro = 0);
 
 /// <summary>Recargo propio de una zona en la versión que se publica.</summary>
 public sealed record RecargoZonaDato(Guid ZonaId, decimal Recargo);
@@ -67,7 +68,8 @@ public sealed class GestionTarifas
                     v.Regla.PrecioPorCm3,
                     v.Regla.RecargoZona,
                     recargos.Select(r => new RecargoZonaDato(r.ZonaId, r.Recargo)).ToList(),
-                    bonificaciones.Select(b => new BonificacionDato(b.Nombre, b.Porcentaje, b.ComercioId, b.MinimoEnviosMes)).ToList()),
+                    bonificaciones.Select(b => new BonificacionDato(b.Nombre, b.Porcentaje, b.ComercioId, b.MinimoEnviosMes)).ToList(),
+                    v.Regla.PrecioRetiro),
                 v.Vigencia.VigenciaDesde <= ahora && v.Vigencia.VigenciaHasta >= ahora));
         }
 
@@ -127,7 +129,8 @@ public sealed class GestionTarifas
             datos.RecargoFragil,
             datos.RecargoUrgente,
             datos.PrecioPorCm3,
-            datos.RecargoZona);
+            datos.RecargoZona,
+            datos.PrecioRetiro);
 
         var recargosZona = (datos.RecargosZona ?? [])
             .GroupBy(recargo => recargo.ZonaId)

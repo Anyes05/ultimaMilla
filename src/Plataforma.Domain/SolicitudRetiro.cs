@@ -24,6 +24,10 @@ public class SolicitudRetiro
     public Guid? EnvioAsociadoId { get; private set; }
     public DateTimeOffset CreadoEn { get; private set; }
 
+    /// <summary>Tarifa del retiro al pedirlo (RF 41), con la versión tarifaria que la fijó.</summary>
+    public decimal TarifaCalculada { get; private set; }
+    public Guid? ReglaTarifariaId { get; private set; }
+
     private SolicitudRetiro()
     {
     }
@@ -35,7 +39,9 @@ public class SolicitudRetiro
         string direccion,
         string contacto,
         DateOnly fechaSolicitada,
-        string observaciones = "")
+        string observaciones = "",
+        decimal tarifa = 0,
+        Guid? reglaTarifariaId = null)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("El retiro necesita un identificador.", nameof(id));
@@ -45,6 +51,8 @@ public class SolicitudRetiro
             throw new ArgumentException("El comercio es requerido.", nameof(comercioId));
         if (string.IsNullOrWhiteSpace(direccion))
             throw new ArgumentException("La dirección es requerida.", nameof(direccion));
+        if (tarifa < 0)
+            throw new ArgumentOutOfRangeException(nameof(tarifa), "La tarifa del retiro no puede ser negativa.");
 
         return new SolicitudRetiro
         {
@@ -56,7 +64,9 @@ public class SolicitudRetiro
             Observaciones = (observaciones ?? string.Empty).Trim(),
             FechaSolicitada = fechaSolicitada,
             Estado = EstadoRetiro.Solicitado,
-            CreadoEn = DateTimeOffset.UtcNow
+            CreadoEn = DateTimeOffset.UtcNow,
+            TarifaCalculada = tarifa,
+            ReglaTarifariaId = reglaTarifariaId
         };
     }
 

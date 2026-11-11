@@ -53,6 +53,16 @@
                         <InputText id="observaciones" @bind-Value="Formulario!.Observaciones" class="form-control" />
                     </div>
                 </div>
+                @if (cotizacion is not null)
+                {
+                    <p class="small text-muted mt-3 mb-0" data-costo-retiro>
+                        Costo del retiro: <strong>@Importe(cotizacion.Importe)</strong>
+                        @if (cotizacion.Bonificacion is not null)
+                        {
+                            <span>(incluye bonificación "@cotizacion.Bonificacion")</span>
+                        }
+                    </p>
+                }
                 <button type="submit" class="btn btn-primary mt-3">Solicitar retiro</button>
             </EditForm>
         </div>
@@ -84,6 +94,7 @@ else
                                 <th>Fecha</th>
                                 <th>Dirección</th>
                                 <th>Contacto</th>
+                                <th class="text-end">Tarifa</th>
                                 <th>Estado</th>
                                 <th>Seguimiento</th>
                                 <th></th>
@@ -96,6 +107,7 @@ else
                                     <td>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</td>
                                     <td>@retiro.Direccion</td>
                                     <td>@(string.IsNullOrWhiteSpace(retiro.Contacto) ? "—" : retiro.Contacto)</td>
+                                    <td class="text-end">@Importe(retiro.TarifaCalculada)</td>
                                     <td><span class="status-badge @ClaseEstado(retiro.Estado)">@NombreEstado(retiro.Estado)</span></td>
                                     <td><a href="/seguimiento/retiro/@SeguimientoPublico.TokenRetiro(Proteccion, retiro.OperadorId, retiro.Id)" target="_blank" rel="noopener">Ver enlace</a></td>
                                     <td class="text-end">
@@ -128,6 +140,7 @@ else
     private bool habilitado;
     private string? mensajeError;
     private DateOnly hoy;
+    private ResultadoTarifa? cotizacion;
 
     protected override async Task OnInitializedAsync()
     {
@@ -144,6 +157,8 @@ else
             Formulario.Fecha = hoy.AddDays(1);
 
         habilitado = await Banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.RetiroDomicilio);
+        if (habilitado)
+            cotizacion = await GestionRetiros.CotizarAsync(acceso.OperadorId, comercioId);
         await CargarAsync(acceso.OperadorId, comercioId);
     }
 
@@ -215,6 +230,9 @@ else
         comercioId = comercio;
         return true;
     }
+
+    private static string Importe(decimal valor) =>
+        valor.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("es-UY"));
 
     private static string NombreEstado(EstadoRetiro estado) => estado switch
     {

@@ -43,6 +43,7 @@
                         <th>Comercio</th>
                         <th>Dirección</th>
                         <th>Contacto</th>
+                        <th class="text-end">Tarifa</th>
                         <th>Estado</th>
                         <th>Ruta</th>
                         <th class="text-end"></th>
@@ -52,7 +53,7 @@
                 @if (Model.Retiros.Count == 0)
                 {
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-5">Todavía no hay retiros solicitados.</td>
+                        <td colspan="8" class="text-center text-muted py-5">Todavía no hay retiros solicitados.</td>
                     </tr>
                 }
                 @foreach (var retiro in Model.Retiros)
@@ -72,6 +73,7 @@
                             }
                         </td>
                         <td>@(string.IsNullOrWhiteSpace(retiro.Contacto) ? "—" : retiro.Contacto)</td>
+                        <td class="text-end" data-tarifa-retiro>@retiro.TarifaCalculada.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("es-UY"))</td>
                         <td><span class="status-badge @RetirosModel.ClaseEstado(retiro.Estado)">@RetirosModel.NombreEstado(retiro.Estado)</span></td>
                         <td>
                             @if (programable && rutas.Count > 0)

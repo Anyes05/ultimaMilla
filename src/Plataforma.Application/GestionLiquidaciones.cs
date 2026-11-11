@@ -25,9 +25,11 @@ public sealed class GestionLiquidaciones
 {
     private readonly ILiquidacionRepositorio _liquidaciones;
     private readonly IEnvioRepositorio _envios;
+    private readonly IRetiroRepositorio? _retiros;
 
-    public GestionLiquidaciones(ILiquidacionRepositorio liquidaciones, IEnvioRepositorio envios)
+    public GestionLiquidaciones(ILiquidacionRepositorio liquidaciones, IEnvioRepositorio envios, IRetiroRepositorio? retiros = null)
     {
+        _retiros = retiros;
         _liquidaciones = liquidaciones;
         _envios = envios;
     }
@@ -51,6 +53,14 @@ public sealed class GestionLiquidaciones
                         && e.FechaCreacion >= periodoDesde
                         && e.FechaCreacion <= periodoHasta)
             .Sum(e => e.TarifaCalculada);
+
+        // RF 41: los retiros completados pedidos en el período también se liquidan.
+        if (_retiros is not null)
+            monto += (await _retiros.ListarAsync(operadorId, comercioId, cancellationToken))
+                .Where(r => r.Estado == EstadoRetiro.Completado
+                            && r.CreadoEn.UtcDateTime >= periodoDesde
+                            && r.CreadoEn.UtcDateTime <= periodoHasta)
+                .Sum(r => r.TarifaCalculada);
 
         var liquidacion = Liquidacion.Abrir(
             Guid.NewGuid(),

@@ -1221,6 +1221,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<decimal>("PrecioPorKm")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("PrecioRetiro")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("RecargoFragil")
                         .HasColumnType("numeric");
 
@@ -1325,8 +1328,14 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ReglaTarifariaId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("RutaId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("TarifaCalculada")
+                        .HasColumnType("numeric");
 
                     b.HasKey("Id");
 

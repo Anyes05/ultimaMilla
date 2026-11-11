@@ -154,7 +154,8 @@
             Programados <strong>@datos.Retiros.Programados</strong> ·
             En curso <strong>@datos.Retiros.EnCurso</strong> ·
             Completados <strong>@datos.Retiros.Completados</strong> ·
-            Cancelados <strong>@datos.Retiros.Cancelados</strong>
+            Cancelados <strong>@datos.Retiros.Cancelados</strong> ·
+            Tarifa de los completados <strong>@ReportesModel.Importe(datos.Retiros.MontoCompletados)</strong>
         </div>
     </div>
 
@@ -162,17 +163,18 @@
         <div class="card-header bg-white"><h2 class="h6 mb-0">Liquidación por comercio del período</h2></div>
         <div class="table-responsive">
             <table class="table align-middle mb-0" data-reporte="liquidacion">
-                <thead class="table-light"><tr><th>Comercio</th><th class="text-end">Entregados</th><th class="text-end">A liquidar</th><th></th></tr></thead>
+                <thead class="table-light"><tr><th>Comercio</th><th class="text-end">Entregados</th><th class="text-end">Retiros</th><th class="text-end">A liquidar</th><th></th></tr></thead>
                 <tbody>
                 @if (datos.Liquidacion.Count == 0)
                 {
-                    <tr><td colspan="4" class="text-center text-muted py-3">No hay envíos entregados en el período.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-3">No hay envíos entregados ni retiros completados en el período.</td></tr>
                 }
                 @foreach (var fila in datos.Liquidacion)
                 {
                     <tr>
                         <td class="fw-semibold">@fila.Comercio</td>
                         <td class="text-end">@fila.Entregados</td>
+                        <td class="text-end">@fila.Retiros</td>
                         <td class="text-end">@ReportesModel.Importe(fila.Monto)</td>
                         <td class="text-end">
                             <form method="post" asp-page-handler="Abrir" asp-route-desde="@Model.Desde?.ToString("yyyy-MM-dd")" asp-route-hasta="@Model.Hasta?.ToString("yyyy-MM-dd")" asp-route-comercioId="@Model.ComercioId">

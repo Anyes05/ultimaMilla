@@ -11,6 +11,9 @@ public class ReglaTarifaria
     public decimal RecargoZona { get; private set; }
     public decimal RecargoFragil { get; private set; }
     public decimal RecargoUrgente { get; private set; }
+
+    /// <summary>Precio de un retiro en domicilio (RF 41: el retiro tiene tarifa propia). 0 = sin cargo.</summary>
+    public decimal PrecioRetiro { get; private set; }
     public bool Activa { get; private set; }
 
     private ReglaTarifaria()
@@ -26,7 +29,8 @@ public class ReglaTarifaria
         decimal recargoFragil,
         decimal recargoUrgente,
         decimal precioPorCm3 = 0,
-        decimal recargoZona = 0)
+        decimal recargoZona = 0,
+        decimal precioRetiro = 0)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("La regla tarifaria necesita un identificador.");
@@ -35,7 +39,7 @@ public class ReglaTarifaria
             throw new ArgumentException("La regla tarifaria necesita un operador.");
 
         if (precioBase < 0 || precioPorKg < 0 || precioPorKm < 0 || recargoFragil < 0 || recargoUrgente < 0
-            || precioPorCm3 < 0 || recargoZona < 0)
+            || precioPorCm3 < 0 || recargoZona < 0 || precioRetiro < 0)
             throw new ArgumentOutOfRangeException(nameof(precioBase), "Los importes de la tarifa no pueden ser negativos.");
 
         return new ReglaTarifaria
@@ -49,6 +53,7 @@ public class ReglaTarifaria
             RecargoZona = recargoZona,
             RecargoFragil = recargoFragil,
             RecargoUrgente = recargoUrgente,
+            PrecioRetiro = precioRetiro,
             Activa = true
         };
     }

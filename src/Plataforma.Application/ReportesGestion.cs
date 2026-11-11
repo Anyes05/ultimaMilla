@@ -23,9 +23,10 @@ public sealed record VolumenDia(DateOnly Dia, int Envios, decimal Monto);
 
 public sealed record CantidadPorMotivo(string Motivo, int Cantidad);
 
-public sealed record LiquidacionComercio(Guid ComercioId, string Comercio, int Entregados, decimal Monto);
+/// <summary>Lo que se le liquida al comercio: envíos entregados y retiros completados (RF 41) del período.</summary>
+public sealed record LiquidacionComercio(Guid ComercioId, string Comercio, int Entregados, decimal Monto, int Retiros = 0);
 
-public sealed record ResumenRetiros(int Solicitados, int Programados, int EnCurso, int Completados, int Cancelados);
+public sealed record ResumenRetiros(int Solicitados, int Programados, int EnCurso, int Completados, int Cancelados, decimal MontoCompletados = 0);
 
 /// <summary>Reportes de gestión (RF 30, y retiros por el cambio de requerimientos) para un período del operador.</summary>
 public sealed record ReportesGestion(
@@ -150,15 +151,28 @@ public sealed class ObtenerReportesGestion
             .OrderBy(dia => dia.Dia)
             .ToList();
 
-        var liquidacion = filas
-            .Where(fila => fila.Envio.Estado == EstadoEnvio.Entregado)
-            .GroupBy(fila => (fila.Envio.ComercioId, fila.Comercio))
-            .Select(grupo => new LiquidacionComercio(grupo.Key.ComercioId, grupo.Key.Comercio, grupo.Count(), grupo.Sum(fila => fila.Envio.TarifaCalculada)))
-            .OrderByDescending(item => item.Monto)
+        var todosLosRetiros = await _retiros.ListarAsync(operadorId, comercioId, cancellationToken);
+        var retiros = todosLosRetiros
+            .Where(retiro => retiro.FechaSolicitada >= desde && retiro.FechaSolicitada <= hasta)
+            .ToList();
+        // Mismo criterio que al abrir la liquidación: retiros completados pedidos en el período.
+        var retirosALiquidar = todosLosRetiros
+            .Where(retiro => retiro.Estado == EstadoRetiro.Completado
+                             && retiro.CreadoEn.UtcDateTime >= inicioUtc && retiro.CreadoEn.UtcDateTime < finUtc)
             .ToList();
 
-        var retiros = (await _retiros.ListarAsync(operadorId, comercioId, cancellationToken))
-            .Where(retiro => retiro.FechaSolicitada >= desde && retiro.FechaSolicitada <= hasta)
+        var liquidacion = filas
+            .Where(fila => fila.Envio.Estado == EstadoEnvio.Entregado)
+            .Select(fila => (fila.Envio.ComercioId, Entregado: 1, Retiro: 0, Monto: fila.Envio.TarifaCalculada))
+            .Concat(retirosALiquidar.Select(retiro => (retiro.ComercioId, Entregado: 0, Retiro: 1, Monto: retiro.TarifaCalculada)))
+            .GroupBy(item => item.ComercioId)
+            .Select(grupo => new LiquidacionComercio(
+                grupo.Key,
+                comercios.TryGetValue(grupo.Key, out var nombre) ? nombre : "Comercio sin datos",
+                grupo.Sum(item => item.Entregado),
+                grupo.Sum(item => item.Monto),
+                grupo.Sum(item => item.Retiro)))
+            .OrderByDescending(item => item.Monto)
             .ToList();
 
         var entregados = envios.Count(envio => envio.Estado == EstadoEnvio.Entregado);
@@ -183,7 +197,8 @@ public sealed class ObtenerReportesGestion
                 retiros.Count(retiro => retiro.Estado == EstadoRetiro.Programado),
                 retiros.Count(retiro => retiro.Estado == EstadoRetiro.EnCurso),
                 retiros.Count(retiro => retiro.Estado == EstadoRetiro.Completado),
-                retiros.Count(retiro => retiro.Estado == EstadoRetiro.Cancelado)));
+                retiros.Count(retiro => retiro.Estado == EstadoRetiro.Cancelado),
+                retiros.Where(retiro => retiro.Estado == EstadoRetiro.Completado).Sum(retiro => retiro.TarifaCalculada)));
     }
 
     /// <summary>Misma condición que el repositorio: activa y con el instante dentro de su vigencia; gana la más reciente.</summary>

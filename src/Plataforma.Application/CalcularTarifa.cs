@@ -52,6 +52,48 @@ public sealed class CalcularTarifa
         return await _envios.ContarDelComercioDesdeAsync(operadorId, comercio, inicioDelMes, cancellationToken) + 1;
     }
 
+    /// <summary>
+    /// Tarifa de un retiro en domicilio (RF 41): el precio por retiro de la versión vigente, con la mejor
+    /// bonificación del comercio. Las de volumen cuentan los envíos que el comercio ya hizo en el mes.
+    /// </summary>
+    public async Task<ResultadoTarifa> CalcularRetiroAsync(
+        Guid operadorId,
+        Guid comercioId,
+        CancellationToken cancellationToken = default)
+    {
+        if (operadorId == Guid.Empty)
+            throw new ArgumentException("El operador es requerido.", nameof(operadorId));
+
+        var momento = DateTime.UtcNow;
+        var vigencia = await _tarifas.ObtenerVigenciaActivaParaEditarAsync(operadorId, momento, cancellationToken);
+        var regla = await _tarifas.ObtenerActivaAsync(operadorId, momento, cancellationToken)
+            ?? throw new InvalidOperationException("No hay una regla tarifaria vigente para el operador.");
+
+        var total = regla.PrecioRetiro;
+        decimal descuento = 0;
+        string? nombreBonificacion = null;
+        var bonificaciones = total > 0
+            ? await _tarifas.ListarBonificacionesAsync(operadorId, regla.Id, cancellationToken)
+            : [];
+        if (bonificaciones.Count > 0)
+        {
+            var enviosDelMes = await NumeroDeEnvioEnElMesAsync(operadorId, comercioId, bonificaciones, cancellationToken) - 1;
+            var mejor = bonificaciones
+                .Where(bonificacion => bonificacion.AplicaA(comercioId, enviosDelMes))
+                .OrderByDescending(bonificacion => bonificacion.Porcentaje)
+                .FirstOrDefault();
+            if (mejor is not null)
+            {
+                descuento = decimal.Round(total * mejor.Porcentaje / 100m, 2, MidpointRounding.AwayFromZero);
+                nombreBonificacion = mejor.Nombre;
+                total -= descuento;
+            }
+        }
+
+        return new ResultadoTarifa(
+            decimal.Round(total, 2, MidpointRounding.AwayFromZero), regla.Id, vigencia?.Id, 0, descuento, nombreBonificacion);
+    }
+
     public async Task<ResultadoTarifa> EjecutarConReferenciaAsync(
         Guid operadorId,
         decimal pesoKg = 0,

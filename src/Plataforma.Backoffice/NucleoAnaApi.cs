@@ -117,7 +117,7 @@ public static class NucleoAnaApi
                     solicitud.Fecha,
                     solicitud.Observaciones ?? "",
                     ct);
-                return Results.Json(new { r.Id, r.Estado, r.FechaSolicitada }, ObtenerRutasDeHoy.OpcionesJson);
+                return Results.Json(new { r.Id, r.Estado, r.FechaSolicitada, r.TarifaCalculada }, ObtenerRutasDeHoy.OpcionesJson);
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {

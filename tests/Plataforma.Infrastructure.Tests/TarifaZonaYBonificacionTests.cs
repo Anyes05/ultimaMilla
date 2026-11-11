@@ -69,6 +69,34 @@ public sealed class TarifaZonaYBonificacionTests
         Assert.Equal((200m, 0m, 0m), (resultado.Importe, resultado.RecargoZona, resultado.Descuento));
     }
 
+    [Fact]
+    public async Task Retiro_TarifaPropia_ConBonificacionDelComercio_YSeLiquida()
+    {
+        await using var ctx = await CrearAsync();
+        var calcular = new CalcularTarifa(new TarifaRepositorio(ctx), new EnvioRepositorio(ctx));
+
+        // Precio por retiro 60: el comercio Mayorista tiene 10 %; otro comercio paga entero.
+        var mayorista = await calcular.CalcularRetiroAsync(Operador, Mayorista);
+        Assert.Equal((54m, "Mayorista"), (mayorista.Importe, mayorista.Bonificacion));
+        Assert.Equal(60m, (await calcular.CalcularRetiroAsync(Operador, Guid.NewGuid())).Importe);
+
+        var retiros = new RetiroRepositorio(ctx);
+        var retiro = SolicitudRetiro.Solicitar(Guid.NewGuid(), Operador, Mayorista, "Calle 1", "", DateOnly.FromDateTime(DateTime.UtcNow), "", mayorista.Importe, mayorista.ReglaTarifariaId);
+        retiro.Completar();
+        await retiros.AgregarAsync(retiro);
+        ctx.Envios.Add(Envio.Admitir(Operador, Guid.NewGuid(), "D", "C"));
+        await retiros.GuardarAsync();
+
+        var liquidacion = await new GestionLiquidaciones(new LiquidacionRepositorio(ctx), new EnvioRepositorio(ctx), retiros)
+            .AbrirAsync(Operador, Mayorista, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow.AddDays(1));
+        Assert.Equal(54m, liquidacion.Monto);
+    }
+
+    [Fact]
+    public void Retiro_TarifaNegativa_SeRechaza() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ReglaTarifaria.Crear(Guid.NewGuid(), Operador, 1, 0, 0, 0, 0, precioRetiro: -1));
+
     [Theory]
     [InlineData(0)]
     [InlineData(101)]
@@ -91,7 +119,8 @@ public sealed class TarifaZonaYBonificacionTests
             Operador,
             new NuevaVersionTarifa(100, 0, 0, 0, 0, 0, 20,
                 [new RecargoZonaDato(Centro, 50)],
-                [new BonificacionDato("Mayorista", 10, Mayorista), new BonificacionDato("Chica", 4, Mayorista), new BonificacionDato("Volumen", 5, null, 3)]),
+                [new BonificacionDato("Mayorista", 10, Mayorista), new BonificacionDato("Chica", 4, Mayorista), new BonificacionDato("Volumen", 5, null, 3)],
+                PrecioRetiro: 60),
             DateTime.UtcNow.AddMinutes(-1),
             "admin");
         return ctx;

@@ -144,7 +144,8 @@ public class TarifasModel : PageModel
                             bonificacion.Porcentaje ?? 0,
                             bonificacion.ComercioId,
                             bonificacion.MinimoEnviosMes))
-                        .ToList()),
+                        .ToList(),
+                    NuevaVersion.PrecioRetiro),
                 desde,
                 User.Identity?.Name ?? acceso.UsuarioId.ToString(),
                 HttpContext.RequestAborted);
@@ -248,6 +249,7 @@ public class TarifasModel : PageModel
             NuevaVersion.RecargoUrgente = Vigente.RecargoUrgente;
             NuevaVersion.PrecioPorCm3 = Vigente.PrecioPorCm3;
             NuevaVersion.RecargoZona = Vigente.RecargoZona;
+            NuevaVersion.PrecioRetiro = Vigente.PrecioRetiro;
         }
     }
 
@@ -295,6 +297,10 @@ public class TarifasModel : PageModel
 
         [Range(typeof(decimal), "0", "1000000")]
         public decimal RecargoZona { get; set; }
+
+        /// <summary>Precio de cada retiro en domicilio (RF 41).</summary>
+        [Range(typeof(decimal), "0", "1000000")]
+        public decimal PrecioRetiro { get; set; }
 
         /// <summary>Hora del operador; vacía = ahora. Se completa al cargar la página.</summary>
         public DateTime VigenteDesdeLocal { get; set; }

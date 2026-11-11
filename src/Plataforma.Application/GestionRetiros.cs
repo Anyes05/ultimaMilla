@@ -22,14 +22,17 @@ public sealed class GestionRetiros
     private readonly IOutboxRepositorio _outbox;
     private readonly PublicarOutboxPendientes _publicar;
     private readonly IComercioRepositorio _comercios;
+    private readonly CalcularTarifa? _tarifa;
 
     public GestionRetiros(
         IRetiroRepositorio retiros,
         IBanderasOperador banderas,
         IOutboxRepositorio outbox,
         PublicarOutboxPendientes publicar,
-        IComercioRepositorio comercios)
+        IComercioRepositorio comercios,
+        CalcularTarifa? tarifa = null)
     {
+        _tarifa = tarifa;
         _comercios = comercios;
         _retiros = retiros;
         _banderas = banderas;
@@ -52,8 +55,11 @@ public sealed class GestionRetiros
         if (!await _comercios.EstaActivoAsync(comercioId, cancellationToken))
             throw new InvalidOperationException("El comercio está dado de baja y no puede pedir retiros.");
 
+        // RF 41: el retiro tiene tarifa propia; se fija al pedirlo, como la del envío al darlo de alta.
+        var tarifa = _tarifa is null ? null : await _tarifa.CalcularRetiroAsync(operadorId, comercioId, cancellationToken);
         var retiro = SolicitudRetiro.Solicitar(
-            Guid.NewGuid(), operadorId, comercioId, direccion, contacto, fecha, observaciones);
+            Guid.NewGuid(), operadorId, comercioId, direccion, contacto, fecha, observaciones,
+            tarifa?.Importe ?? 0, tarifa?.ReglaTarifariaId);
         await _retiros.AgregarAsync(retiro, cancellationToken);
 
         var evento = RetiroSolicitado.Crear(operadorId, retiro.Id, comercioId, retiro.Direccion);
@@ -72,6 +78,21 @@ public sealed class GestionRetiros
         await _retiros.GuardarAsync(cancellationToken);
         await _publicar.EjecutarUnoAsync(evento.EventId, cancellationToken);
         return retiro;
+    }
+
+    /// <summary>Lo que costaría un retiro pedido ahora (para mostrarlo antes de pedirlo); null si no hay tarifa vigente.</summary>
+    public async Task<ResultadoTarifa?> CotizarAsync(Guid operadorId, Guid comercioId, CancellationToken cancellationToken = default)
+    {
+        if (_tarifa is null)
+            return null;
+        try
+        {
+            return await _tarifa.CalcularRetiroAsync(operadorId, comercioId, cancellationToken);
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
     }
 
     public Task<IReadOnlyList<SolicitudRetiro>> ListarAsync(

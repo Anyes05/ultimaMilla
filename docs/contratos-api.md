@@ -409,11 +409,13 @@ Requiere bandera `retiro-domicilio` activa en el operador. El comercio solicita 
 
 | Método | Ruta | Body | Notas |
 |---|---|---|---|
-| `POST` | `/api/retiros` | `{ direccion, fecha, contacto?, observaciones? }` | Emite outbox `RetiroSolicitado` |
-| `GET` | `/api/retiros` | — | Lista del operador (filtrada por comercio si aplica) |
+| `POST` | `/api/retiros` | `{ direccion, fecha, contacto?, observaciones? }` | Emite outbox `RetiroSolicitado`. Responde `{ id, estado, fechaSolicitada, tarifaCalculada }` |
+| `GET` | `/api/retiros` | — | Lista del operador (filtrada por comercio si aplica); cada retiro incluye `tarifaCalculada` y `reglaTarifariaId` |
 | `POST` | `/api/retiros/{id}/programar` | `{ rutaId }` | Estado → `Programado` |
 | `POST` | `/api/retiros/{id}/completar` | `{ envioAsociadoId? }` | Estado → `Completado` + `RetiroCompletado` |
 | `POST` | `/api/retiros/{id}/cancelar` | `{ motivo? }` | Estado → `Cancelado` |
+
+**Tarifa del retiro (RF 41):** se fija al pedirlo con el "precio por retiro" de la versión tarifaria vigente, menos la mayor bonificación que corresponda al comercio (las de volumen cuentan los envíos que el comercio ya hizo en el mes). Los retiros completados se suman a la liquidación del comercio. Las versiones publicadas antes de este cambio tienen precio por retiro 0.
 
 Contrato de avisos HTTP: `contracts/mensajes/v2/aviso-retiro-*.json`.
 

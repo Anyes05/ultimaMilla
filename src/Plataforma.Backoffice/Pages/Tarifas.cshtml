@@ -48,6 +48,7 @@
                 <div class="col-6 col-md"><span class="small text-muted d-block">Recargo urgente</span><strong class="fs-5">+@TarifasModel.Importe(vigente.RecargoUrgente)</strong></div>
                 <div class="col-6 col-md"><span class="small text-muted d-block">Por cm³</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioPorCm3)</strong></div>
                 <div class="col-6 col-md"><span class="small text-muted d-block">Recargo zona</span><strong class="fs-5">+@TarifasModel.Importe(vigente.RecargoZona)</strong></div>
+                <div class="col-6 col-md" data-vigente-retiro><span class="small text-muted d-block">Por retiro</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioRetiro)</strong></div>
             </div>
             @if (Model.VersionVigente?.Valores is { } valores)
             {
@@ -179,6 +180,10 @@
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.RecargoZona">Recargo zona</label>
                     <input class="form-control" asp-for="NuevaVersion.RecargoZona" type="number" step="0.01" min="0" />
                 </div>
+                <div class="col-6 col-md">
+                    <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioRetiro">Por retiro</label>
+                    <input class="form-control" asp-for="NuevaVersion.PrecioRetiro" type="number" step="0.01" min="0" />
+                </div>
             </div>
             <div asp-validation-summary="ModelOnly" class="text-danger mt-3"></div>
             <h3 class="h6 mt-4">Recargo por zona</h3>
@@ -253,6 +258,7 @@
                         <th>Por km</th>
                         <th>Por cm³</th>
                         <th>Recargo zona</th>
+                        <th>Por retiro</th>
                         <th>Por zona</th>
                         <th>Bonificaciones</th>
                         <th>Estado</th>
@@ -262,7 +268,7 @@
                 @if (Model.Versiones.Count == 0)
                 {
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-5">Todavía no hay versiones publicadas.</td>
+                        <td colspan="11" class="text-center text-muted py-5">Todavía no hay versiones publicadas.</td>
                     </tr>
                 }
                 else
@@ -277,6 +283,7 @@
                             <td>@TarifasModel.Importe(version.Valores.PrecioPorKm)</td>
                             <td>@TarifasModel.Importe(version.Valores.PrecioPorCm3)</td>
                             <td>@TarifasModel.Importe(version.Valores.RecargoZona)</td>
+                            <td>@TarifasModel.Importe(version.Valores.PrecioRetiro)</td>
                             <td class="small">@Model.DescribirZonas(version.Valores)</td>
                             <td class="small">@Model.DescribirBonificaciones(version.Valores)</td>
                             <td>
