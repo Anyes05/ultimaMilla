@@ -7,6 +7,9 @@ public class Ruta
     public Guid RepartidorId { get; private set; }
     public DateOnly Fecha { get; private set; }
 
+    /// <summary>Vehículo elegido al despachar; contra su capacidad se validan los retiros que se suman (RF 39).</summary>
+    public Guid? VehiculoId { get; private set; }
+
     private Ruta()
     {
     }
@@ -26,5 +29,12 @@ public class Ruta
             RepartidorId = repartidorId,
             Fecha = fecha
         };
+    }
+
+    public void AsignarVehiculo(Guid vehiculoId)
+    {
+        if (vehiculoId == Guid.Empty)
+            throw new ArgumentException("El vehículo es requerido.", nameof(vehiculoId));
+        VehiculoId = vehiculoId;
     }
 }

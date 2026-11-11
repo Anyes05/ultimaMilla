@@ -20,8 +20,13 @@ public class DespachoModel : PageModel
     private readonly IniciarRuta _iniciarRuta;
     private readonly IOperadorRepositorio _operadores;
     private readonly GestionCobertura _cobertura;
+    private readonly GestionRetiros _retiros;
+
+    /// <summary>RF 39: carga del vehículo parada por parada, con los retiros de la ruta.</summary>
+    public IReadOnlyDictionary<Guid, PerfilCargaRuta> Perfiles { get; private set; } = new Dictionary<Guid, PerfilCargaRuta>();
 
     public DespachoModel(
+        GestionRetiros retiros,
         GestionCobertura cobertura,
         ListarEnvios listarEnvios,
         ListarRepartidoresActivos listarRepartidores,
@@ -37,6 +42,7 @@ public class DespachoModel : PageModel
         _iniciarRuta = iniciarRuta;
         _operadores = operadores;
         _cobertura = cobertura;
+        _retiros = retiros;
     }
 
     /// <summary>Vehículos activos: elegir uno valida paradas, peso y volumen (RF 13 y 14).</summary>
@@ -158,8 +164,9 @@ public class DespachoModel : PageModel
             User.Identity?.Name,
             HttpContext.RequestAborted);
 
+        var retirosEnCurso = await _retiros.IniciarRutaAsync(operadorId, rutaId, HttpContext.RequestAborted);
         TempData["Mensaje"] =
-            $"{TempData.Peek("Mensaje")} Ruta iniciada: {resultado.Iniciados} envío(s) en tránsito.".Trim();
+            $"{TempData.Peek("Mensaje")} Ruta iniciada: {resultado.Iniciados} envío(s) en tránsito{(retirosEnCurso > 0 ? $" y {retirosEnCurso} retiro(s) en curso" : "")}.".Trim();
         if (resultado.Errores.Count > 0)
             TempData["Error"] = string.Join(" ", resultado.Errores);
     }
@@ -187,5 +194,12 @@ public class DespachoModel : PageModel
         Vehiculos = (await _cobertura.ListarVehiculosAsync(acceso.OperadorId, ct)).OrderBy(vehiculo => vehiculo.Patente).ToList();
         Franjas = (await _cobertura.ListarTodasLasFranjasAsync(acceso.OperadorId, ct)).ToDictionary(franja => franja.Id);
         RutasDeHoy = await _listarRutas.EjecutarAsync(acceso.OperadorId, Fecha, ct);
+        var perfiles = new Dictionary<Guid, PerfilCargaRuta>();
+        foreach (var ruta in RutasDeHoy)
+        {
+            if (await _retiros.PerfilCargaAsync(acceso.OperadorId, ruta.RutaId, ct) is { } perfil)
+                perfiles[ruta.RutaId] = perfil;
+        }
+        Perfiles = perfiles;
     }
 }

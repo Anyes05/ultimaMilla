@@ -48,6 +48,18 @@
                         <label class="form-label fw-semibold" for="contacto">Contacto <span class="text-muted fw-normal">(opcional)</span></label>
                         <InputText id="contacto" @bind-Value="Formulario!.Contacto" class="form-control" placeholder="Nombre o teléfono" />
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" for="bultos">Bultos</label>
+                        <InputNumber id="bultos" @bind-Value="Formulario!.CantidadBultos" class="form-control" min="1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" for="peso">Peso estimado (kg)</label>
+                        <InputNumber id="peso" @bind-Value="Formulario!.PesoKg" class="form-control" min="0" step="0.1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" for="volumen">Volumen estimado (cm³) <span class="text-muted fw-normal">(opcional)</span></label>
+                        <InputNumber id="volumen" @bind-Value="Formulario!.VolumenCm3" class="form-control" min="0" />
+                    </div>
                     <div class="col-md-8">
                         <label class="form-label fw-semibold" for="observaciones">Observaciones <span class="text-muted fw-normal">(opcional)</span></label>
                         <InputText id="observaciones" @bind-Value="Formulario!.Observaciones" class="form-control" />
@@ -105,7 +117,14 @@ else
                             {
                                 <tr @key="retiro.Id">
                                     <td>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</td>
-                                    <td>@retiro.Direccion</td>
+                                    <td>
+                                        @retiro.Direccion
+                                        <span class="d-block small text-muted">@retiro.CantidadBultos bulto(s)@(retiro.PesoKg > 0 ? $" · {retiro.PesoKg:0.##} kg" : "")</span>
+                                        @if (retiro.Estado == EstadoRetiro.NoRetirado && !string.IsNullOrWhiteSpace(retiro.MotivoNoRetiro))
+                                        {
+                                            <span class="d-block small text-danger">No retirado: @retiro.MotivoNoRetiro</span>
+                                        }
+                                    </td>
                                     <td>@(string.IsNullOrWhiteSpace(retiro.Contacto) ? "—" : retiro.Contacto)</td>
                                     <td class="text-end">@Importe(retiro.TarifaCalculada)</td>
                                     <td><span class="status-badge @ClaseEstado(retiro.Estado)">@NombreEstado(retiro.Estado)</span></td>
@@ -178,7 +197,8 @@ else
         {
             await GestionRetiros.SolicitarAsync(
                 acceso.OperadorId, comercioId, Formulario.Direccion, Formulario.Contacto ?? string.Empty,
-                Formulario.Fecha, Formulario.Observaciones ?? string.Empty);
+                Formulario.Fecha, Formulario.Observaciones ?? string.Empty,
+                cantidadBultos: Formulario.CantidadBultos ?? 1, pesoKg: Formulario.PesoKg ?? 0, volumenCm3: Formulario.VolumenCm3 ?? 0);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
@@ -237,6 +257,9 @@ else
     private static string NombreEstado(EstadoRetiro estado) => estado switch
     {
         EstadoRetiro.EnCurso => "En curso",
+        EstadoRetiro.Completado => "Retirado",
+        EstadoRetiro.NoRetirado => "No retirado",
+        EstadoRetiro.EnDeposito => "En depósito",
         _ => estado.ToString()
     };
 
@@ -246,6 +269,8 @@ else
         EstadoRetiro.Programado => "status-asignado-a-ruta",
         EstadoRetiro.EnCurso => "status-en-transito",
         EstadoRetiro.Completado => "status-entregado",
+        EstadoRetiro.EnDeposito => "status-en-deposito",
+        EstadoRetiro.NoRetirado => "status-no-entregado",
         _ => "status-extraviado"
     };
 
@@ -262,5 +287,14 @@ else
         public string? Observaciones { get; set; }
 
         public DateOnly Fecha { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(1, 100, ErrorMessage = "Los bultos deben ser entre 1 y 100.")]
+        public int? CantidadBultos { get; set; } = 1;
+
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "5000", ErrorMessage = "El peso debe estar entre 0 y 5000 kg.")]
+        public decimal? PesoKg { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "100000000", ErrorMessage = "El volumen no puede ser negativo.")]
+        public decimal? VolumenCm3 { get; set; }
     }
 }

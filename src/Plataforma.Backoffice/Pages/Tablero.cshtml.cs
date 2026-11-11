@@ -142,7 +142,7 @@ public class TableroModel : PageModel
         RetirosSolicitados = retiros.Count(retiro => retiro.Estado == EstadoRetiro.Solicitado);
         RetirosProgramados = retiros.Count(retiro => retiro.Estado == EstadoRetiro.Programado);
         RetirosEnCurso = retiros.Count(retiro => retiro.Estado == EstadoRetiro.EnCurso);
-        RetirosCompletadosHoy = retiros.Count(retiro => retiro.Estado == EstadoRetiro.Completado && retiro.FechaSolicitada == hoy);
+        RetirosCompletadosHoy = retiros.Count(retiro => retiro.FueRetirado && retiro.FechaSolicitada == hoy);
         var abiertos = retiros.Where(RetirosModel.EstaAbierto).OrderBy(retiro => retiro.FechaSolicitada).ToList();
         TotalRetirosAbiertos = abiertos.Count;
         RetirosAbiertos = abiertos.Take(FilasDetalle).ToList();

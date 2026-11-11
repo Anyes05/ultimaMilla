@@ -116,7 +116,10 @@ public static class NucleoAnaApi
                     solicitud.Contacto ?? "",
                     solicitud.Fecha,
                     solicitud.Observaciones ?? "",
-                    ct);
+                    ct,
+                    solicitud.CantidadBultos ?? 1,
+                    solicitud.PesoKg ?? 0,
+                    solicitud.VolumenCm3 ?? 0);
                 return Results.Json(new { r.Id, r.Estado, r.FechaSolicitada, r.TarifaCalculada }, ObtenerRutasDeHoy.OpcionesJson);
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
@@ -151,7 +154,7 @@ public static class NucleoAnaApi
 
             try
             {
-                await retiros.ProgramarAsync(acceso.OperadorId, retiroId, solicitud.RutaId, ct);
+                await retiros.ProgramarAsync(acceso.OperadorId, retiroId, solicitud.RutaId, ct, solicitud.Posicion);
                 return Results.NoContent();
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
@@ -174,6 +177,51 @@ public static class NucleoAnaApi
             try
             {
                 await retiros.CompletarAsync(acceso.OperadorId, retiroId, solicitud?.EnvioAsociadoId, ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        // RF 38: el repartidor no pudo retirar; queda para una nueva visita.
+        app.MapPost("/api/retiros/{retiroId:guid}/no-retirado", async (
+            Guid retiroId,
+            ClaimsPrincipal principal,
+            NoRetiradoSolicitud solicitud,
+            GestionRetiros retiros,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.Despachador or Roles.Administrador or Roles.OperarioDeposito))
+                return Results.Unauthorized();
+
+            try
+            {
+                await retiros.NoRetirarAsync(acceso.OperadorId, retiroId, solicitud.Motivo, ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+            {
+                return Results.BadRequest(new { mensaje = ex.Message });
+            }
+        }).RequireAuthorization();
+
+        // RF 38: lo retirado llegó al depósito.
+        app.MapPost("/api/retiros/{retiroId:guid}/recibir", async (
+            Guid retiroId,
+            ClaimsPrincipal principal,
+            GestionRetiros retiros,
+            CancellationToken ct) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) ||
+                acceso.Rol is not (Roles.Despachador or Roles.Administrador or Roles.OperarioDeposito))
+                return Results.Unauthorized();
+
+            try
+            {
+                await retiros.RecibirEnDepositoAsync(acceso.OperadorId, retiroId, ct);
                 return Results.NoContent();
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
@@ -765,8 +813,17 @@ public static class NucleoAnaApi
 
 public sealed record CambioBanderaSolicitud(Guid OperadorId, string Clave, bool Activa);
 public sealed record RecepcionSolicitudApi(Guid EnvioId, int BultosRecibidos, string? Observaciones = null);
-public sealed record RetiroSolicitudApi(string Direccion, DateOnly Fecha, string? Contacto = null, string? Observaciones = null);
-public sealed record ProgramarRetiroSolicitud(Guid RutaId);
+public sealed record RetiroSolicitudApi(
+    string Direccion,
+    DateOnly Fecha,
+    string? Contacto = null,
+    string? Observaciones = null,
+    int? CantidadBultos = null,
+    decimal? PesoKg = null,
+    decimal? VolumenCm3 = null);
+/// <summary>Posicion: después de cuántas entregas se retira (0 = antes de la primera; vacío = al final).</summary>
+public sealed record ProgramarRetiroSolicitud(Guid RutaId, int? Posicion = null);
+public sealed record NoRetiradoSolicitud(string Motivo);
 public sealed record CompletarRetiroSolicitud(Guid? EnvioAsociadoId = null);
 public sealed record CancelarRetiroSolicitud(string? Motivo = null);
 public sealed record ZonaSolicitud(string Nombre, string? Poligono = null);

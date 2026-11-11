@@ -58,15 +58,20 @@
                 }
                 @foreach (var retiro in Model.Retiros)
                 {
-                    var rutas = Model.RutasPorFecha.TryGetValue(retiro.FechaSolicitada, out var delDia) ? delDia : [];
+                    var rutas = Model.RutasPorFecha.TryGetValue(Model.FechaParaRutas(retiro), out var delDia) ? delDia : [];
                     var asignada = rutas.FirstOrDefault(ruta => ruta.RutaId == retiro.RutaId);
-                    var programable = retiro.Estado is EstadoRetiro.Solicitado or EstadoRetiro.Programado;
+                    var programable = retiro.Estado is EstadoRetiro.Solicitado or EstadoRetiro.Programado or EstadoRetiro.NoRetirado;
                     var completable = retiro.Estado is EstadoRetiro.Programado or EstadoRetiro.EnCurso;
-                    <tr>
+                    <tr data-retiro="@retiro.Id">
                         <td>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</td>
                         <td class="fw-semibold">@(Model.Comercios.TryGetValue(retiro.ComercioId, out var comercio) ? comercio : "—")</td>
                         <td>
                             @retiro.Direccion
+                            <span class="d-block small text-muted" data-carga-retiro>@retiro.CantidadBultos bulto(s)@(retiro.PesoKg > 0 ? $" · {retiro.PesoKg:0.##} kg" : "")@(retiro.VolumenCm3 > 0 ? $" · {retiro.VolumenCm3:0.##} cm³" : "")</span>
+                            @if (retiro.Estado == EstadoRetiro.NoRetirado && !string.IsNullOrWhiteSpace(retiro.MotivoNoRetiro))
+                            {
+                                <span class="d-block small text-danger">No retirado: @retiro.MotivoNoRetiro</span>
+                            }
                             @if (!string.IsNullOrWhiteSpace(retiro.Observaciones))
                             {
                                 <span class="d-block small text-muted">@retiro.Observaciones</span>
@@ -84,9 +89,12 @@
                                         <option value="">Elegí una ruta</option>
                                         @foreach (var ruta in rutas)
                                         {
-                                            <option value="@ruta.RutaId" selected="@(ruta.RutaId == retiro.RutaId)">@ruta.Repartidor (@ruta.Envios.Count envíos)</option>
+                                            <option value="@ruta.RutaId" selected="@(ruta.RutaId == retiro.RutaId && retiro.Estado != EstadoRetiro.NoRetirado)">@ruta.Repartidor (@ruta.Envios.Count envíos)</option>
                                         }
                                     </select>
+                                    <input class="form-control form-control-sm" style="max-width: 7rem" type="number" min="0" name="posicion"
+                                           value="@(retiro.Estado == EstadoRetiro.Programado ? retiro.PosicionEnRuta : null)"
+                                           placeholder="Al final" title="Después de cuántas entregas se retira (0 = antes de la primera; vacío = al final)" aria-label="Después de la entrega número" />
                                     <button class="btn btn-sm btn-outline-primary" type="submit">Asignar</button>
                                 </form>
                             }
@@ -98,16 +106,38 @@
                             {
                                 <span class="small text-muted">@(asignada?.Repartidor ?? "—")</span>
                             }
+                            @if (retiro.RutaId is Guid rutaRetiro && retiro.Estado is EstadoRetiro.Programado or EstadoRetiro.EnCurso)
+                            {
+                                <span class="d-block small text-muted" data-posicion-retiro>@(retiro.PosicionEnRuta is int p ? (p == 0 ? "Antes de la primera entrega" : $"Después de la entrega {p}") : "Al final del recorrido")</span>
+                                @if (Model.Perfiles.TryGetValue(rutaRetiro, out var perfil))
+                                {
+                                    <span class="d-block small @(perfil.Problema is null ? "text-muted" : "text-danger")" data-carga-ruta="@rutaRetiro">
+                                        Carga máxima en el recorrido: @perfil.PicoPesoKg.ToString("0.##") kg@(perfil.CapacidadPesoKg > 0 ? $" de {perfil.CapacidadPesoKg:0.##} kg" : "")
+                                    </span>
+                                }
+                            }
                         </td>
                         <td class="text-end">
+                            @if (retiro.Estado == EstadoRetiro.Completado)
+                            {
+                                <form method="post" asp-page-handler="Recibir">
+                                    <input type="hidden" name="retiroId" value="@retiro.Id" />
+                                    <button class="btn btn-sm btn-outline-primary" type="submit">Recibir en depósito</button>
+                                </form>
+                            }
                             @if (RetirosModel.EstaAbierto(retiro))
                             {
-                                <div class="d-flex justify-content-end gap-2">
+                                <div class="d-flex justify-content-end gap-2 flex-wrap">
                                     @if (completable)
                                     {
                                         <form method="post" asp-page-handler="Completar">
                                             <input type="hidden" name="retiroId" value="@retiro.Id" />
-                                            <button class="btn btn-sm btn-primary" type="submit">Completar</button>
+                                            <button class="btn btn-sm btn-primary" type="submit">Retirado</button>
+                                        </form>
+                                        <form method="post" asp-page-handler="NoRetirado" class="d-flex gap-1">
+                                            <input type="hidden" name="retiroId" value="@retiro.Id" />
+                                            <input class="form-control form-control-sm" style="max-width: 9rem" name="motivo" placeholder="Motivo" aria-label="Motivo de no retiro" required />
+                                            <button class="btn btn-sm btn-outline-warning" type="submit">No retirado</button>
                                         </form>
                                     }
                                     <form method="post" asp-page-handler="Cancelar">

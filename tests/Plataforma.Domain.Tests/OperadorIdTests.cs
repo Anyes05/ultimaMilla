@@ -112,6 +112,7 @@ public class OperadorIdTests
         Assert.Equal(8, (int)EstadoEnvio.Devuelto);
         Assert.Equal(10, (int)EstadoEnvio.EntregadoParcialmente);
         Assert.Equal(3, (int)EstadoRetiro.Completado);
+        Assert.Equal(6, (int)EstadoRetiro.EnDeposito);
     }
 
     [Fact]

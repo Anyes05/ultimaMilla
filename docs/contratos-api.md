@@ -409,11 +409,17 @@ Requiere bandera `retiro-domicilio` activa en el operador. El comercio solicita 
 
 | Método | Ruta | Body | Notas |
 |---|---|---|---|
-| `POST` | `/api/retiros` | `{ direccion, fecha, contacto?, observaciones? }` | Emite outbox `RetiroSolicitado`. Responde `{ id, estado, fechaSolicitada, tarifaCalculada }` |
+| `POST` | `/api/retiros` | `{ direccion, fecha, contacto?, observaciones?, cantidadBultos?, pesoKg?, volumenCm3? }` | Emite outbox `RetiroSolicitado`. Responde `{ id, estado, fechaSolicitada, tarifaCalculada }` |
 | `GET` | `/api/retiros` | — | Lista del operador (filtrada por comercio si aplica); cada retiro incluye `tarifaCalculada` y `reglaTarifariaId` |
-| `POST` | `/api/retiros/{id}/programar` | `{ rutaId }` | Estado → `Programado` |
-| `POST` | `/api/retiros/{id}/completar` | `{ envioAsociadoId? }` | Estado → `Completado` + `RetiroCompletado` |
+| `POST` | `/api/retiros/{id}/programar` | `{ rutaId, posicion? }` | Estado → `Programado`. `posicion`: después de cuántas entregas se retira (0 = antes de la primera; vacío = al final). 400 si el vehículo de la ruta no alcanza en algún tramo (RF 39) |
+| `POST` | `/api/retiros/{id}/completar` | `{ envioAsociadoId? }` | Estado → `Completado` (retirado) + `RetiroCompletado` |
+| `POST` | `/api/retiros/{id}/no-retirado` | `{ motivo }` | Estado → `NoRetirado`; se puede volver a programar (nueva visita) |
+| `POST` | `/api/retiros/{id}/recibir` | — | Estado → `EnDeposito` (solo desde `Completado`) |
 | `POST` | `/api/retiros/{id}/cancelar` | `{ motivo? }` | Estado → `Cancelado` |
+
+**Estados (RF 38):** `Solicitado` → `Programado` → `EnCurso` (al iniciar la ruta) → `Completado` (retirado) → `EnDeposito`. Desde `Programado` o `EnCurso` puede pasar a `NoRetirado` (con motivo) y de ahí volver a `Programado` en una ruta del mismo día o de un día posterior; `Cancelado` mientras no se retiró. Las transiciones están en `TransicionesRetiro`.
+
+**Capacidad en rutas mixtas (RF 39):** la ruta guarda el vehículo con el que se despachó. Al programar un retiro se calcula la carga parada por parada: el vehículo sale con lo que tiene que entregar, baja en cada entrega y sube con cada retiro desde su parada; si en algún tramo supera el peso, el volumen o la cantidad de paradas del vehículo, el retiro se rechaza. Despacho y Retiros muestran la carga máxima del recorrido.
 
 **Tarifa del retiro (RF 41):** se fija al pedirlo con el "precio por retiro" de la versión tarifaria vigente, menos la mayor bonificación que corresponda al comercio (las de volumen cuentan los envíos que el comercio ya hizo en el mes). Los retiros completados se suman a la liquidación del comercio. Las versiones publicadas antes de este cambio tienen precio por retiro 0.
 

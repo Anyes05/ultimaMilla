@@ -57,7 +57,7 @@ public sealed class GestionLiquidaciones
         // RF 41: los retiros completados pedidos en el período también se liquidan.
         if (_retiros is not null)
             monto += (await _retiros.ListarAsync(operadorId, comercioId, cancellationToken))
-                .Where(r => r.Estado == EstadoRetiro.Completado
+                .Where(r => r.FueRetirado
                             && r.CreadoEn.UtcDateTime >= periodoDesde
                             && r.CreadoEn.UtcDateTime <= periodoHasta)
                 .Sum(r => r.TarifaCalculada);

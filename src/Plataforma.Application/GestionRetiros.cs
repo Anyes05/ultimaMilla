@@ -23,6 +23,10 @@ public sealed class GestionRetiros
     private readonly PublicarOutboxPendientes _publicar;
     private readonly IComercioRepositorio _comercios;
     private readonly CalcularTarifa? _tarifa;
+    private readonly IRutaRepositorio? _rutas;
+    private readonly IEnvioRepositorio? _envios;
+    private readonly IBultoRepositorio? _bultos;
+    private readonly ICoberturaRepositorio? _cobertura;
 
     public GestionRetiros(
         IRetiroRepositorio retiros,
@@ -30,9 +34,17 @@ public sealed class GestionRetiros
         IOutboxRepositorio outbox,
         PublicarOutboxPendientes publicar,
         IComercioRepositorio comercios,
-        CalcularTarifa? tarifa = null)
+        CalcularTarifa? tarifa = null,
+        IRutaRepositorio? rutas = null,
+        IEnvioRepositorio? envios = null,
+        IBultoRepositorio? bultos = null,
+        ICoberturaRepositorio? cobertura = null)
     {
         _tarifa = tarifa;
+        _rutas = rutas;
+        _envios = envios;
+        _bultos = bultos;
+        _cobertura = cobertura;
         _comercios = comercios;
         _retiros = retiros;
         _banderas = banderas;
@@ -47,7 +59,10 @@ public sealed class GestionRetiros
         string contacto,
         DateOnly fecha,
         string observaciones = "",
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int cantidadBultos = 1,
+        decimal pesoKg = 0,
+        decimal volumenCm3 = 0)
     {
         if (!await _banderas.EstaActivaAsync(operadorId, CatalogoBanderas.RetiroDomicilio, cancellationToken))
             throw new InvalidOperationException("El retiro en domicilio no está habilitado para este operador.");
@@ -59,7 +74,7 @@ public sealed class GestionRetiros
         var tarifa = _tarifa is null ? null : await _tarifa.CalcularRetiroAsync(operadorId, comercioId, cancellationToken);
         var retiro = SolicitudRetiro.Solicitar(
             Guid.NewGuid(), operadorId, comercioId, direccion, contacto, fecha, observaciones,
-            tarifa?.Importe ?? 0, tarifa?.ReglaTarifariaId);
+            tarifa?.Importe ?? 0, tarifa?.ReglaTarifariaId, cantidadBultos, pesoKg, volumenCm3);
         await _retiros.AgregarAsync(retiro, cancellationToken);
 
         var evento = RetiroSolicitado.Crear(operadorId, retiro.Id, comercioId, retiro.Direccion);
@@ -101,15 +116,115 @@ public sealed class GestionRetiros
         CancellationToken cancellationToken = default) =>
         _retiros.ListarAsync(operadorId, comercioId, cancellationToken);
 
+    /// <summary>
+    /// Asigna el retiro a una ruta mixta, después de <paramref name="posicion"/> entregas (null = al final).
+    /// RF 39: se valida la capacidad del vehículo a lo largo del recorrido, con lo retirado ocupando lugar desde su parada.
+    /// </summary>
     public async Task ProgramarAsync(
         Guid operadorId,
         Guid retiroId,
         Guid rutaId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        int? posicion = null)
     {
         var retiro = await _retiros.ObtenerAsync(operadorId, retiroId, cancellationToken)
             ?? throw new InvalidOperationException("El retiro no existe.");
-        retiro.ProgramarEnRuta(rutaId);
+
+        Ruta? ruta = null;
+        if (_rutas is not null)
+            ruta = await _rutas.ObtenerAsync(operadorId, rutaId, cancellationToken)
+                ?? throw new InvalidOperationException("La ruta no existe para ese operador.");
+
+        retiro.ProgramarEnRuta(rutaId, posicion, ruta?.Fecha);
+
+        if (ruta is not null && await PerfilCargaAsync(operadorId, ruta, cancellationToken, retiro) is { Problema: { } problema })
+            throw new InvalidOperationException($"El retiro no entra en el vehículo de esa ruta. {problema} Elegí otra parada u otra ruta.");
+
+        await _retiros.GuardarAsync(cancellationToken);
+    }
+
+    /// <summary>Carga del vehículo parada por parada (entregas en orden de visita y retiros en su parada).</summary>
+    public async Task<PerfilCargaRuta?> PerfilCargaAsync(Guid operadorId, Guid rutaId, CancellationToken cancellationToken = default)
+    {
+        if (_rutas is null)
+            return null;
+        var ruta = await _rutas.ObtenerAsync(operadorId, rutaId, cancellationToken);
+        return ruta is null ? null : await PerfilCargaAsync(operadorId, ruta, cancellationToken);
+    }
+
+    /// <param name="programando">El retiro que se está asignando (todavía sin guardar): se cuenta con sus datos nuevos.</param>
+    private async Task<PerfilCargaRuta?> PerfilCargaAsync(
+        Guid operadorId,
+        Ruta ruta,
+        CancellationToken cancellationToken,
+        SolicitudRetiro? programando = null)
+    {
+        if (_envios is null || _bultos is null)
+            return null;
+
+        var vehiculo = ruta.VehiculoId is Guid vehiculoId && _cobertura is not null
+            ? await _cobertura.ObtenerVehiculoAsync(operadorId, vehiculoId, cancellationToken)
+            : null;
+
+        var entregas = new List<EntregaEnRuta>();
+        foreach (var envio in await _envios.ObtenerPorRutaAsync(operadorId, ruta.Id, cancellationToken))
+        {
+            // A bordo: lo que todavía no se entregó ni se devolvió.
+            var aBordo = envio.Estado is EstadoEnvio.AsignadoARuta or EstadoEnvio.EnTransito
+                ? (await _bultos.ListarPorEnvioAsync(operadorId, envio.Id, cancellationToken))
+                    .Where(bulto => bulto.Estado is EstadoBulto.Pendiente or EstadoBulto.EnRuta or EstadoBulto.PendienteNuevaVisita)
+                    .ToList()
+                : [];
+            entregas.Add(new EntregaEnRuta(
+                $"Entrega {envio.NumeroSeguimiento}",
+                aBordo.Sum(bulto => bulto.PesoKg),
+                aBordo.Sum(bulto => bulto.AltoCm * bulto.AnchoCm * bulto.LargoCm)));
+        }
+
+        var retiros = (await _retiros.ListarAsync(operadorId, null, cancellationToken))
+            .Where(retiro => retiro.Id != programando?.Id)
+            .Append(programando)
+            .OfType<SolicitudRetiro>()
+            .Where(retiro => retiro.RutaId == ruta.Id
+                             && retiro.Estado is EstadoRetiro.Programado or EstadoRetiro.EnCurso or EstadoRetiro.Completado)
+            .OrderBy(retiro => retiro.PosicionEnRuta ?? int.MaxValue)
+            .ThenBy(retiro => retiro.CreadoEn)
+            .Select(retiro => new RetiroEnRuta($"Retiro {retiro.Direccion}", retiro.PosicionEnRuta, retiro.PesoKg, retiro.VolumenCm3))
+            .ToList();
+
+        return CapacidadRuta.Calcular(ruta.Id, vehiculo, entregas, retiros);
+    }
+
+    /// <summary>Salió la ruta: sus retiros programados pasan a "en curso".</summary>
+    public async Task<int> IniciarRutaAsync(Guid operadorId, Guid rutaId, CancellationToken cancellationToken = default)
+    {
+        var programados = (await _retiros.ListarAsync(operadorId, null, cancellationToken))
+            .Where(retiro => retiro.RutaId == rutaId && retiro.Estado == EstadoRetiro.Programado)
+            .ToList();
+        if (programados.Count == 0)
+            return 0;
+
+        foreach (var listado in programados)
+            (await _retiros.ObtenerAsync(operadorId, listado.Id, cancellationToken))?.MarcarEnCurso();
+        await _retiros.GuardarAsync(cancellationToken);
+        return programados.Count;
+    }
+
+    /// <summary>El repartidor no pudo retirar (RF 38): queda para una nueva visita.</summary>
+    public async Task NoRetirarAsync(Guid operadorId, Guid retiroId, string motivo, CancellationToken cancellationToken = default)
+    {
+        var retiro = await _retiros.ObtenerAsync(operadorId, retiroId, cancellationToken)
+            ?? throw new InvalidOperationException("El retiro no existe.");
+        retiro.NoRetirar(motivo);
+        await _retiros.GuardarAsync(cancellationToken);
+    }
+
+    /// <summary>Lo retirado llegó al depósito (RF 38).</summary>
+    public async Task RecibirEnDepositoAsync(Guid operadorId, Guid retiroId, CancellationToken cancellationToken = default)
+    {
+        var retiro = await _retiros.ObtenerAsync(operadorId, retiroId, cancellationToken)
+            ?? throw new InvalidOperationException("El retiro no existe.");
+        retiro.RecibirEnDeposito();
         await _retiros.GuardarAsync(cancellationToken);
     }
 

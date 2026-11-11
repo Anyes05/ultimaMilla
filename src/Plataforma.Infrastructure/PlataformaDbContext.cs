@@ -228,6 +228,8 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
             entidad.HasKey(r => r.Id);
             entidad.Property(r => r.Direccion).HasMaxLength(300);
             entidad.Property(r => r.Contacto).HasMaxLength(120);
+            entidad.Property(r => r.MotivoNoRetiro).HasMaxLength(300).HasDefaultValue(string.Empty);
+            entidad.Property(r => r.CantidadBultos).HasDefaultValue(1);
             entidad.HasIndex(r => new { r.OperadorId, r.Estado });
         });
 

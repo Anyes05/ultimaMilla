@@ -19,6 +19,7 @@ public sealed class CierreDiarioOperacion : BackgroundService
     internal const int Devuelto = 8;
     internal const int EntregadoParcialmente = 10;
     internal const int RetiroCompletado = 3;
+    internal const int RetiroEnDeposito = 6;
 
     private readonly IServiceScopeFactory _scopes;
     private readonly ILogger<CierreDiarioOperacion> _logger;
@@ -136,7 +137,7 @@ public sealed class CierreDiarioOperacion : BackgroundService
               WHERE h."OperadorId" = d.operador AND h."Estado" = {Devuelto}
                 AND h."Fecha" >= d.desde AND h."Fecha" < d.hasta),
             (SELECT count(*) FROM public."SolicitudesRetiro" s
-              WHERE s."OperadorId" = d.operador AND s."Estado" = {RetiroCompletado} AND s."FechaSolicitada" = d.dia),
+              WHERE s."OperadorId" = d.operador AND s."Estado" IN ({RetiroCompletado}, {RetiroEnDeposito}) AND s."FechaSolicitada" = d.dia),
             now()
         FROM dias d
         ON CONFLICT ("OperadorId", "Dia") DO UPDATE SET

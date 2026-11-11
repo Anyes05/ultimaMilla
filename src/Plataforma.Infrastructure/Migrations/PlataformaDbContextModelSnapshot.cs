@@ -1285,6 +1285,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<Guid>("RepartidorId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("VehiculoId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.ToTable("Rutas");
@@ -1295,6 +1298,11 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<int>("CantidadBultos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<Guid>("ComercioId")
                         .HasColumnType("uuid");
@@ -1321,12 +1329,25 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<DateOnly>("FechaSolicitada")
                         .HasColumnType("date");
 
+                    b.Property<string>("MotivoNoRetiro")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasDefaultValue("");
+
                     b.Property<string>("Observaciones")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("PesoKg")
+                        .HasColumnType("numeric");
+
+                    b.Property<int?>("PosicionEnRuta")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("ReglaTarifariaId")
                         .HasColumnType("uuid");
@@ -1335,6 +1356,9 @@ namespace Plataforma.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("TarifaCalculada")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("VolumenCm3")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");

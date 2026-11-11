@@ -28,7 +28,7 @@
         }
         else
         {
-            var etapa = SeguimientoPublico.EtapasRetiro.ToList().FindIndex(item => item.Estado == retiro.Estado);
+            var etapa = SeguimientoPublico.IndiceEtapaRetiro(retiro.Estado);
             <article class="card border-0 shadow-sm" aria-labelledby="estado-retiro">
                 <div class="card-body p-4">
                     <p class="seguimiento-marca small fw-semibold mb-3" style="color: @SeguimientoPublico.ColorMarcaCss(operador.ColorMarca)">@operador.Nombre</p>
@@ -85,6 +85,8 @@
     {
         EstadoRetiro.EnCurso => "En camino",
         EstadoRetiro.Completado => "Retirado",
+        EstadoRetiro.NoRetirado => "No retirado",
+        EstadoRetiro.EnDeposito => "En depósito",
         _ => estado.ToString()
     };
 }

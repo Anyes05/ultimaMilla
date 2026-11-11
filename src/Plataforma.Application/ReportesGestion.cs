@@ -26,7 +26,8 @@ public sealed record CantidadPorMotivo(string Motivo, int Cantidad);
 /// <summary>Lo que se le liquida al comercio: envíos entregados y retiros completados (RF 41) del período.</summary>
 public sealed record LiquidacionComercio(Guid ComercioId, string Comercio, int Entregados, decimal Monto, int Retiros = 0);
 
-public sealed record ResumenRetiros(int Solicitados, int Programados, int EnCurso, int Completados, int Cancelados, decimal MontoCompletados = 0);
+/// <summary>Completados = retirados (incluye los que ya están en depósito).</summary>
+public sealed record ResumenRetiros(int Solicitados, int Programados, int EnCurso, int Completados, int Cancelados, decimal MontoCompletados = 0, int NoRetirados = 0, int EnDeposito = 0);
 
 /// <summary>Reportes de gestión (RF 30, y retiros por el cambio de requerimientos) para un período del operador.</summary>
 public sealed record ReportesGestion(
@@ -157,7 +158,7 @@ public sealed class ObtenerReportesGestion
             .ToList();
         // Mismo criterio que al abrir la liquidación: retiros completados pedidos en el período.
         var retirosALiquidar = todosLosRetiros
-            .Where(retiro => retiro.Estado == EstadoRetiro.Completado
+            .Where(retiro => retiro.FueRetirado
                              && retiro.CreadoEn.UtcDateTime >= inicioUtc && retiro.CreadoEn.UtcDateTime < finUtc)
             .ToList();
 
@@ -196,9 +197,11 @@ public sealed class ObtenerReportesGestion
                 retiros.Count(retiro => retiro.Estado == EstadoRetiro.Solicitado),
                 retiros.Count(retiro => retiro.Estado == EstadoRetiro.Programado),
                 retiros.Count(retiro => retiro.Estado == EstadoRetiro.EnCurso),
-                retiros.Count(retiro => retiro.Estado == EstadoRetiro.Completado),
+                retiros.Count(retiro => retiro.FueRetirado),
                 retiros.Count(retiro => retiro.Estado == EstadoRetiro.Cancelado),
-                retiros.Where(retiro => retiro.Estado == EstadoRetiro.Completado).Sum(retiro => retiro.TarifaCalculada)));
+                retiros.Where(retiro => retiro.FueRetirado).Sum(retiro => retiro.TarifaCalculada),
+                retiros.Count(retiro => retiro.Estado == EstadoRetiro.NoRetirado),
+                retiros.Count(retiro => retiro.Estado == EstadoRetiro.EnDeposito)));
     }
 
     /// <summary>Misma condición que el repositorio: activa y con el instante dentro de su vigencia; gana la más reciente.</summary>

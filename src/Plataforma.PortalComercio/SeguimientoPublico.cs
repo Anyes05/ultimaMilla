@@ -101,8 +101,13 @@ public static class SeguimientoPublico
         ("Solicitado", EstadoRetiro.Solicitado),
         ("Programado", EstadoRetiro.Programado),
         ("En camino", EstadoRetiro.EnCurso),
-        ("Retirado", EstadoRetiro.Completado)
+        ("Retirado", EstadoRetiro.Completado),
+        ("En depósito", EstadoRetiro.EnDeposito)
     ];
+
+    /// <summary>Etapa alcanzada; un retiro no retirado vuelve a "Programado" hasta la nueva visita.</summary>
+    public static int IndiceEtapaRetiro(EstadoRetiro estado) =>
+        EtapasRetiro.ToList().FindIndex(etapa => etapa.Estado == (estado == EstadoRetiro.NoRetirado ? EstadoRetiro.Programado : estado));
 
     public static string DescripcionRetiro(EstadoRetiro estado) => estado switch
     {
@@ -111,6 +116,8 @@ public static class SeguimientoPublico
         EstadoRetiro.EnCurso => "El repartidor va en camino a retirar los paquetes.",
         EstadoRetiro.Completado => "Los paquetes fueron retirados.",
         EstadoRetiro.Cancelado => "El retiro fue cancelado.",
+        EstadoRetiro.NoRetirado => "El repartidor no pudo retirar los paquetes. El operador va a coordinar una nueva visita.",
+        EstadoRetiro.EnDeposito => "Los paquetes ya están en el depósito del operador.",
         _ => string.Empty
     };
 

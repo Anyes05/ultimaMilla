@@ -158,6 +158,18 @@
                         <span class="text-muted small">Ruta en curso</span>
                     }
                 </div>
+                @if (Model.Perfiles.TryGetValue(ruta.RutaId, out var perfil))
+                {
+                    <p class="small mb-2 @(perfil.Problema is null ? "text-muted" : "text-danger")" data-carga-ruta="@ruta.RutaId">
+                        @(perfil.Vehiculo is null ? "Sin vehículo" : $"Vehículo {perfil.Vehiculo}") ·
+                        sale con @perfil.CargaInicialPesoKg.ToString("0.##") kg ·
+                        carga máxima en el recorrido @perfil.PicoPesoKg.ToString("0.##") kg@(perfil.CapacidadPesoKg > 0 ? $" de {perfil.CapacidadPesoKg:0.##} kg" : "")
+                        @if (perfil.Paradas.Any(parada => parada.EsRetiro))
+                        {
+                            <span class="d-block">Recorrido: @string.Join(" → ", perfil.Paradas.Select(parada => $"{parada.Numero}. {(parada.EsRetiro ? "↑ " : "")}{parada.Descripcion} ({parada.CargaPesoKg:0.##} kg)"))</span>
+                        }
+                    </p>
+                }
                 <ol class="list-unstyled mb-0" data-paradas="@ruta.RutaId">
                     @{ var parada = 0; }
                     @foreach (var envio in ruta.Envios)

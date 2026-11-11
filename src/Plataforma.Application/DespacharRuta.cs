@@ -112,6 +112,8 @@ public sealed class DespacharRuta
         await ValidarPlazoEntreIntentosAsync(operadorId, envioIds, cancellationToken);
 
         var ruta = Ruta.Programar(operadorId, repartidorId, fecha);
+        if (vehiculoId is Guid vehiculoElegido)
+            ruta.AsignarVehiculo(vehiculoElegido);
         var paradas = new List<Parada>(envioIds.Count);
         var eventIds = new List<Guid>();
         var orden = 1;
