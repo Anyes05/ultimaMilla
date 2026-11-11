@@ -4,6 +4,7 @@ using System.Text;
 using Plataforma.Mobile.Data;
 using Plataforma.Mobile.Models;
 using Plataforma.Mobile.Services;
+using EstadoBulto = Plataforma.Domain.EstadoBulto;
 
 namespace Plataforma.Mobile.Tests;
 
@@ -459,9 +460,12 @@ public sealed partial class RepartidorHttpTests : IDisposable
 
         handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
             [new AplicadoContrato(envioPendiente.Id, EstadoEnvio.Entregado, 1)], [])));
+        // Con algo aplicado, la app vuelve a bajar la ruta (ca9673a).
+        handler.Respuestas.Enqueue(Ok(new[] { rutaHoy }));
         var viewModel = CrearRutaViewModel();
         await viewModel.AutoSincronizarAsync();
-        var sincronizacion = ContratosRepartidor.Leer<SincronizacionSolicitud>(handler.Requests.Last().Body);
+        var sincronizacion = ContratosRepartidor.Leer<SincronizacionSolicitud>(
+            handler.Requests.Last(request => request.Path == "/api/repartidor/sincronizacion").Body);
         Assert.Equal(rutaAnterior.Fecha, sincronizacion.Fecha);
         Assert.Equal(envioPendiente.Id, Assert.Single(sincronizacion.Eventos).EnvioId);
         Assert.Empty(data.Leer().RutasPendientes!);

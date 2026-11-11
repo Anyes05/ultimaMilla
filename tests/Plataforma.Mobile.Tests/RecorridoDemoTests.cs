@@ -3,6 +3,7 @@ using Plataforma.Mobile.Models;
 using Plataforma.Mobile.Services;
 using Plataforma.Mobile.ViewModels;
 using Plataforma.Mobile.Data;
+using EstadoBulto = Plataforma.Domain.EstadoBulto;
 
 namespace Plataforma.Mobile.Tests;
 

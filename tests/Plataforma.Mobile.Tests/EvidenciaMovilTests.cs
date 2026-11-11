@@ -34,6 +34,8 @@ public sealed partial class RepartidorHttpTests
         var liberar = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         handler.Espera = liberar.Task;
         handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta([new(envio.Id, EstadoEnvio.Entregado, 0)], [])));
+        // Con algo aplicado, la app vuelve a bajar la ruta para traer el estado del servidor (ca9673a).
+        handler.Respuestas.Enqueue(Ejemplo("rutas-hoy.response.json"));
         var automatico = vm.AutoSincronizarAsync();
         Assert.True(vm.Ocupado);
         await vm.SincronizarCommand.ExecuteAsync(null);
@@ -42,8 +44,11 @@ public sealed partial class RepartidorHttpTests
         liberar.SetResult();
         await automatico;
         Assert.False(vm.Ocupado);
-        Assert.Equal(requests + 1, handler.Requests.Count);
-        Assert.Equal(EstadoSincronizacion.Sincronizado, service.ObtenerRuta().Envios[0].Sincronizacion);
+        Assert.Equal(requests + 2, handler.Requests.Count);
+        Assert.Equal("/api/repartidor/sincronizacion", handler.Requests[requests].Path);
+        Assert.Equal("/api/repartidor/rutas/hoy", handler.Requests[requests + 1].Path);
+        // La ruta nueva reemplaza el estado local: lo que importa es que no quede nada por enviar.
+        Assert.Equal(0, service.ObtenerCantidadSincronizacionesPendientes());
     }
 
     [Fact]

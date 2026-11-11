@@ -31,4 +31,8 @@
     <Compile Include="..\..\src\Plataforma.Mobile\Services\INavigationService.cs" Link="Services\INavigationService.cs" />
     <Using Include="Xunit" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- La app comparte los enums de estado con el dominio (Plataforma.Mobile.csproj referencia el mismo proyecto). -->
+    <ProjectReference Include="..\..\src\Plataforma.Domain\Plataforma.Domain.csproj" />
+  </ItemGroup>
 </Project>
