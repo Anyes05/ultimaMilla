@@ -116,7 +116,8 @@ public sealed class DespacharRuta
         var eventIds = new List<Guid>();
         var orden = 1;
 
-        foreach (var envioId in envioIds)
+        // RF 16: el orden de visita lo decide el despacho (ver OrdenDeParadas) y la app lo recorre tal cual.
+        foreach (var envioId in await OrdenarAsync(operadorId, envioIds, cancellationToken))
         {
             var envio = await _envios.ObtenerPorOperadorAsync(envioId, operadorId, cancellationToken)
                 ?? throw new InvalidOperationException($"El envío {envioId} no existe para ese operador.");
@@ -151,6 +152,43 @@ public sealed class DespacharRuta
         await _cache.QuitarAsync(ObtenerRutasDeHoy.Clave(operadorId, repartidorId, fecha), cancellationToken);
 
         return ruta;
+    }
+
+    /// <summary>
+    /// RF 16, criterio de orden de las paradas. Sin coordenadas de las direcciones no hay optimización geográfica:
+    /// 1) urgentes primero (tienen el plazo más corto); 2) el resto agrupado por zona (por nombre, las sin zona al
+    /// final), para no cruzar la ciudad varias veces; 3) dentro de cada grupo, el orden en que se eligieron.
+    /// La franja no entra porque una ruta lleva envíos de una sola franja (RF 14).
+    /// </summary>
+    public static IReadOnlyList<Envio> OrdenDeParadas(
+        IReadOnlyList<Envio> enviosEnOrdenElegido,
+        IReadOnlyDictionary<Guid, string> nombresDeZona) =>
+        enviosEnOrdenElegido
+            .Select((envio, posicion) => (Envio: envio, Posicion: posicion, Zona: ZonaDe(envio, nombresDeZona)))
+            .OrderBy(item => item.Envio.Urgente ? 0 : 1)
+            .ThenBy(item => item.Zona is null ? 1 : 0)
+            .ThenBy(item => item.Zona ?? string.Empty, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(item => item.Posicion)
+            .Select(item => item.Envio)
+            .ToList();
+
+    private static string? ZonaDe(Envio envio, IReadOnlyDictionary<Guid, string> nombresDeZona) =>
+        envio.ZonaId is Guid zona && nombresDeZona.TryGetValue(zona, out var nombre) ? nombre : null;
+
+    /// <summary>Ids en orden de visita; los que no existen quedan al final para que el despacho los rechace.</summary>
+    private async Task<IReadOnlyList<Guid>> OrdenarAsync(Guid operadorId, IReadOnlyList<Guid> envioIds, CancellationToken cancellationToken)
+    {
+        var envios = new List<Envio>(envioIds.Count);
+        foreach (var envioId in envioIds)
+        {
+            if (await _envios.ObtenerPorOperadorAsync(envioId, operadorId, cancellationToken) is { } envio)
+                envios.Add(envio);
+        }
+
+        var zonas = (await _cobertura.ListarZonasAsync(operadorId, cancellationToken)).ToDictionary(zona => zona.Id, zona => zona.Nombre);
+        var ordenados = OrdenDeParadas(envios, zonas).Select(envio => envio.Id).ToList();
+        ordenados.AddRange(envioIds.Except(ordenados));
+        return ordenados;
     }
 
     /// <summary>

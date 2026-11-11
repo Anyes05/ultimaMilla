@@ -93,9 +93,15 @@ public class EnvioRepositorio : IEnvioRepositorio
         return new ResultadoPaginado<Envio>(items, total, pagina, tamanoPagina);
     }
 
+    /// <summary>Envíos de la ruta en orden de visita (Parada.Orden, RF 16); la app de reparto los recorre en este orden.</summary>
     public Task<List<Envio>> ObtenerPorRutaAsync(Guid operadorId, Guid rutaId, CancellationToken cancellationToken = default) =>
         _context.Envios.AsNoTracking()
             .Where(envio => envio.OperadorId == operadorId && envio.RutaId == rutaId)
+            .OrderBy(envio => _context.Paradas
+                .Where(parada => parada.RutaId == rutaId && parada.EnvioId == envio.Id)
+                .Select(parada => (int?)parada.Orden)
+                .FirstOrDefault() ?? int.MaxValue)
+            .ThenBy(envio => envio.FechaCreacion)
             .ToListAsync(cancellationToken);
 
     public Task<List<Envio>> ObtenerPorRutaParaEditarAsync(

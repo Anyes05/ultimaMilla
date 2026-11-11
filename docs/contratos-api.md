@@ -141,7 +141,7 @@ Archivo: `contracts/repartidor/login.response.json` (el `token` de ejemplo es fi
 
 ### 3.2 `GET /api/repartidor/rutas/hoy`
 
-Devuelve las rutas del día del repartidor autenticado.
+Devuelve las rutas del día del repartidor autenticado. Los `envios` de cada ruta vienen **en orden de visita** (RF 16): urgentes primero, después agrupados por zona y, dentro de cada grupo, en el orden en que el despachador los eligió. La app los recorre en ese orden.
 
 **Headers:** `Authorization: Bearer <token repartidor>`
 
