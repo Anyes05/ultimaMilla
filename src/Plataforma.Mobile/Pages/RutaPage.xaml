@@ -37,30 +37,6 @@
             </Label.Triggers>
         </Label>
         <CollectionView Grid.Row="2" ItemsSource="{Binding EnviosVisibles}" SelectionMode="None" ItemSizingStrategy="MeasureAllItems">
-            <CollectionView.Footer>
-                <VerticalStackLayout Spacing="12" Padding="0,12" IsVisible="{Binding MostrarListaDiaria}">
-                    <Button Text="Opciones de sincronizacion y dispositivo"
-                            Command="{Binding AlternarOpcionesCommand}" Style="{StaticResource SecondaryButton}" />
-                    <Border Padding="16" IsVisible="{Binding MostrarOpciones}">
-                        <VerticalStackLayout Spacing="12">
-                            <Label Text="SINCRONIZACION" Style="{StaticResource SectionLabel}" />
-                            <Label Text="Los rechazos requieren revision. El reintento conserva el comprobante original."
-                                   Style="{StaticResource MutedLabel}" />
-                            <Button Text="Reintentar rechazados" Command="{Binding ReintentarRechazadosCommand}"
-                                    Style="{StaticResource SecondaryButton}" />
-                            <Label Text="DISPOSITIVO" Style="{StaticResource SectionLabel}" />
-                            <Label Text="Registro manual de token. No activa notificaciones push."
-                                   Style="{StaticResource MutedLabel}" />
-                            <Entry Placeholder="Token del dispositivo" Text="{Binding TokenDispositivo}" />
-                            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                                <Button Text="Registrar" Command="{Binding AltaDispositivoCommand}" />
-                                <Button Grid.Column="1" Text="Eliminar" Command="{Binding BajaDispositivoCommand}"
-                                        Style="{StaticResource SecondaryButton}" />
-                            </Grid>
-                        </VerticalStackLayout>
-                    </Border>
-                </VerticalStackLayout>
-            </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:Envio">
                     <Border Padding="12" Margin="0,4">
@@ -111,8 +87,6 @@
             </VerticalStackLayout>
         <VerticalStackLayout Grid.Row="3" Spacing="8">
             <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" />
-            <Button Text="Empezar recorrido" Command="{Binding EmpezarRecorridoCommand}"
-                    IsVisible="{Binding PuedeEmpezarRecorrido}" />
             <Button Text="Actualizar ruta" Command="{Binding DescargarRutaCommand}"
                     Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>
@@ -121,6 +95,8 @@
             Margin="0,56,12,0" Padding="8" ZIndex="10">
             <VerticalStackLayout Spacing="6">
             <Button Text="Sincronizar" Command="{Binding SincronizarCommand}"
+                Style="{StaticResource SecondaryButton}" />
+            <Button Text="Reintentar rechazados" Command="{Binding ReintentarRechazadosCommand}"
                 Style="{StaticResource SecondaryButton}" />
             <Button Text="Historial de entregas" Command="{Binding AbrirHistorialCommand}"
                 Style="{StaticResource SecondaryButton}" />

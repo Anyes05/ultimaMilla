@@ -29,14 +29,10 @@ public partial class RutaViewModel(
     private const int TamanoPaginaHistorial = 10;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MostrarListaDiaria))]
-    [NotifyPropertyChangedFor(nameof(PuedeEmpezarRecorrido))]
     private bool recorridoActivo;
 
     [ObservableProperty]
     private string progresoRecorrido = string.Empty;
-
-    public bool MostrarListaDiaria => !RecorridoActivo;
 
     [RelayCommand]
     private void EmpezarRecorrido()
@@ -141,9 +137,6 @@ public partial class RutaViewModel(
     private bool ocupado;
 
     [ObservableProperty]
-    private bool mostrarOpciones;
-
-    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MostrarRuta))]
     private bool mostrarHistorial;
 
@@ -190,9 +183,6 @@ public partial class RutaViewModel(
     }
 
     public bool FiltrarHistorialPorFecha { get; private set; }
-
-    [RelayCommand]
-    private void AlternarOpciones() => MostrarOpciones = !MostrarOpciones;
 
     [RelayCommand]
     private void AlternarMenu() => MenuAbierto = !MenuAbierto;
@@ -248,7 +238,6 @@ public partial class RutaViewModel(
 
     public bool HaySeleccion => EnvioSeleccionado is not null;
     public bool SinEnvios => Envios.Count == 0;
-    public bool PuedeEmpezarRecorrido => MostrarListaDiaria && Envios.Count > 0;
     public bool UsaEntregaParcial => entregaParcialHabilitada &&
         (EnvioSeleccionado?.Bultos?.Any(bulto => bulto.PuedeEntregarse) ?? false);
     public bool UsaEntregaCompleta => !UsaEntregaParcial;
@@ -344,7 +333,7 @@ public partial class RutaViewModel(
     }
 
     [RelayCommand]
-    private void GuardarEntrega()
+    private async Task GuardarEntregaAsync()
     {
         if (Ocupado) return;
         if (EnvioSeleccionado is null)
@@ -353,6 +342,7 @@ public partial class RutaViewModel(
             return;
         }
 
+        var guardado = false;
         Ejecutar(() =>
         {
             if (UsaEntregaParcial)
@@ -401,9 +391,14 @@ public partial class RutaViewModel(
                     Foto, Firma, Latitud, Longitud));
             CancelarEntrega();
             ActualizarRuta();
-            Mensaje = "Comprobante guardado. Pendiente de sincronizar.";
+            Mensaje = ConexionSimulada
+                ? "Comprobante guardado. Sincronizando ahora..."
+                : "Comprobante guardado en el telefono. Se sincronizara al recuperar conexion.";
             AvanzarRecorrido();
+            guardado = true;
         });
+        if (guardado && ConexionSimulada)
+            await SincronizarColaAsync(automatica: true);
     }
 
     public void RegistrarBultoEntregado(Guid bultoId, string codigoEscaneado)
@@ -423,16 +418,22 @@ public partial class RutaViewModel(
         Mensaje = $"Bulto {item.Bulto.Codigo} marcado como entregado.";
     }
 
-    public void RegistrarCarga(Envio envio, string codigo)
+    public async Task RegistrarCargaAsync(Envio envio, string codigo)
     {
         if (Ocupado) return;
+        var guardada = false;
         Ejecutar(() =>
         {
             repartidor.RegistrarEvento(new EntregaPendiente(Guid.NewGuid(), envio.Id, "", "",
                 DateTimeOffset.Now, EstadoEnvio.EnTransito, CodigoEscaneado: codigo));
             ActualizarRuta();
-            Mensaje = "Carga guardada. Sincroniza para habilitar la entrega.";
+            Mensaje = ConexionSimulada
+                ? "Carga guardada. Confirmandola con el servidor..."
+                : "Carga guardada en el telefono. Se sincronizara al recuperar conexion.";
+            guardada = true;
         });
+        if (guardada && ConexionSimulada)
+            await SincronizarColaAsync(automatica: true);
     }
 
     public async Task AutoSincronizarAsync()
@@ -493,7 +494,9 @@ public partial class RutaViewModel(
             ActualizarRuta();
             Mensaje = resultado.Rechazadas > 0
                 ? "Hay registros rechazados. Revisa el motivo en cada envio; los comprobantes se conservan."
-                : automatica ? mensajeAnterior : "Sincronizacion completada.";
+                : automatica && resultado.Aplicadas == 0 ? mensajeAnterior
+                : automatica ? "Comprobante confirmado por el servidor."
+                : "Sincronizacion completada.";
         }
 
         catch (SesionRepartidorVencidaException ex)
@@ -600,10 +603,12 @@ public partial class RutaViewModel(
         Titulo = "Ruta del dia";
         Envios.Clear();
         var esRutaDeHoy = !SoloRutasDeHoy || ruta.Fecha == DateOnly.FromDateTime(DateTime.Today);
-        foreach (var envio in esRutaDeHoy ? ruta.Envios : [])
-            Envios.Add(envio);
+        if (esRutaDeHoy)
+        {
+            foreach (var envio in ruta.Envios.OrderBy(EnviarAlFinal))
+                Envios.Add(envio);
+        }
         OnPropertyChanged(nameof(SinEnvios));
-        OnPropertyChanged(nameof(PuedeEmpezarRecorrido));
 
         if (!esRutaDeHoy)
             Mensaje = "La ruta guardada corresponde a otra fecha. Se conservan sus comprobantes; actualiza para consultar los envios de hoy.";
@@ -614,6 +619,12 @@ public partial class RutaViewModel(
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Rechazado)} rechazados";
         ActualizarVisibles();
     }
+
+    private static int EnviarAlFinal(Envio envio) =>
+        envio.Estado is EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente ||
+        envio.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado
+            ? 1
+            : 0;
 
     private async Task PedirAutenticacionAsync(SesionRepartidorVencidaException ex)
     {

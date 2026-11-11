@@ -17,40 +17,32 @@ public partial class App : Application
 		// Las paginas usan recursos XAML que deben existir antes de construir el Shell.
 		var window = new Window(services.GetRequiredService<AppShell>());
 		var vm = services.GetRequiredService<ViewModels.RutaViewModel>();
-		var timer = Dispatcher.CreateTimer();
-		timer.Interval = TimeSpan.FromSeconds(30);
 		var activa = false;
-		async void Sincronizar(object? sender, EventArgs e)
+		async Task ActualizarConexionAsync(bool disponible)
 		{
-			if (!activa || Connectivity.Current.NetworkAccess != NetworkAccess.Internet) return;
 			await MainThread.InvokeOnMainThreadAsync(async () =>
 			{
+				vm.ConexionSimulada = disponible;
+				if (!activa || !disponible) return;
 				await vm.AutoSincronizarAsync();
 				await vm.RefrescarRutaAlMostrarAsync();
 			});
 		}
-		void Conexion(object? sender, ConnectivityChangedEventArgs e) => Sincronizar(sender, e);
+		async void Conexion(object? sender, ConnectivityChangedEventArgs e) =>
+			await ActualizarConexionAsync(e.NetworkAccess == NetworkAccess.Internet);
 		async void Activar(object? sender, EventArgs e)
 		{
 			activa = true;
-			timer.Start();
-			await MainThread.InvokeOnMainThreadAsync(async () =>
-			{
-				vm.SoloRutasDeHoy = true;
-				await vm.AutoSincronizarAsync();
-				await vm.RefrescarRutaAlMostrarAsync();
-			});
+			vm.SoloRutasDeHoy = true;
+			await ActualizarConexionAsync(Connectivity.Current.NetworkAccess == NetworkAccess.Internet);
 		}
-		timer.Tick += Sincronizar;
 		window.Activated += Activar;
 		window.Resumed += Activar;
-		window.Stopped += (_, _) => { activa = false; timer.Stop(); };
+		window.Stopped += (_, _) => { activa = false; };
 		Connectivity.Current.ConnectivityChanged += Conexion;
 		window.Destroying += (_, _) =>
 		{
 			activa = false;
-			timer.Stop();
-			timer.Tick -= Sincronizar;
 			Connectivity.Current.ConnectivityChanged -= Conexion;
 		};
 		return window;

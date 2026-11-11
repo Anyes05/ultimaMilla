@@ -136,21 +136,21 @@ public sealed class RecorridoDemoTests : IDisposable
         vm.ConexionSimulada = false;
         vm.SeleccionarEntregaCommand.Execute(vm.Envios[0]);
         Assert.False(vm.MostrarRuta);
-        vm.GuardarEntregaCommand.Execute(null);
+        await vm.GuardarEntregaCommand.ExecuteAsync(null);
         Assert.True(vm.HaySeleccion);
         Assert.Contains("nombre", vm.Mensaje);
         vm.NombreReceptor = "Receptor de prueba";
-        vm.GuardarEntregaCommand.Execute(null);
+        await vm.GuardarEntregaCommand.ExecuteAsync(null);
         Assert.False(vm.HaySeleccion);
         Assert.True(vm.MostrarRuta);
         Assert.Contains("1 pendientes", vm.Resumen);
-        vm.SincronizarCommand.Execute(null);
+        await vm.SincronizarCommand.ExecuteAsync(null);
         Assert.Contains("Sin conexion", vm.Mensaje);
         await vm.CerrarSesionCommand.ExecuteAsync(null);
         Assert.Equal(0, navigation.Logins);
         Assert.True(service.HaySesion);
         vm.ConexionSimulada = true;
-        vm.SincronizarCommand.Execute(null);
+        await vm.SincronizarCommand.ExecuteAsync(null);
         Assert.Equal("Sincronizacion completada.", vm.Mensaje);
         await vm.CerrarSesionCommand.ExecuteAsync(null);
         Assert.Equal(1, navigation.Logins);
@@ -159,7 +159,7 @@ public sealed class RecorridoDemoTests : IDisposable
     }
 
     [Fact]
-    public void RecorridoAvanzaSoloTrasGuardarYVuelveAListaAlFinal()
+    public async Task RecorridoAvanzaSoloTrasGuardarYVuelveAListaAlFinal()
     {
         var service = CrearSesion();
         var vm = new RutaViewModel(service, new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
@@ -170,7 +170,7 @@ public sealed class RecorridoDemoTests : IDisposable
         Assert.True(vm.RecorridoActivo);
         var primero = Assert.Single(vm.EnviosVisibles);
         vm.SeleccionarEntregaCommand.Execute(primero);
-        vm.GuardarEntregaCommand.Execute(null);
+        await vm.GuardarEntregaCommand.ExecuteAsync(null);
         Assert.True(vm.HaySeleccion);
         Assert.Equal(primero.Id, Assert.Single(vm.EnviosVisibles).Id);
         vm.CancelarEntregaCommand.Execute(null);
@@ -182,7 +182,7 @@ public sealed class RecorridoDemoTests : IDisposable
             vm.NombreReceptor = "Receptor";
             vm.IntentoFallido = i == 1;
             vm.Observaciones = i == 1 ? "Destinatario ausente" : "";
-            vm.GuardarEntregaCommand.Execute(null);
+            await vm.GuardarEntregaCommand.ExecuteAsync(null);
         }
         Assert.False(vm.RecorridoActivo);
         Assert.Equal(vm.Envios.Count, vm.EnviosVisibles.Count);
@@ -190,15 +190,16 @@ public sealed class RecorridoDemoTests : IDisposable
     }
 
     [Fact]
-    public void RecorridoPermiteAnteriorYPausaSinDuplicarNiPerderComprobantes()
+    public async Task RecorridoPermiteAnteriorYPausaSinDuplicarNiPerderComprobantes()
     {
         var vm = new RutaViewModel(CrearSesion(), new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
         vm.CargarCommand.Execute(null);
+        vm.ConexionSimulada = false;
         vm.EmpezarRecorridoCommand.Execute(null);
         var primero = Assert.Single(vm.EnviosVisibles);
         vm.SeleccionarEntregaCommand.Execute(primero);
         vm.NombreReceptor = "Receptor";
-        vm.GuardarEntregaCommand.Execute(null);
+        await vm.GuardarEntregaCommand.ExecuteAsync(null);
         var segundo = Assert.Single(vm.EnviosVisibles);
         Assert.NotEqual(primero.Id, segundo.Id);
         vm.ParadaAnteriorCommand.Execute(null);
@@ -278,6 +279,31 @@ public sealed class RecorridoDemoTests : IDisposable
     }
 
     [Fact]
+    public void RutaMuestraAlFinalEntregadosYPendientesDeSincronizar()
+    {
+        var service = CrearSesion();
+        var data = new RepartidorLocalData(Path.Combine(directory, "demo.db"));
+        var estado = data.Leer();
+        var ruta = estado.Ruta!;
+        var envios = ruta.Envios.Select((envio, indice) => indice switch
+        {
+            0 => envio with { Estado = EstadoEnvio.Entregado },
+            1 => envio with
+            {
+                Sincronizacion = EstadoSincronizacion.Pendiente,
+                Entrega = new EntregaPendiente(Guid.NewGuid(), envio.Id, "Receptor", "", DateTimeOffset.Now)
+            },
+            _ => envio
+        }).ToArray();
+        data.Guardar(estado with { Ruta = ruta with { Envios = envios } });
+
+        var viewModel = new RutaViewModel(new RepartidorDemoService(data), new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
+        viewModel.CargarCommand.Execute(null);
+
+        Assert.Equal([envios[2].Id, envios[0].Id, envios[1].Id], viewModel.Envios.Select(envio => envio.Id));
+    }
+
+    [Fact]
     public void EntregaParcialGuardaResultadosPorBultoYMotivoEnLaColaOffline()
     {
         var service = CrearSesion();
@@ -304,6 +330,7 @@ public sealed class RecorridoDemoTests : IDisposable
         });
         var vm = new RutaViewModel(new RepartidorDemoService(data), new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
         vm.CargarCommand.Execute(null);
+        vm.ConexionSimulada = false;
         vm.SeleccionarEntregaCommand.Execute(vm.Envios.Single(item => item.Id == envio.Id));
         Assert.True(vm.UsaEntregaParcial);
         Assert.Equal(2, vm.BultosEntrega.Count);

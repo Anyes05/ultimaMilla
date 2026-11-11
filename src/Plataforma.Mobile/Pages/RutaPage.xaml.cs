@@ -47,7 +47,7 @@ public partial class RutaPage : ContentPage
         if (viewModel.Ocupado || !viewModel.HaySeleccion) return;
         if (!await ObtenerGpsAsync()) return;
         viewModel.Firma = firma.Exportar();
-        viewModel.GuardarEntregaCommand.Execute(null);
+        await viewModel.GuardarEntregaCommand.ExecuteAsync(null);
         if (!viewModel.HaySeleccion)
         {
             BorrarFirma(null, EventArgs.Empty);
@@ -149,7 +149,7 @@ public partial class RutaPage : ContentPage
         try
         {
             var codigo = await EscanearCodigoAsync("Escanear carga", $"Escanea {envio.NumeroSeguimiento}");
-            if (codigo is not null) viewModel.RegistrarCarga(envio, codigo);
+            if (codigo is not null) await viewModel.RegistrarCargaAsync(envio, codigo);
         }
         catch (Exception ex)
         {
@@ -239,6 +239,7 @@ public partial class RutaPage : ContentPage
         base.OnAppearing();
         viewModel.PantallaActiva = true;
         viewModel.SoloRutasDeHoy = true;
+        viewModel.ConexionSimulada = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
         viewModel.PropertyChanged += CambioSeleccion;
         await viewModel.RefrescarRutaAlMostrarAsync();
     }
