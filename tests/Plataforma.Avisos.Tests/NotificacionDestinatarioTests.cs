@@ -35,6 +35,20 @@ public class NotificacionDestinatarioTests
     }
 
     [Fact]
+    public void Correo_LlevaElContactoDelOperador_SiLoTiene()
+    {
+        var conContacto = PlantillaNotificacion.Armar(
+            new DatosNotificacion("Operador Norte", "azul", "ENV-1", "t", "EnTransito", "2900 1234", "consultas@norte.test"), "https://tracking.test");
+        var sinContacto = PlantillaNotificacion.Armar(
+            new DatosNotificacion("Operador Norte", "azul", "ENV-1", "t", "EnTransito"), "https://tracking.test");
+
+        Assert.Contains("2900 1234 · consultas@norte.test", System.Net.WebUtility.HtmlDecode(conContacto.Html));
+        Assert.Contains("Consultas: 2900 1234 · consultas@norte.test", conContacto.Texto);
+        Assert.DoesNotContain("Consultas", sinContacto.Html);
+        Assert.DoesNotContain("Consultas", sinContacto.Texto);
+    }
+
+    [Fact]
     public void Correo_EscapaElNombreDelOperador()
     {
         var correo = PlantillaNotificacion.Armar(

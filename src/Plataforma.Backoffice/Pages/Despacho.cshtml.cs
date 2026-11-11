@@ -19,8 +19,10 @@ public class DespachoModel : PageModel
     private readonly DespacharRuta _despachar;
     private readonly IniciarRuta _iniciarRuta;
     private readonly IOperadorRepositorio _operadores;
+    private readonly GestionCobertura _cobertura;
 
     public DespachoModel(
+        GestionCobertura cobertura,
         ListarEnvios listarEnvios,
         ListarRepartidoresActivos listarRepartidores,
         ListarRutasDelDia listarRutas,
@@ -34,7 +36,21 @@ public class DespachoModel : PageModel
         _despachar = despachar;
         _iniciarRuta = iniciarRuta;
         _operadores = operadores;
+        _cobertura = cobertura;
     }
+
+    /// <summary>Vehículos activos: elegir uno valida paradas, peso y volumen (RF 13 y 14).</summary>
+    public IReadOnlyList<Vehiculo> Vehiculos { get; private set; } = [];
+
+    public IReadOnlyDictionary<Guid, FranjaHoraria> Franjas { get; private set; } = new Dictionary<Guid, FranjaHoraria>();
+
+    [BindProperty]
+    public Guid? VehiculoId { get; set; }
+
+    public string NombreFranja(Guid? franjaId) =>
+        franjaId is Guid id && Franjas.TryGetValue(id, out var franja)
+            ? $"{franja.Nombre} ({franja.Desde:HH\\:mm} a {franja.Hasta:HH\\:mm})"
+            : "Sin franja";
 
     public Operador? Operador { get; private set; }
     public IReadOnlyList<Envio> EnviosEnDeposito { get; private set; } = [];
@@ -94,7 +110,7 @@ public class DespachoModel : PageModel
                 RepartidorId,
                 Fecha,
                 EnvioIds.Distinct().ToList(),
-                vehiculoId: null,
+                vehiculoId: VehiculoId,
                 cancellationToken: HttpContext.RequestAborted);
 
             TempData["Mensaje"] =
@@ -168,6 +184,8 @@ public class DespachoModel : PageModel
             .OrderBy(envio => envio.FechaCreacion)
             .ToList();
         Repartidores = await _listarRepartidores.EjecutarAsync(acceso.OperadorId, ct);
+        Vehiculos = (await _cobertura.ListarVehiculosAsync(acceso.OperadorId, ct)).OrderBy(vehiculo => vehiculo.Patente).ToList();
+        Franjas = (await _cobertura.ListarTodasLasFranjasAsync(acceso.OperadorId, ct)).ToDictionary(franja => franja.Id);
         RutasDeHoy = await _listarRutas.EjecutarAsync(acceso.OperadorId, Fecha, ct);
     }
 }

@@ -117,7 +117,8 @@ public sealed class ConsumidorNotificacionDestinatario : ConsumidorRabbitBase
     private async Task<string?> EnviarAsync(EventoEstadoEnvio evento, DatosEnvio datos, CancellationToken ct)
     {
         var correo = PlantillaNotificacion.Armar(
-            new DatosNotificacion(datos.Operador, datos.ColorMarca, datos.NumeroSeguimiento, datos.Token, evento.EstadoNuevo),
+            new DatosNotificacion(datos.Operador, datos.ColorMarca, datos.NumeroSeguimiento, datos.Token, evento.EstadoNuevo,
+                datos.TelefonoContacto, datos.EmailContacto),
             _notificaciones.UrlSeguimiento);
         try
         {
@@ -159,7 +160,7 @@ public sealed class ConsumidorNotificacionDestinatario : ConsumidorRabbitBase
     private static async Task<DatosEnvio?> BuscarDatosAsync(AvisosDbContext db, EventoEstadoEnvio evento, CancellationToken ct) =>
         (await db.Database.SqlQuery<DatosEnvio>($"""
             SELECT e."EmailDestinatario" AS "Email", e."TokenSeguimientoPublico" AS "Token", e."NumeroSeguimiento",
-                   o."Nombre" AS "Operador", o."ColorMarca"
+                   o."Nombre" AS "Operador", o."ColorMarca", o."TelefonoContacto", o."EmailContacto"
             FROM public."Envios" e JOIN public."Operadores" o ON o."Id" = e."OperadorId"
             WHERE e."Id" = {evento.EnvioId} AND e."OperadorId" = {evento.OperadorId}
             """).ToListAsync(ct)).SingleOrDefault();
@@ -188,5 +189,7 @@ public sealed class ConsumidorNotificacionDestinatario : ConsumidorRabbitBase
         public string NumeroSeguimiento { get; set; } = string.Empty;
         public string Operador { get; set; } = string.Empty;
         public string ColorMarca { get; set; } = string.Empty;
+        public string TelefonoContacto { get; set; } = string.Empty;
+        public string EmailContacto { get; set; } = string.Empty;
     }
 }

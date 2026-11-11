@@ -10,6 +10,10 @@ public class Operador
     public int MaximoIntentos { get; private set; }
     public string ZonaHoraria { get; private set; } = ZonaHorariaUruguay;
 
+    /// <summary>Datos de contacto de la marca (RF 5): se muestran al comercio, al destinatario y en los correos.</summary>
+    public string TelefonoContacto { get; private set; } = string.Empty;
+    public string EmailContacto { get; private set; } = string.Empty;
+
     private Operador()
     {
     }
@@ -63,6 +67,19 @@ public class Operador
             throw new ArgumentException("El color de marca es requerido.");
 
         ColorMarca = colorMarca.Trim().ToLowerInvariant();
+    }
+
+    public void CambiarContacto(string? telefono, string? email)
+    {
+        var telefonoLimpio = (telefono ?? string.Empty).Trim();
+        var emailLimpio = (email ?? string.Empty).Trim();
+        if (telefonoLimpio.Length > 40)
+            throw new ArgumentException("El teléfono de contacto es demasiado largo.", nameof(telefono));
+        if (emailLimpio.Length > 160 || (emailLimpio.Length > 0 && (!emailLimpio.Contains('@') || emailLimpio.Contains(' '))))
+            throw new ArgumentException("El email de contacto no es válido.", nameof(email));
+
+        TelefonoContacto = telefonoLimpio;
+        EmailContacto = emailLimpio;
     }
 
     /// <summary>Día de operación según la zona del operador (no UTC del servidor).</summary>

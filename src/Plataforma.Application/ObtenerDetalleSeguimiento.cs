@@ -22,7 +22,9 @@ public sealed record DetalleSeguimiento(
     DateOnly? FechaPrevista,
     DateTime? EstimadaAntesDeUtc,
     IReadOnlyList<EventoSeguimiento> Historial,
-    bool PuedeReprogramar);
+    bool PuedeReprogramar,
+    string TelefonoContacto = "",
+    string EmailContacto = "");
 
 /// <summary>
 /// Detalle del seguimiento público. Se cachea porque es la lectura más frecuente del sistema: cada cambio de estado
@@ -154,7 +156,9 @@ public sealed class ObtenerDetalleSeguimiento
                 evento.Fecha,
                 evento.Motivo,
                 evento.Responsable)).ToList(),
-            regla?.PermiteReprogramar(envio.Estado, envio.IntentosRealizados, UltimoIntento(historial), ahora) == true);
+            regla?.PermiteReprogramar(envio.Estado, envio.IntentosRealizados, UltimoIntento(historial), ahora) == true,
+            operador.TelefonoContacto,
+            operador.EmailContacto);
     }
 
     /// <summary>

@@ -47,7 +47,18 @@
                     <label class="form-label fw-semibold" for="fecha">Fecha de la ruta</label>
                     <input id="fecha" asp-for="Fecha" type="date" class="form-control form-control-lg" required />
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="vehiculo">Vehículo <span class="text-muted fw-normal">(valida paradas, peso y volumen)</span></label>
+                    <select id="vehiculo" asp-for="VehiculoId" class="form-select">
+                        <option value="">Sin vehículo asignado</option>
+                        @foreach (var vehiculo in Model.Vehiculos)
+                        {
+                            <option value="@vehiculo.Id">@vehiculo.Patente@(string.IsNullOrWhiteSpace(vehiculo.Descripcion) ? "" : $" · {vehiculo.Descripcion}") (máx. @vehiculo.MaximoParadas paradas, @vehiculo.CapacidadPesoKg.ToString("0.#") kg)</option>
+                        }
+                    </select>
+                </div>
             </div>
+            <p class="small text-muted mt-3 mb-0">Una ruta lleva envíos de una sola franja; los envíos sin franja pueden ir en cualquiera.</p>
         </div>
     </div>
 
@@ -65,6 +76,7 @@
                             <th>N° Tracking</th>
                             <th>Destinatario</th>
                             <th>Dirección de entrega</th>
+                            <th>Franja</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -80,13 +92,14 @@
                                 <td><label for="envio-@envio.Id"><span class="tracking-number">@envio.NumeroSeguimiento</span></label></td>
                                 <td>@envio.Destinatario</td>
                                 <td>@envio.DireccionEntrega</td>
+                                <td class="small">@Model.NombreFranja(envio.FranjaId)</td>
                             </tr>
                         }
                     }
                     else
                     {
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-5">
+                            <td colspan="5" class="text-center text-muted py-5">
                                 No hay envíos en depósito para despachar. Recibilos primero desde el Monitoreo.
                             </td>
                         </tr>

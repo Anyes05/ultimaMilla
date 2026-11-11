@@ -812,10 +812,18 @@ namespace Plataforma.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("EmailContacto")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<int>("MaximoIntentos")
                         .HasColumnType("integer");
 
                     b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TelefonoContacto")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -863,13 +871,13 @@ namespace Plataforma.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BultoId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("CodigoEscaneado")
                         .HasColumnType("text");
 
                     b.Property<Guid>("EnvioId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("BultoId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("Fecha")
@@ -908,6 +916,7 @@ namespace Plataforma.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
                     b.HasIndex("OperadorId", "BultoId");
 
                     b.ToTable("PruebasDeEntrega");
@@ -996,7 +1005,7 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<int>("MaximoIntentos")
                         .HasColumnType("integer");
 
-                    b.Property<string[]>("MotivosNoEntrega")
+                    b.PrimitiveCollection<string[]>("MotivosNoEntrega")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("text[]")

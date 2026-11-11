@@ -102,6 +102,8 @@ public sealed class DespacharRuta
                     $"El volumen de la ruta ({volumen} cm³) supera la capacidad del vehículo ({vehiculo.CapacidadVolumenCm3} cm³).");
         }
 
+        await ValidarFranjasAsync(operadorId, fecha, envioIds, cancellationToken);
+
         var ruta = Ruta.Programar(operadorId, repartidorId, fecha);
         var paradas = new List<Parada>(envioIds.Count);
         var eventIds = new List<Guid>();
@@ -142,5 +144,45 @@ public sealed class DespacharRuta
         await _cache.QuitarAsync(ObtenerRutasDeHoy.Clave(operadorId, repartidorId, fecha), cancellationToken);
 
         return ruta;
+    }
+
+    /// <summary>
+    /// RF 14, compatibilidad con las franjas comprometidas: una ruta lleva envíos de una sola franja (los que no
+    /// tienen franja pueden ir en cualquiera), y una ruta de hoy no puede salir con una franja que ya terminó.
+    /// La hora es la del operador (UTC−03:00), igual que en los contratos.
+    /// </summary>
+    private async Task ValidarFranjasAsync(
+        Guid operadorId,
+        DateOnly fecha,
+        IReadOnlyList<Guid> envioIds,
+        CancellationToken cancellationToken)
+    {
+        var franjaIds = new HashSet<Guid>();
+        foreach (var envioId in envioIds)
+        {
+            var envio = await _envios.ObtenerPorOperadorAsync(envioId, operadorId, cancellationToken);
+            if (envio?.FranjaId is Guid franjaId)
+                franjaIds.Add(franjaId);
+        }
+
+        var franjas = new List<FranjaHoraria>();
+        foreach (var franjaId in franjaIds)
+        {
+            if (await _cobertura.ObtenerFranjaAsync(operadorId, franjaId, cancellationToken) is { } franja)
+                franjas.Add(franja);
+        }
+
+        if (franjas.Count > 1)
+            throw new InvalidOperationException(
+                $"La ruta mezcla envíos de distintas franjas ({string.Join(", ", franjas.Select(f => f.Nombre).Order())}). Armá una ruta por franja.");
+
+        if (franjas.Count == 0)
+            return;
+
+        var unica = franjas[0];
+        var ahora = DateTimeOffset.UtcNow.ToOffset(RelojOperacion.Offset);
+        if (fecha == DateOnly.FromDateTime(ahora.DateTime) && TimeOnly.FromDateTime(ahora.DateTime) >= unica.Hasta)
+            throw new InvalidOperationException(
+                $"La franja {unica.Nombre} ({unica.Desde:HH\\:mm} a {unica.Hasta:HH\\:mm}) ya terminó hoy: despachá esos envíos para otro día.");
     }
 }

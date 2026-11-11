@@ -99,6 +99,25 @@
                         <p class="small mt-3 mb-0">@visible.BultosEntregados de @visible.BultosTotal bultos entregados.</p>
                     }
 
+                    @if (!string.IsNullOrWhiteSpace(visible.TelefonoContacto) || !string.IsNullOrWhiteSpace(visible.EmailContacto))
+                    {
+                        <p class="small text-muted mt-3 mb-0" data-contacto-operador>
+                            ¿Consultas? Comunicate con @visible.Operador:
+                            @if (!string.IsNullOrWhiteSpace(visible.TelefonoContacto))
+                            {
+                                <a href="tel:@visible.TelefonoContacto">@visible.TelefonoContacto</a>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(visible.TelefonoContacto) && !string.IsNullOrWhiteSpace(visible.EmailContacto))
+                            {
+                                <span> · </span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(visible.EmailContacto))
+                            {
+                                <a href="mailto:@visible.EmailContacto">@visible.EmailContacto</a>
+                            }
+                        </p>
+                    }
+
                     @if (visible.IntentosRealizados > 0)
                     {
                         <p class="small text-muted mt-3 mb-0">Intentos de entrega realizados: @visible.IntentosRealizados</p>

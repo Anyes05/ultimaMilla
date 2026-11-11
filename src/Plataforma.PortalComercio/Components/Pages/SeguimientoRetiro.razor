@@ -39,6 +39,10 @@
                         <p class="small mb-1">Pedido por <strong>@comercio</strong></p>
                     }
                     <p class="small mb-3">Fecha del retiro: <strong>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</strong></p>
+                    @if (!string.IsNullOrWhiteSpace(operador.TelefonoContacto) || !string.IsNullOrWhiteSpace(operador.EmailContacto))
+                    {
+                        <p class="small text-muted mb-3" data-contacto-operador>¿Consultas? @string.Join(" · ", new[] { operador.TelefonoContacto, operador.EmailContacto }.Where(dato => !string.IsNullOrWhiteSpace(dato)))</p>
+                    }
 
                     @if (retiro.Estado != EstadoRetiro.Cancelado)
                     {

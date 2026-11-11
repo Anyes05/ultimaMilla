@@ -8,6 +8,10 @@
                 {
                     <small class="operator-brand">@NombreOperador</small>
                 }
+                @if (!string.IsNullOrWhiteSpace(ContactoOperador))
+                {
+                    <small class="operator-brand d-block" data-contacto-operador>@ContactoOperador</small>
+                }
             </span>
         </a>
     </div>
@@ -61,4 +65,7 @@
 
     [Parameter]
     public string? NombreUsuario { get; set; }
+
+    [Parameter]
+    public string? ContactoOperador { get; set; }
 }

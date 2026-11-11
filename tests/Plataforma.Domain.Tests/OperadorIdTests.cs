@@ -63,4 +63,22 @@ public class OperadorIdTests
     }
 
     private static Guid _id() => Guid.NewGuid();
+
+    [Fact]
+    public void Contacto_SeGuardaLimpioYSePuedeVaciar()
+    {
+        var operador = Operador.Crear(_operadorId, "Norte", "azul", 3);
+
+        operador.CambiarContacto("  2900 1234 ", " consultas@norte.test ");
+        Assert.Equal(("2900 1234", "consultas@norte.test"), (operador.TelefonoContacto, operador.EmailContacto));
+
+        operador.CambiarContacto(null, "");
+        Assert.Equal((string.Empty, string.Empty), (operador.TelefonoContacto, operador.EmailContacto));
+    }
+
+    [Theory]
+    [InlineData("sin-arroba")]
+    [InlineData("con espacio@norte.test")]
+    public void Contacto_EmailInvalido_SeRechaza(string email) =>
+        Assert.Throws<ArgumentException>(() => Operador.Crear(_operadorId, "Norte", "azul", 3).CambiarContacto("", email));
 }

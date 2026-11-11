@@ -8,12 +8,13 @@
     @if (MostrarBarraLateral)
     {
         <div class="sidebar">
-            <NavMenu NombreOperador="@NombreOperador" ColorMarcaCss="@ColorMarcaCss" NombreUsuario="@NombreUsuario" />
+            <NavMenu NombreOperador="@NombreOperador" ColorMarcaCss="@ColorMarcaCss" NombreUsuario="@NombreUsuario" ContactoOperador="@ContactoOperador" />
         </div>
     }
 
     @code {
         private string? NombreOperador { get; set; }
+        private string? ContactoOperador { get; set; }
         private string? NombreUsuario => HttpContextAccessor.HttpContext?.User.Identity?.Name;
         private string ColorMarcaCss { get; set; } = "#4f46e5";
 
@@ -33,6 +34,9 @@
             var operadores = scope.ServiceProvider.GetRequiredService<IOperadorRepositorio>();
             var operador = await operadores.ObtenerAsync(acceso.OperadorId);
             NombreOperador = operador?.Nombre;
+            ContactoOperador = operador is null
+                ? null
+                : string.Join(" · ", new[] { operador.TelefonoContacto, operador.EmailContacto }.Where(dato => !string.IsNullOrWhiteSpace(dato)));
             ColorMarcaCss = operador?.ColorMarca switch
             {
                 "azul" => "#0d6efd",

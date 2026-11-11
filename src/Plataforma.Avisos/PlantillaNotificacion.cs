@@ -7,7 +7,9 @@ public sealed record DatosNotificacion(
     string ColorMarca,
     string NumeroSeguimiento,
     string TokenSeguimiento,
-    string EstadoNuevo);
+    string EstadoNuevo,
+    string TelefonoContacto = "",
+    string EmailContacto = "");
 
 public sealed record MensajeCorreo(string Asunto, string Texto, string Html);
 
@@ -39,7 +41,12 @@ public static class PlantillaNotificacion
         var operador = WebUtility.HtmlEncode(datos.Operador);
         var numero = WebUtility.HtmlEncode(datos.NumeroSeguimiento);
 
-        var texto = $"{datos.Operador}\n\n{detalle}\n\nNúmero de seguimiento: {datos.NumeroSeguimiento}\nSeguí tu envío: {enlace}\n";
+        var contacto = string.Join(" · ", new[] { datos.TelefonoContacto, datos.EmailContacto }.Where(dato => !string.IsNullOrWhiteSpace(dato)));
+        var texto = $"{datos.Operador}\n\n{detalle}\n\nNúmero de seguimiento: {datos.NumeroSeguimiento}\nSeguí tu envío: {enlace}\n"
+                    + (contacto.Length > 0 ? $"\nConsultas: {contacto}\n" : string.Empty);
+        var filaContacto = contacto.Length == 0
+            ? string.Empty
+            : $"""<tr><td style="padding: 0 32px 24px; color: #52606d; font-size: 14px; line-height: 1.5">¿Consultas? {WebUtility.HtmlEncode(contacto)}</td></tr>""";
         var color = Color(datos.ColorMarca);
         // Tablas y estilos en línea: es lo único que respetan todos los clientes de correo.
         var html = $"""
@@ -71,6 +78,7 @@ public static class PlantillaNotificacion
                     <a href="{enlace}" style="display: block; padding: 14px 18px; background-color: {color}; color: #ffffff; font-size: 16px; font-weight: bold; text-align: center; text-decoration: none; border-radius: 8px">Seguir mi envío</a>
                   </td>
                 </tr>
+                {filaContacto}
                 <tr>
                   <td style="padding: 16px 32px; border-top: 1px solid #e3e6ea; color: #7b8794; font-size: 12px; line-height: 1.5">Este es un mensaje automático de {operador}. No hace falta que lo respondas.</td>
                 </tr>
