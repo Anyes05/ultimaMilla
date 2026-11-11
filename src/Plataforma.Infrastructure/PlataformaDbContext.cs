@@ -55,6 +55,10 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
     public DbSet<CambioBandera> CambiosBandera => Set<CambioBandera>();
     public DbSet<SolicitudRetiro> SolicitudesRetiro => Set<SolicitudRetiro>();
     public DbSet<RecepcionEnvio> RecepcionesEnvio => Set<RecepcionEnvio>();
+    public DbSet<PosicionRepartidor> PosicionesRepartidor => Set<PosicionRepartidor>();
+    public DbSet<RecargoZonaTarifa> RecargosZonaTarifa => Set<RecargoZonaTarifa>();
+    public DbSet<BonificacionTarifa> BonificacionesTarifa => Set<BonificacionTarifa>();
+    public DbSet<CierreDiario> CierresDiarios => Set<CierreDiario>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,6 +100,10 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         AplicarFiltroOperador<CambioBandera>(modelBuilder);
         AplicarFiltroOperador<SolicitudRetiro>(modelBuilder);
         AplicarFiltroOperador<RecepcionEnvio>(modelBuilder);
+        AplicarFiltroOperador<PosicionRepartidor>(modelBuilder);
+        AplicarFiltroOperador<RecargoZonaTarifa>(modelBuilder);
+        AplicarFiltroOperador<BonificacionTarifa>(modelBuilder);
+        AplicarFiltroOperador<CierreDiario>(modelBuilder);
 
         modelBuilder.Entity<Envio>(entidad =>
         {
@@ -228,6 +236,41 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
             entidad.HasKey(r => r.Id);
             entidad.Property(r => r.Usuario).HasMaxLength(120);
             entidad.HasIndex(r => new { r.OperadorId, r.EnvioId });
+        });
+
+        modelBuilder.Entity<PosicionRepartidor>(entidad =>
+        {
+            entidad.HasKey(p => p.Id);
+            entidad.Property(p => p.Latitud).HasPrecision(9, 6);
+            entidad.Property(p => p.Longitud).HasPrecision(9, 6);
+            entidad.Property(p => p.PrecisionMetros).HasPrecision(9, 2);
+            // La consulta del Tablero busca la última de cada repartidor del operador en el día.
+            entidad.HasIndex(p => new { p.OperadorId, p.RepartidorId, p.FechaUtc });
+        });
+
+        // RF 3: condiciones de cada versión de la tarifa; se versionan con la regla.
+        modelBuilder.Entity<RecargoZonaTarifa>(entidad =>
+        {
+            entidad.HasKey(r => r.Id);
+            entidad.Property(r => r.Recargo).HasPrecision(18, 2);
+            entidad.HasIndex(r => new { r.ReglaTarifariaId, r.ZonaId }).IsUnique();
+        });
+
+        modelBuilder.Entity<BonificacionTarifa>(entidad =>
+        {
+            entidad.HasKey(b => b.Id);
+            entidad.Property(b => b.Nombre).HasMaxLength(80);
+            entidad.Property(b => b.Porcentaje).HasPrecision(5, 2);
+            entidad.HasIndex(b => b.ReglaTarifariaId);
+        });
+
+        // Lo escribe el worker con SQL (CierreDiarioOperacion): la clave única evita dos cierres del mismo día.
+        modelBuilder.Entity<CierreDiario>(entidad =>
+        {
+            entidad.HasKey(c => c.Id);
+            entidad.HasIndex(c => new { c.OperadorId, c.Dia }).IsUnique();
+            entidad.Ignore(c => c.PorcentajeATiempo);
+            entidad.Ignore(c => c.PorcentajeEfectividad);
         });
     }
 

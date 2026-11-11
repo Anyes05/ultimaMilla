@@ -117,4 +117,12 @@ public class EnvioRepositorio : IEnvioRepositorio
 
     public Task GuardarAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
+
+    public Task<int> ContarDelComercioDesdeAsync(Guid operadorId, Guid comercioId, DateTime desdeUtc, CancellationToken cancellationToken = default)
+    {
+        var desde = DateTime.SpecifyKind(desdeUtc, DateTimeKind.Utc);
+        return _context.Envios.CountAsync(
+            envio => envio.OperadorId == operadorId && envio.ComercioId == comercioId && envio.FechaCreacion >= desde,
+            cancellationToken);
+    }
 }

@@ -26,6 +26,10 @@ public class TableroModel : PageModel
 
     private readonly IBanderasOperador _banderas;
     private readonly ListarEnviosEnRiesgo _enRiesgo;
+    private readonly ObtenerFlota _flota;
+
+    /// <summary>Repartidores con ruta hoy y su última posición (RF 29).</summary>
+    public IReadOnlyList<VehiculoEnFlota> Flota { get; private set; } = [];
 
     /// <summary>Envíos que vencen dentro del margen o ya vencieron (RF 29).</summary>
     public ResultadoEnRiesgo EnRiesgo { get; private set; } = new(0, []);
@@ -34,6 +38,7 @@ public class TableroModel : PageModel
     public bool RetirosActivos { get; private set; } = true;
 
     public TableroModel(
+        ObtenerFlota flota,
         ListarEnviosEnRiesgo enRiesgo,
         IBanderasOperador banderas,
         IBultoRepositorio bultos,
@@ -48,6 +53,7 @@ public class TableroModel : PageModel
         _operadores = operadores;
         _servicios = servicios;
         _logger = logger;
+        _flota = flota;
         _enRiesgo = enRiesgo;
         _banderas = banderas;
         _bultos = bultos;
@@ -125,10 +131,14 @@ public class TableroModel : PageModel
         }
         Parciales = filas;
 
+        var hoy = Operador?.DiaActual() ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var inicioDelDia = Operador is null
+            ? DateTime.UtcNow.Date
+            : ObtenerReportesGestion.AUtc(hoy.ToDateTime(TimeOnly.MinValue), ObtenerReportesGestion.Zona(Operador));
+        Flota = await _flota.EjecutarAsync(acceso.OperadorId, hoy, inicioDelDia, ct);
         EnRiesgo = await _enRiesgo.EjecutarAsync(acceso.OperadorId, DateTime.UtcNow, ListarEnviosEnRiesgo.MargenPorDefecto, FilasDetalle, ct);
         RetirosActivos = await _banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.RetiroDomicilio, ct);
         var retiros = await _retiros.ListarAsync(acceso.OperadorId, cancellationToken: ct);
-        var hoy = Operador?.DiaActual() ?? DateOnly.FromDateTime(DateTime.UtcNow);
         RetirosSolicitados = retiros.Count(retiro => retiro.Estado == EstadoRetiro.Solicitado);
         RetirosProgramados = retiros.Count(retiro => retiro.Estado == EstadoRetiro.Programado);
         RetirosEnCurso = retiros.Count(retiro => retiro.Estado == EstadoRetiro.EnCurso);
@@ -138,6 +148,15 @@ public class TableroModel : PageModel
         RetirosAbiertos = abiertos.Take(FilasDetalle).ToList();
         Comercios = (await _comercios.ListarAsync(acceso.OperadorId, ct))
             .ToDictionary(comercio => comercio.Id, comercio => comercio.NombreComercial);
+    }
+
+    /// <summary>"hace 3 min", para la última posición de un repartidor.</summary>
+    public static string Hace(DateTime instanteUtc, DateTime ahoraUtc)
+    {
+        var tramo = ahoraUtc - instanteUtc;
+        if (tramo < TimeSpan.FromMinutes(1))
+            return "hace menos de 1 min";
+        return tramo.TotalHours >= 1 ? $"hace {(int)tramo.TotalHours} h {tramo.Minutes} min" : $"hace {tramo.Minutes} min";
     }
 
     /// <summary>"vence en 1 h 20 min" o "venció hace 35 min", para leer de un vistazo.</summary>

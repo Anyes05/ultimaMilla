@@ -14,8 +14,13 @@ public class ReportesModel : PageModel
     private readonly GestionLiquidaciones _liquidaciones;
     private readonly GestionComercios _comercios;
     private readonly IOperadorRepositorio _operadores;
+    private readonly ListarCierresDiarios _cierres;
+
+    /// <summary>Cierres diarios del worker en el período (indicadores de cumplimiento por día).</summary>
+    public IReadOnlyList<CierreDiario> Cierres { get; private set; } = [];
 
     public ReportesModel(
+        ListarCierresDiarios cierres,
         ObtenerReportesGestion reportes,
         GestionLiquidaciones liquidaciones,
         GestionComercios comercios,
@@ -25,6 +30,7 @@ public class ReportesModel : PageModel
         _liquidaciones = liquidaciones;
         _comercios = comercios;
         _operadores = operadores;
+        _cierres = cierres;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -66,6 +72,8 @@ public class ReportesModel : PageModel
         {
             Error = TextosUsuario.Error(ex);
         }
+
+        Cierres = await _cierres.EjecutarAsync(acceso.OperadorId, Desde.Value, Hasta.Value, ct);
 
         Liquidaciones = (await _liquidaciones.ListarAsync(acceso.OperadorId, ComercioId, ct))
             .OrderByDescending(liquidacion => liquidacion.PeriodoHasta)
@@ -135,6 +143,11 @@ public class ReportesModel : PageModel
         Operador is null
             ? utc.ToString("dd/MM/yyyy")
             : ObtenerReportesGestion.ALocal(utc, ObtenerReportesGestion.Zona(Operador)).ToString("dd/MM/yyyy");
+
+    public string FechaHoraLocal(DateTime utc) =>
+        Operador is null
+            ? utc.ToString("dd/MM HH:mm")
+            : ObtenerReportesGestion.ALocal(utc, ObtenerReportesGestion.Zona(Operador)).ToString("dd/MM HH:mm");
 
     public static string Importe(decimal valor) =>
         valor.ToString("C", System.Globalization.CultureInfo.GetCultureInfo("es-UY"));

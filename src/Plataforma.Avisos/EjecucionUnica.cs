@@ -12,6 +12,9 @@ public static class EjecucionUnica
     /// <summary>Barrido de entregas de avisos pendientes ("AVISBARR" en hexadecimal).</summary>
     public const long BarridoEntregas = 0x4156495342415252;
 
+    /// <summary>Cierre diario de la operación ("CIERREDI" en hexadecimal).</summary>
+    public const long CierreDiario = 0x4349455252454449;
+
     /// <summary>
     /// Ejecuta <paramref name="accion"/> solo si ninguna otra instancia tiene el bloqueo <paramref name="clave"/>.
     /// Devuelve false si otra instancia lo está ejecutando.

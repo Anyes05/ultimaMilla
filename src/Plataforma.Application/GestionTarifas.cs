@@ -9,7 +9,15 @@ public sealed record NuevaVersionTarifa(
     decimal RecargoFragil,
     decimal RecargoUrgente,
     decimal PrecioPorCm3 = 0,
-    decimal RecargoZona = 0);
+    decimal RecargoZona = 0,
+    IReadOnlyList<RecargoZonaDato>? RecargosZona = null,
+    IReadOnlyList<BonificacionDato>? Bonificaciones = null);
+
+/// <summary>Recargo propio de una zona en la versión que se publica.</summary>
+public sealed record RecargoZonaDato(Guid ZonaId, decimal Recargo);
+
+/// <summary>Bonificación de la versión que se publica (porcentaje; comercio y mínimo de envíos opcionales).</summary>
+public sealed record BonificacionDato(string Nombre, decimal Porcentaje, Guid? ComercioId = null, int? MinimoEnviosMes = null);
 
 public sealed record TarifaVersionVista(
     Guid Id,
@@ -41,9 +49,12 @@ public sealed class GestionTarifas
 
         var ahora = DateTime.UtcNow;
         var versiones = await _tarifas.ListarVersionesAsync(operadorId, cancellationToken);
-        return versiones
-            .OrderByDescending(v => v.Vigencia.VigenciaDesde)
-            .Select(v => new TarifaVersionVista(
+        var vistas = new List<TarifaVersionVista>(versiones.Count);
+        foreach (var v in versiones.OrderByDescending(v => v.Vigencia.VigenciaDesde))
+        {
+            var recargos = await _tarifas.ListarRecargosZonaAsync(operadorId, v.Regla.Id, cancellationToken);
+            var bonificaciones = await _tarifas.ListarBonificacionesAsync(operadorId, v.Regla.Id, cancellationToken);
+            vistas.Add(new TarifaVersionVista(
                 v.Regla.Id,
                 v.Vigencia.VigenciaDesde,
                 v.Vigencia.VigenciaHasta,
@@ -54,9 +65,13 @@ public sealed class GestionTarifas
                     v.Regla.RecargoFragil,
                     v.Regla.RecargoUrgente,
                     v.Regla.PrecioPorCm3,
-                    v.Regla.RecargoZona),
-                v.Vigencia.VigenciaDesde <= ahora && v.Vigencia.VigenciaHasta >= ahora))
-            .ToList();
+                    v.Regla.RecargoZona,
+                    recargos.Select(r => new RecargoZonaDato(r.ZonaId, r.Recargo)).ToList(),
+                    bonificaciones.Select(b => new BonificacionDato(b.Nombre, b.Porcentaje, b.ComercioId, b.MinimoEnviosMes)).ToList()),
+                v.Vigencia.VigenciaDesde <= ahora && v.Vigencia.VigenciaHasta >= ahora));
+        }
+
+        return vistas;
     }
 
     public async Task<Guid> PublicarVersionAsync(
@@ -114,6 +129,14 @@ public sealed class GestionTarifas
             datos.PrecioPorCm3,
             datos.RecargoZona);
 
+        var recargosZona = (datos.RecargosZona ?? [])
+            .GroupBy(recargo => recargo.ZonaId)
+            .Select(grupo => RecargoZonaTarifa.Crear(Guid.NewGuid(), operadorId, reglaId, grupo.Key, grupo.Last().Recargo))
+            .ToList();
+        var bonificaciones = (datos.Bonificaciones ?? [])
+            .Select(b => BonificacionTarifa.Crear(Guid.NewGuid(), operadorId, reglaId, b.Nombre, b.Porcentaje, b.ComercioId, b.MinimoEnviosMes))
+            .ToList();
+
         var vigenciaNueva = VigenciaTarifa.Crear(
             Guid.NewGuid(),
             operadorId,
@@ -123,6 +146,7 @@ public sealed class GestionTarifas
 
         await _tarifas.AgregarReglaAsync(regla, cancellationToken);
         await _tarifas.AgregarVigenciaAsync(vigenciaNueva, cancellationToken);
+        await _tarifas.AgregarCondicionesAsync(recargosZona, bonificaciones, cancellationToken);
         await _tarifas.GuardarAsync(cancellationToken);
         // Aclaración 3.1: invalidar al publicar para que todas las réplicas vean la nueva vigencia.
         await _cache.QuitarAsync(ClavesCache.TarifaVigente(operadorId), cancellationToken);

@@ -23,7 +23,7 @@ public class MigracionesDescubrimientoTests
         using var contexto = new PlataformaDbContext(options);
         var ids = contexto.Database.GetMigrations().ToArray();
 
-        Assert.Equal(15, ids.Length);
+        Assert.Equal(18, ids.Length);
         Assert.Contains("20261013023329_InitialCreate", ids);
         Assert.Contains("20261023010000_SeguimientoUnicoComprobanteYZona", ids);
         Assert.Contains("20261023020000_OutboxEnvioEstadoCambiado", ids);
@@ -39,6 +39,9 @@ public class MigracionesDescubrimientoTests
         Assert.Contains("20261110161000_PruebaEntregaPorBulto", ids);
         Assert.Contains("20261110203956_NadiaContactoOperador", ids);
         Assert.Contains("20261111140923_NadiaReglasOperativasRf4", ids);
+        Assert.Contains("20261111143335_NadiaPosicionesRepartidor", ids);
+        Assert.Contains("20261111145056_NadiaTarifaPorZonaYBonificaciones", ids);
+        Assert.Contains("20261111145405_NadiaCierreDiario", ids);
     }
 
     [Fact]

@@ -188,6 +188,38 @@
     </div>
 }
 
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h2 class="h6 mb-0">Cierres diarios</h2>
+        <span class="small text-muted">Los calcula el worker cada hora, para los días ya terminados</span>
+    </div>
+    <div class="table-responsive" style="max-height: 360px">
+        <table class="table table-sm align-middle mb-0" data-reporte="cierres">
+            <thead class="table-light"><tr><th>Día</th><th class="text-end">Admitidos</th><th class="text-end">Entregados</th><th class="text-end">A tiempo</th><th class="text-end">Intentos fallidos</th><th class="text-end">Efectividad</th><th class="text-end">Devueltos</th><th class="text-end">Retiros</th><th>Calculado</th></tr></thead>
+            <tbody>
+            @if (Model.Cierres.Count == 0)
+            {
+                <tr><td colspan="9" class="text-center text-muted py-3">Todavía no hay cierres en el período.</td></tr>
+            }
+            @foreach (var cierre in Model.Cierres)
+            {
+                <tr data-cierre="@cierre.Dia.ToString("yyyy-MM-dd")">
+                    <td>@cierre.Dia.ToString("dd/MM/yyyy")</td>
+                    <td class="text-end">@cierre.EnviosAdmitidos</td>
+                    <td class="text-end">@cierre.Entregados</td>
+                    <td class="text-end">@ReportesModel.Porcentaje(cierre.PorcentajeATiempo)</td>
+                    <td class="text-end">@cierre.IntentosFallidos</td>
+                    <td class="text-end">@ReportesModel.Porcentaje(cierre.PorcentajeEfectividad)</td>
+                    <td class="text-end">@cierre.Devueltos</td>
+                    <td class="text-end">@cierre.RetirosCompletados</td>
+                    <td class="small text-muted">@Model.FechaHoraLocal(cierre.CalculadoUtc)</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h2 class="h6 mb-0">Liquidaciones</h2>

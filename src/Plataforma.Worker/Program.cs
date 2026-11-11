@@ -15,6 +15,8 @@ builder.Services.AddHttpClient(ConsumidorEntregas.ClienteHttp);
 builder.Services.AddHostedService<ConsumidorEnvioEstadoCambiado>();
 builder.Services.AddHostedService<ConsumidorEntregas>();
 builder.Services.AddHostedService<BarridoEntregasPendientes>();
+// Cierre diario e indicadores de cumplimiento (letra sección 4), una sola réplica a la vez.
+builder.Services.AddHostedService<CierreDiarioOperacion>();
 builder.Services.AddHostedService<MonitorColas>();
 // Push de reasignación (opcional 7.3). Sin FCM, el emisor de registro lo deja en el log; Álvaro lo reemplaza por FCM.
 builder.Services.AddSingleton<IEmisorPush, EmisorPushRegistro>();

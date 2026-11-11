@@ -84,6 +84,32 @@ public sealed class TarifaRepositorio : ITarifaRepositorio
     public async Task AgregarVigenciaAsync(VigenciaTarifa vigencia, CancellationToken cancellationToken = default) =>
         await _context.VigenciasTarifa.AddAsync(vigencia, cancellationToken);
 
+    public async Task<IReadOnlyList<RecargoZonaTarifa>> ListarRecargosZonaAsync(
+        Guid operadorId,
+        Guid reglaTarifariaId,
+        CancellationToken cancellationToken = default) =>
+        await _context.RecargosZonaTarifa.AsNoTracking()
+            .Where(recargo => recargo.OperadorId == operadorId && recargo.ReglaTarifariaId == reglaTarifariaId)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<BonificacionTarifa>> ListarBonificacionesAsync(
+        Guid operadorId,
+        Guid reglaTarifariaId,
+        CancellationToken cancellationToken = default) =>
+        await _context.BonificacionesTarifa.AsNoTracking()
+            .Where(bonificacion => bonificacion.OperadorId == operadorId && bonificacion.ReglaTarifariaId == reglaTarifariaId)
+            .OrderBy(bonificacion => bonificacion.Nombre)
+            .ToListAsync(cancellationToken);
+
+    public async Task AgregarCondicionesAsync(
+        IEnumerable<RecargoZonaTarifa> recargosZona,
+        IEnumerable<BonificacionTarifa> bonificaciones,
+        CancellationToken cancellationToken = default)
+    {
+        await _context.RecargosZonaTarifa.AddRangeAsync(recargosZona, cancellationToken);
+        await _context.BonificacionesTarifa.AddRangeAsync(bonificaciones, cancellationToken);
+    }
+
     public Task GuardarAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 }

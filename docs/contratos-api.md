@@ -82,6 +82,7 @@ Cuando el endpoint devuelve cuerpo de error, usa:
 | 16 | `GET /api/plataforma/banderas` | `administrador_plataforma` | Banderas de todos los operadores con su valor actual |
 | 17 | `POST /api/plataforma/banderas` | `administrador_plataforma` | Activar o apagar una bandera de un operador (`{ operadorId, clave, activa }`); responde `204` |
 | 18 | `GET /api/plataforma/banderas/historial?operadorId=` | `administrador_plataforma` | Auditoría de cambios: operador, clave, valor, usuario y fecha |
+| 19 | `POST /api/repartidor/posiciones` | `repartidor` | Posiciones de la jornada en lote (RF 23); ver §3.4 |
 
 ---
 
@@ -276,6 +277,38 @@ Archivo completo: `contracts/repartidor/sincronizacion.response.json`
 | `200` con rechazos | Conflictos individuales (no es error del lote) |
 
 **Idempotencia durable:** el mismo `eventoId` entre requests distintos, si ya fue aplicado, vuelve en `aplicados` con el estado guardado (sin reaplicar). Los conflictos de transición siguen yendo a `rechazados` con `estadoActual`.
+
+### 3.4 `POST /api/repartidor/posiciones`
+
+Posición del repartidor durante la jornada (RF 23). La app las junta mientras está sin señal y las manda en lote;
+el Tablero muestra la última de cada repartidor con ruta hoy (RF 29) y se actualiza en vivo.
+
+**Headers:** `Authorization: Bearer <token repartidor>`
+
+```json
+{
+  "posiciones": [
+    { "latitud": -34.9011, "longitud": -56.1645, "fechaDispositivo": "2026-11-11T10:15:00-03:00", "precisionMetros": 8 }
+  ]
+}
+```
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `posiciones[].latitud` | decimal | Entre -90 y 90 |
+| `posiciones[].longitud` | decimal | Entre -180 y 180 |
+| `posiciones[].fechaDispositivo` | datetime con offset | Hora del teléfono al tomar la posición |
+| `posiciones[].precisionMetros` | decimal | Opcional; precisión que informa el GPS |
+
+**Response `200`:** `{ "aceptadas": 1, "descartadas": 0 }`. Se descartan, sin rechazar el lote, las posiciones con más
+de 24 h o con hora más de 5 min en el futuro. Máximo 500 posiciones por lote.
+
+| Código | Caso |
+|---|---|
+| `400` | Lote vacío, de más de 500 posiciones, o con coordenadas o precisión fuera de rango |
+| `401` | Sin token válido de repartidor |
+
+Sugerencia para la app: una posición cada 30 a 60 s mientras la ruta está en curso, y el lote pendiente al recuperar señal.
 
 ---
 

@@ -74,6 +74,11 @@ public static class DependencyInjection
         services.AddScoped<IBanderaRepositorio, BanderaRepositorio>();
         services.AddScoped<IRetiroRepositorio, RetiroRepositorio>();
         services.AddScoped<IRecepcionRepositorio, RecepcionRepositorio>();
+        services.AddScoped<IPosicionRepositorio, PosicionRepositorio>();
+        services.AddScoped<ICierreDiarioRepositorio, CierreDiarioRepositorio>();
+        services.AddScoped<ListarCierresDiarios>();
+        services.AddScoped<RegistrarPosiciones>();
+        services.AddScoped<ObtenerFlota>();
         services.AddScoped<ICoberturaRepositorio, CoberturaRepositorio>();
         services.AddScoped<IComercioRepositorio, ComercioRepositorio>();
         services.AddScoped<IVerificadorClave, HashClave>();

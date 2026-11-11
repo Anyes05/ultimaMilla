@@ -15,6 +15,9 @@ public interface IEnvioRepositorio
         string claveExterna,
         CancellationToken cancellationToken = default);
     Task<List<Envio>> ListarAsync(Guid operadorId, Guid? comercioId, CancellationToken cancellationToken = default);
+
+    /// <summary>Envíos del comercio dados de alta desde el instante indicado (bonificaciones por volumen del mes).</summary>
+    Task<int> ContarDelComercioDesdeAsync(Guid operadorId, Guid comercioId, DateTime desdeUtc, CancellationToken cancellationToken = default);
     Task<ResultadoPaginado<Envio>> ListarPaginadoAsync(
         Guid operadorId,
         Guid? comercioId,

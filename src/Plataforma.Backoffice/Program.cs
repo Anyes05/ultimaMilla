@@ -179,6 +179,7 @@ app.MapPost("/logout", (HttpContext httpContext) =>
 });
 
 app.MapApisRepartidor();
+app.MapApisPosiciones();
 app.MapApisNucleoAna();
 app.MapAvisosTecnicos();
 app.MapHistorialEventos();

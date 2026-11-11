@@ -99,7 +99,9 @@ public sealed class AdmitirEnvio
             urgente,
             cancellationToken,
             volumenCm3,
-            zonaId.HasValue);
+            zonaId.HasValue,
+            zonaId,
+            comercioId);
 
         var envio = Envio.Admitir(
             operadorId,

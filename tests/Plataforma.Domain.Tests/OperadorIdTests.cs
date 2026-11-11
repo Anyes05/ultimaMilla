@@ -102,4 +102,24 @@ public class OperadorIdTests
         Assert.Throws<ArgumentOutOfRangeException>(() => ReglaOperativa.Crear(_id(), _operadorId, 3, 48, false, false, false, 24,
             DateTime.UtcNow, DateTime.UtcNow.AddDays(1), plazoEntregaUrgenteHoras: 0));
     }
+
+    /// <summary>El cierre diario del worker usa estos valores en SQL (no referencia el dominio): si cambian, hay que cambiarlo.</summary>
+    [Fact]
+    public void ValoresDeEstadoQueUsaElCierreDiario()
+    {
+        Assert.Equal(4, (int)EstadoEnvio.Entregado);
+        Assert.Equal(5, (int)EstadoEnvio.NoEntregado);
+        Assert.Equal(8, (int)EstadoEnvio.Devuelto);
+        Assert.Equal(10, (int)EstadoEnvio.EntregadoParcialmente);
+        Assert.Equal(3, (int)EstadoRetiro.Completado);
+    }
+
+    [Fact]
+    public void CierreDiario_Porcentajes()
+    {
+        var cierre = CierreDiario.Registrar(_operadorId, new DateOnly(2026, 11, 10), 10, 4, 4, 3, 1, 0, 2, DateTime.UtcNow);
+        Assert.Equal((75m, 80m), (cierre.PorcentajeATiempo, cierre.PorcentajeEfectividad));
+        Assert.Null(CierreDiario.Registrar(_operadorId, new DateOnly(2026, 11, 10), 0, 0, 0, 0, 0, 0, 0, DateTime.UtcNow).PorcentajeATiempo);
+        Assert.Throws<ArgumentException>(() => CierreDiario.Registrar(_operadorId, new DateOnly(2026, 11, 10), 1, 1, 1, 2, 0, 0, 0, DateTime.UtcNow));
+    }
 }

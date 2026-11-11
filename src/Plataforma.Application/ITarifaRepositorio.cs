@@ -22,5 +22,20 @@ public interface ITarifaRepositorio
 
     Task AgregarVigenciaAsync(VigenciaTarifa vigencia, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<RecargoZonaTarifa>> ListarRecargosZonaAsync(
+        Guid operadorId,
+        Guid reglaTarifariaId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<BonificacionTarifa>> ListarBonificacionesAsync(
+        Guid operadorId,
+        Guid reglaTarifariaId,
+        CancellationToken cancellationToken = default);
+
+    Task AgregarCondicionesAsync(
+        IEnumerable<RecargoZonaTarifa> recargosZona,
+        IEnumerable<BonificacionTarifa> bonificaciones,
+        CancellationToken cancellationToken = default);
+
     Task GuardarAsync(CancellationToken cancellationToken = default);
 }

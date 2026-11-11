@@ -242,6 +242,40 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("BanderasOperador");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.BonificacionTarifa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ComercioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("MinimoEnviosMes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Porcentaje")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<Guid>("ReglaTarifariaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReglaTarifariaId");
+
+                    b.ToTable("BonificacionesTarifa");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.Bulto", b =>
                 {
                     b.Property<Guid>("Id")
@@ -318,6 +352,50 @@ namespace Plataforma.Infrastructure.Migrations
                     b.HasIndex("OperadorId", "Fecha");
 
                     b.ToTable("CambiosBandera");
+                });
+
+            modelBuilder.Entity("Plataforma.Domain.CierreDiario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CalculadoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Devueltos")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly>("Dia")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Entregados")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EntregadosATiempo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EntregadosConPlazo")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EnviosAdmitidos")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IntentosFallidos")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RetirosCompletados")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "Dia")
+                        .IsUnique();
+
+                    b.ToTable("CierresDiarios");
                 });
 
             modelBuilder.Entity("Plataforma.Domain.Comercio", b =>
@@ -868,6 +946,43 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("Paradas");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.PosicionRepartidor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("FechaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Latitud")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<decimal>("Longitud")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("PrecisionMetros")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("numeric(9,2)");
+
+                    b.Property<DateTime>("RecibidaUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RepartidorId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "RepartidorId", "FechaUtc");
+
+                    b.ToTable("PosicionesRepartidor");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.PruebaDeEntrega", b =>
                 {
                     b.Property<Guid>("Id")
@@ -927,6 +1042,33 @@ namespace Plataforma.Infrastructure.Migrations
                     b.HasIndex("OperadorId", "BultoId");
 
                     b.ToTable("PruebasDeEntrega");
+                });
+
+            modelBuilder.Entity("Plataforma.Domain.RecargoZonaTarifa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Recargo")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("ReglaTarifariaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ZonaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReglaTarifariaId", "ZonaId")
+                        .IsUnique();
+
+                    b.ToTable("RecargosZonaTarifa");
                 });
 
             modelBuilder.Entity("Plataforma.Domain.RecepcionEnvio", b =>
