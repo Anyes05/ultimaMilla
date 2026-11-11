@@ -9,6 +9,7 @@ public interface IRepartidorService
 {
     bool RequiereAutenticacion => false;
     void RegistrarEvento(EntregaPendiente evento) => throw new InvalidOperationException("Operacion no disponible.");
+    void RegistrarEscaneoBulto(Guid envioId, Guid bultoId, string codigo) => throw new InvalidOperationException("El escaneo de bultos no esta disponible.");
     void ReintentarRechazados() => throw new InvalidOperationException("Operacion no disponible.");
     Task RegistrarDispositivoAsync(string token, string plataforma) => throw new InvalidOperationException("Solo disponible en API.");
     Task BorrarDispositivoAsync(string token) => throw new InvalidOperationException("Solo disponible en API.");

@@ -35,7 +35,8 @@ public sealed record Envio(
     EstadoSincronizacion Sincronizacion,
     string? MotivoRechazo,
     IReadOnlyList<EntregaPendiente>? Historial = null,
-    IReadOnlyList<BultoEnvio>? Bultos = null)
+    IReadOnlyList<BultoEnvio>? Bultos = null,
+    IReadOnlyList<Guid>? BultosEscaneadosPendientes = null)
 {
     public string EstadoServidorTexto => Estado switch
     {

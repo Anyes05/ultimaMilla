@@ -7,6 +7,7 @@ public sealed class RepartidorSeleccionService(
 {
     public bool ModoDemo { get; set; }
     public void RegistrarEvento(EntregaPendiente evento) => Actual.RegistrarEvento(evento);
+    public void RegistrarEscaneoBulto(Guid envioId, Guid bultoId, string codigo) => Actual.RegistrarEscaneoBulto(envioId, bultoId, codigo);
     public void ReintentarRechazados() => Actual.ReintentarRechazados();
     public Task RegistrarDispositivoAsync(string token, string plataforma) => Actual.RegistrarDispositivoAsync(token, plataforma);
     public Task BorrarDispositivoAsync(string token) => Actual.BorrarDispositivoAsync(token);

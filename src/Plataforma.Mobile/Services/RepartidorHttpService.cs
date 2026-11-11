@@ -47,6 +47,11 @@ public sealed class RepartidorHttpService(
         using var operacion = ExigirOperacion();
         local.RegistrarEvento(evento);
     }
+    public void RegistrarEscaneoBulto(Guid envioId, Guid bultoId, string codigo)
+    {
+        using var operacion = ExigirOperacion();
+        local.RegistrarEscaneoBulto(envioId, bultoId, codigo);
+    }
     public void ReintentarRechazados()
     {
         using var operacion = ExigirOperacion();
@@ -102,6 +107,9 @@ public sealed class RepartidorHttpService(
             estado.Ruta!.Envios.ToDictionary(envio => envio.Id));
         var ruta = ConvertirRutas(ContratosRepartidor.Leer<RutaContrato[]>(await response.Content.ReadAsStringAsync()));
         var rutasPendientes = RepartidorLocalData.RutasConEventosSinResolver(estado);
+        var escaneosLocales = estado.Ruta!.Envios.ToDictionary(
+            envio => envio.Id,
+            envio => envio.BultosEscaneadosPendientes ?? []);
         var pendientesMismaFecha = rutasPendientes
             .Where(rutaPendiente => rutaPendiente.Fecha == ruta.Fecha)
             .SelectMany(rutaPendiente => rutaPendiente.Envios.Select(envio => (rutaPendiente.Fecha, Envio: envio)))
@@ -117,7 +125,10 @@ public sealed class RepartidorHttpService(
                     : envio;
                 return conPendientes with
                 {
-                    Historial = historial.Where(comprobante => comprobante.EnvioId == envio.Id).ToArray()
+                    Historial = historial.Where(comprobante => comprobante.EnvioId == envio.Id).ToArray(),
+                    BultosEscaneadosPendientes = escaneosLocales.TryGetValue(envio.Id, out var escaneados)
+                        ? escaneados
+                        : conPendientes.BultosEscaneadosPendientes
                 };
             }).ToArray()
         };

@@ -20,11 +20,14 @@ public partial class BultoEntregaItem : ObservableObject
     [ObservableProperty]
     private string? motivoNoEntrega;
 
-    public BultoEntregaItem(BultoEnvio bulto, IReadOnlyList<string> motivosNoEntrega)
+    public BultoEntregaItem(
+        BultoEnvio bulto,
+        IReadOnlyList<string> motivosNoEntrega,
+        bool yaEscaneado = false)
     {
         Bulto = bulto;
         MotivosNoEntrega = motivosNoEntrega;
-        entregado = bulto.Estado == EstadoBulto.Entregado;
+        entregado = bulto.Estado == EstadoBulto.Entregado || yaEscaneado;
         motivoNoEntrega = bulto.MotivoNoEntrega;
     }
 }

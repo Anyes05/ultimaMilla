@@ -314,6 +314,17 @@ public sealed class RecorridoDemoTests : IDisposable
         var entregado = vm.BultosEntrega.Single(item => item.Bulto.Id == bultos[0].Id);
         Assert.True(entregado.Entregado);
         Assert.False(entregado.PuedeEscanear);
+
+        var servicioReiniciado = new RepartidorDemoService(new RepartidorLocalData(Path.Combine(directory, "demo.db")));
+        var viewModelReiniciado = new RutaViewModel(
+            servicioReiniciado, new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
+        viewModelReiniciado.CargarCommand.Execute(null);
+        viewModelReiniciado.SeleccionarEntregaCommand.Execute(
+            viewModelReiniciado.Envios.Single(item => item.Id == envio.Id));
+        var bultoRestaurado = viewModelReiniciado.BultosEntrega.Single(item => item.Bulto.Id == bultos[0].Id);
+        Assert.True(bultoRestaurado.Entregado);
+        Assert.False(bultoRestaurado.PuedeEscanear);
+
         vm.BultosEntrega.Single(item => item.Bulto.Id == bultos[1].Id).MotivoNoEntrega = "Destinatario ausente";
 
         vm.GuardarEntregaCommand.Execute(null);

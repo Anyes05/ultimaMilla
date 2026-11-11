@@ -161,15 +161,6 @@ public sealed class SincronizarEntregas
             }
 
             var usaBultos = evento.Bultos is { Count: > 0 };
-            if (usaBultos &&
-                !await _banderas.EstaActivaAsync(operadorId, CatalogoBanderas.EntregaParcial, cancellationToken))
-            {
-                rechazados.Add(new EventoRechazado(
-                    evento.EnvioId,
-                    "La entrega parcial no está habilitada para este operador.",
-                    envio.Estado));
-                continue;
-            }
 
             if (!usaBultos)
             {
@@ -236,7 +227,7 @@ public sealed class SincronizarEntregas
             {
                 var anteriorV2 = envio.Estado;
                 var errorBultos = await AplicarBultosAsync(
-                    operadorId, operador, envio, evento, eventIdsOutbox, cancellationToken);
+                    operadorId, operador, envio, evento, usuario, eventIdsOutbox, cancellationToken);
                 if (errorBultos is not null)
                 {
                     rechazados.Add(errorBultos);
@@ -322,6 +313,7 @@ public sealed class SincronizarEntregas
         Operador operador,
         Envio envio,
         ComprobanteEntrega evento,
+        string usuario,
         List<Guid> eventIdsOutbox,
         CancellationToken cancellationToken)
     {
@@ -346,9 +338,11 @@ public sealed class SincronizarEntregas
         var regla = await _reglas.ObtenerVigenteAsync(operadorId, DateTime.UtcNow, cancellationToken);
         var admiteParcial = regla?.AdmiteEntregaParcial ?? false;
         var motivosValidos = regla?.MotivosNoEntrega ?? ReglaOperativa.MotivosNoEntregaPredeterminados;
-        if (resultados.Any(resultado =>
-            resultado.Estado is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita
-            && !motivosValidos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase)))
+                if (resultados.Any(resultado =>
+                        resultado.Estado is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita &&
+                        !motivosValidos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase) &&
+                        !(usuario == CierreEnviosSinIntento.UsuarioSistema &&
+                            resultado.MotivoNoEntrega == CierreEnviosSinIntento.MotivoNoEntregado)))
         {
             return new EventoRechazado(
             envio.Id,
@@ -364,11 +358,13 @@ public sealed class SincronizarEntregas
         var entregados = proyectados.Values.Count(e => e == EstadoBulto.Entregado);
         var noEntregados = proyectados.Values.Count(e =>
             e is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita);
-        if (!admiteParcial && entregados > 0 && noEntregados > 0)
+        if (entregados > 0 && noEntregados > 0 &&
+            (!admiteParcial || !await _banderas.EstaActivaAsync(
+                operadorId, CatalogoBanderas.EntregaParcial, cancellationToken)))
         {
             return new EventoRechazado(
                 envio.Id,
-                "El operador no admite entrega parcial de bultos.",
+                "La entrega parcial no está habilitada según la bandera o la regla vigente del operador.",
                 envio.Estado);
         }
 
@@ -404,7 +400,7 @@ public sealed class SincronizarEntregas
             }
 
             // Política post-parcial sobre bultos NoEntregado del lote.
-            if (regla is not null && admiteParcial)
+            if (regla is not null && admiteParcial && entregados > 0)
             {
                 foreach (var bulto in bultos.Where(b => b.Estado == EstadoBulto.NoEntregado))
                 {

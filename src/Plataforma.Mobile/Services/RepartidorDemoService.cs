@@ -115,7 +115,8 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         data.Guardar(Reemplazar(estado, envio with
         {
             Entrega = evento, Sincronizacion = EstadoSincronizacion.Pendiente, MotivoRechazo = null,
-            Bultos = bultosActualizados
+            Bultos = bultosActualizados,
+            BultosEscaneadosPendientes = null
         }));
     }
 
@@ -246,6 +247,7 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
                 Entrega = aplicado.Estado == EstadoEnvio.EnTransito ? null : envio.Entrega
             });
         }
+
         foreach (var rechazado in respuesta.Rechazados)
         {
             var envio = pendientes.Single(item => item.Id == rechazado.EnvioId);
@@ -271,6 +273,22 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
         });
         return new ResultadoSincronizacion(respuesta.Aplicados.Count, respuesta.Rechazados.Count,
             estado.Ruta!.Envios.Count(item => item.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado));
+    }
+
+    public void RegistrarEscaneoBulto(Guid envioId, Guid bultoId, string codigo)
+    {
+        var estado = ExigirSesion();
+        var envio = estado.Ruta!.Envios.SingleOrDefault(item => item.Id == envioId)
+            ?? throw new InvalidOperationException("El envio no pertenece a tu ruta.");
+        var bulto = envio.Bultos?.SingleOrDefault(item => item.Id == bultoId)
+            ?? throw new InvalidOperationException("El bulto no pertenece a tu ruta.");
+        if (!bulto.PuedeEntregarse)
+            throw new InvalidOperationException($"El bulto {bulto.Codigo} ya tiene un estado terminal.");
+        if (!string.Equals(bulto.Codigo, codigo.Trim(), StringComparison.Ordinal))
+            throw new InvalidOperationException("El codigo escaneado no corresponde a este bulto.");
+
+        var escaneados = (envio.BultosEscaneadosPendientes ?? []).Append(bultoId).Distinct().ToArray();
+        data.Guardar(Reemplazar(estado, envio with { BultosEscaneadosPendientes = escaneados }));
     }
 
     public void CerrarSesion()

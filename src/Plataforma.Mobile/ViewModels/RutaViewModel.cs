@@ -326,7 +326,8 @@ public partial class RutaViewModel(
         {
             var motivos = rutaActual?.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados;
             foreach (var bulto in bultosEnvio.Where(bulto => bulto.PuedeEntregarse))
-                BultosEntrega.Add(new BultoEntregaItem(bulto, motivos));
+                BultosEntrega.Add(new BultoEntregaItem(
+                    bulto, motivos, envio.BultosEscaneadosPendientes?.Contains(bulto.Id) == true));
         }
         OnPropertyChanged(nameof(ResumenBultosEntrega));
     }
@@ -415,6 +416,7 @@ public partial class RutaViewModel(
             Mensaje = "El codigo escaneado no corresponde a este bulto. No se marco como entregado.";
             return;
         }
+        repartidor.RegistrarEscaneoBulto(EnvioSeleccionado!.Id, bultoId, codigoEscaneado);
         item.Entregado = true;
         item.MotivoNoEntrega = null;
         OnPropertyChanged(nameof(ResumenBultosEntrega));

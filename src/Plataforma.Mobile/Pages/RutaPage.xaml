@@ -199,8 +199,9 @@
                                             <Label Text="{Binding Bulto.Codigo}" FontAttributes="Bold" />
                                             <Button Text="Escanear bulto entregado" Clicked="EscanearBultoEntrega"
                                                     CommandParameter="{Binding .}" IsVisible="{Binding PuedeEscanear}" />
-                                                <Label Text="Bulto escaneado" IsVisible="{Binding Entregado}"
-                                                   Style="{StaticResource MutedLabel}" />
+                                                          <Label Text="Bulto escaneado" IsVisible="{Binding Entregado}"
+                                                                    FontAttributes="Bold"
+                                                                    TextColor="{AppThemeBinding Light=#15803D, Dark=#4ADE80}" />
                                             <Picker Title="Motivo de no entrega" ItemsSource="{Binding MotivosNoEntrega}"
                                                     SelectedItem="{Binding MotivoNoEntrega}"
                                                     IsVisible="{Binding RequiereMotivo}" />
