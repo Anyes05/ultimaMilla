@@ -69,6 +69,35 @@ Para ejecutar en otro dispositivo, usar el comando de build normal agregando
 `adb devices`. No ejecutar builds CLI simultaneamente con una sesion de
 depuracion MAUI activa.
 
+## Rastreo de ubicacion de la jornada (Android)
+
+Con sesion valida y envios en transito de hoy, abrir o reanudar la ruta inicia
+un servicio Android de primer plano con notificacion persistente. Solicita
+ubicacion mientras se usa la app y, desde Android 13, permiso de notificaciones.
+No solicita ACCESS_BACKGROUND_LOCATION. Una vez iniciado, el servicio puede
+continuar con la pantalla bloqueada; no garantiza sobrevivir a un cierre forzado
+ni a restricciones de bateria del fabricante. Tras ese cierre, abrir la ruta
+permite iniciarlo de nuevo. Sin envios en transito o al cerrar sesion se detiene.
+
+El proveedor GPS recibe un intervalo minimo solicitado de 30 segundos, sujeto
+a disponibilidad y permisos. Cada muestra guarda coordenadas, hora y precision
+cifradas en SQLite; la cola se separa por operador y repartidor. Envia lotes de
+hasta 500 a POST /api/repartidor/posiciones cada 60 segundos mientras el servicio
+esta activo, al reconectar y al finalizar operaciones de la ruta. El HTTP GPS
+no mantiene el bloqueo de las entregas mientras espera la respuesta.
+
+Solo una confirmacion valida elimina las muestras enviadas. Se purgan las de
+mas de 24 horas al procesar su cuenta. Ante errores de red o HTTP 400 se conserva
+el lote y se registra el fallo para diagnostico; un lote rechazado requiere
+revision y puede impedir avanzar esa cola. Un HTTP 401 de la sesion vigente
+exige volver a autenticarse sin borrar posiciones ni comprobantes. Si se cierra
+sesion offline, las posiciones no confirmadas quedan para la misma cuenta;
+nunca se envian con la cuenta del siguiente usuario.
+
+Verificacion manual pendiente: ruta en transito, permisos concedidos, GPS activo,
+pantalla bloqueada, recuperacion de red y aparicion de posiciones en el Backoffice.
+La compilacion e instalacion Android no certifican ese recorrido ni el de FCM.
+
 ## Contratos y configuracion por ambiente
 
 Actualizar ruta muestra el progreso y avisa si otra operacion impide la consulta.

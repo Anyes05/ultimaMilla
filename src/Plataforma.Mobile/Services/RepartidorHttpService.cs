@@ -15,10 +15,90 @@ public interface ITokenRepartidor
 }
 
 public sealed class RepartidorHttpService(
-    HttpClient http, RepartidorLocalData data, ITokenRepartidor tokens) : IRepartidorService
+    HttpClient http, RepartidorLocalData data, ITokenRepartidor tokens,
+    ColaPosiciones? posiciones = null) : IRepartidorService
 {
+    public bool DebeRastrearUbicacion
+    {
+        get
+        {
+            var estado = data.Leer();
+            return estado.HaySesion && !estado.RequiereAutenticacion &&
+                estado.Ruta?.Fecha == DateOnly.FromDateTime(DateTime.Today) &&
+                estado.Ruta.Envios.Any(envio => envio.Estado == EstadoEnvio.EnTransito &&
+                    envio.Entrega is null);
+        }
+    }
+
+    public void GuardarPosicion(PosicionPendiente posicion)
+    {
+        var estado = data.Leer();
+        if (!estado.HaySesion || estado.RequiereAutenticacion ||
+            estado.OperadorId is null || estado.RepartidorId is null) return;
+        posiciones?.Agregar($"{estado.OperadorId:N}:{estado.RepartidorId:N}", posicion);
+    }
+
+    public async Task EnviarPosicionesAsync()
+    {
+        if (posiciones is null || !ConexionSimulada || !envioPosiciones.Wait(0)) return;
+        try
+        {
+            while (true)
+            {
+                if (!ConexionSimulada || !operaciones.Wait(0)) return;
+                string cuenta;
+                string? token;
+                try
+                {
+                    var estado = data.Leer();
+                    if (!estado.HaySesion || estado.RequiereAutenticacion ||
+                        estado.OperadorId is null || estado.RepartidorId is null) return;
+                    cuenta = $"{estado.OperadorId:N}:{estado.RepartidorId:N}";
+                    token = await LeerTokenAsync();
+                }
+                finally { operaciones.Release(); }
+                if (string.IsNullOrWhiteSpace(token)) return;
+                var lote = posiciones.Tomar(cuenta);
+                if (lote.Count == 0) return;
+                var vencidas = lote.Where(item => item.Posicion.FechaDispositivo < DateTimeOffset.UtcNow.AddHours(-24)).ToArray();
+                posiciones.Borrar(cuenta, vencidas.Select(item => item.Id));
+                var vigentes = lote.Except(vencidas).ToArray();
+                if (vigentes.Length == 0) continue;
+                using var solicitud = new HttpRequestMessage(HttpMethod.Post, "api/repartidor/posiciones")
+                {
+                    Content = Json(new { posiciones = vigentes.Select(item => item.Posicion).ToArray() })
+                };
+                solicitud.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                using var respuesta = await EnviarAsync(solicitud, marcarAutenticacion: false);
+                if (respuesta.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    await operaciones.WaitAsync();
+                    try
+                    {
+                        var actual = data.Leer();
+                        if (actual.HaySesion && cuenta == $"{actual.OperadorId:N}:{actual.RepartidorId:N}" &&
+                            token == await LeerTokenAsync())
+                            data.Guardar(actual with { RequiereAutenticacion = true });
+                    }
+                    finally { operaciones.Release(); }
+                    throw new SesionRepartidorVencidaException();
+                }
+                ExigirExito(respuesta);
+                var resultado = ContratosRepartidor.Leer<ResultadoPosiciones>(await respuesta.Content.ReadAsStringAsync());
+                if (resultado.Aceptadas < 0 || resultado.Descartadas < 0 ||
+                    resultado.Aceptadas + resultado.Descartadas != vigentes.Length)
+                    throw new InvalidOperationException("La confirmacion de posiciones no coincide con el lote.");
+                posiciones.Borrar(cuenta, vigentes.Select(item => item.Id));
+            }
+        }
+        finally { envioPosiciones.Release(); }
+    }
+
+    private sealed record ResultadoPosiciones(int Aceptadas, int Descartadas);
+
     private readonly RepartidorDemoService local = new(data);
     private readonly SemaphoreSlim operaciones = new(1, 1);
+    private readonly SemaphoreSlim envioPosiciones = new(1, 1);
     private Uri? endpoint;
     public void ConfigurarEndpoint(string url)
     {
@@ -417,7 +497,7 @@ public sealed class RepartidorHttpService(
             throw new InvalidOperationException("La conexion esta desactivada. Tus comprobantes siguen guardados.");
     }
 
-    private async Task<HttpResponseMessage> EnviarAsync(HttpRequestMessage request)
+    private async Task<HttpResponseMessage> EnviarAsync(HttpRequestMessage request, bool marcarAutenticacion = true)
     {
         if (endpoint is not null && request.RequestUri is { IsAbsoluteUri: false } relativa)
             request.RequestUri = new Uri(endpoint, relativa);
@@ -433,7 +513,7 @@ public sealed class RepartidorHttpService(
         try
         {
             var response = await http.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.Unauthorized && request.Headers.Authorization is not null)
+            if (marcarAutenticacion && response.StatusCode == HttpStatusCode.Unauthorized && request.Headers.Authorization is not null)
             {
                 response.Dispose();
                 var estado = data.Leer();

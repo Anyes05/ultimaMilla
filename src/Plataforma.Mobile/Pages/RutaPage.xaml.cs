@@ -1,5 +1,6 @@
 using Plataforma.Mobile.ViewModels;
 using Plataforma.Mobile.Models;
+using Plataforma.Mobile.Services;
 using ZXing.Net.Maui;
 using ZXing.Net.Maui.Controls;
 using Microsoft.Extensions.Logging;
@@ -11,9 +12,11 @@ public partial class RutaPage : ContentPage
     private readonly RutaViewModel viewModel;
     private readonly FirmaDrawable firma = new();
     private readonly ILogger<RutaPage> logger;
+    private readonly IRastreoUbicacion rastreo;
 
-    public RutaPage(RutaViewModel viewModel, ILogger<RutaPage> logger)
+    public RutaPage(RutaViewModel viewModel, ILogger<RutaPage> logger, IRastreoUbicacion rastreo)
     {
+        this.rastreo = rastreo;
         this.logger = logger;
         this.viewModel = viewModel;
         BindingContext = viewModel;
@@ -242,6 +245,7 @@ public partial class RutaPage : ContentPage
         viewModel.ConexionSimulada = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
         viewModel.PropertyChanged += CambioSeleccion;
         await viewModel.RefrescarRutaAlMostrarAsync();
+        await rastreo.ActualizarAsync();
     }
 
     protected override void OnDisappearing()

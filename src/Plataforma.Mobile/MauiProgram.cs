@@ -22,11 +22,16 @@ public static class MauiProgram
 			});
 
 		builder.Services.AddSingleton<ITokenRepartidor, TokenRepartidorSeguro>();
+		builder.Services.AddSingleton(_ => new ColaPosiciones(
+			Path.Combine(FileSystem.AppDataDirectory, "repartidor-api.db"),
+			new SnapshotCipher(ClaveSnapshotSegura.Obtener)));
 		builder.Services.AddSingleton(proveedor => new RepartidorHttpService(
 			new HttpClient { BaseAddress = new Uri(Preferences.Default.Get("repartidor.api.url", "https://api.tallernet.cloud-ip.cc/")), Timeout = TimeSpan.FromSeconds(30) },
 			new RepartidorLocalData(Path.Combine(FileSystem.AppDataDirectory, "repartidor-api.db"),
 				new SnapshotCipher(ClaveSnapshotSegura.Obtener)),
-			proveedor.GetRequiredService<ITokenRepartidor>()));
+			proveedor.GetRequiredService<ITokenRepartidor>(),
+			proveedor.GetRequiredService<ColaPosiciones>()));
+		builder.Services.AddSingleton<IRastreoUbicacion, RastreoUbicacion>();
 		builder.Services.AddSingleton<IRepartidorService>(proveedor =>
 			proveedor.GetRequiredService<RepartidorHttpService>());
 		builder.Services.AddSingleton<INavigationService, ShellNavigationService>();
