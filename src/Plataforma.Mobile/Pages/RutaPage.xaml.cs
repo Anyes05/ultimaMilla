@@ -5,7 +5,7 @@ using ZXing.Net.Maui.Controls;
 using Microsoft.Extensions.Logging;
 
 namespace Plataforma.Mobile.Pages;
-
+//l
 public partial class RutaPage : ContentPage
 {
     private readonly RutaViewModel viewModel;
