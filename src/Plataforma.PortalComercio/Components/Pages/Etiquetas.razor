@@ -13,7 +13,8 @@
 
 <style>
     .etiqueta { width: 100mm; min-height: 150mm; border: 1px dashed #adb5bd; padding: 6mm; margin: 0 auto 8mm; background: #fff; color: #000; }
-    .etiqueta .codigo svg { display: block; width: 35mm; height: 35mm; max-width: 100%; margin: 0 auto; }
+    .etiqueta .codigo { display: grid; place-items: center; width: 43mm; height: 43mm; margin: 0 auto 1mm; padding: 4mm; background: #fff; }
+    .etiqueta .codigo svg { display: block; width: 35mm; height: 35mm; max-width: 100%; }
     @@media print {
         .no-imprimir, .sidebar, .top-row { display: none !important; }
         main, article, .content { padding: 0 !important; margin: 0 !important; }
@@ -79,7 +80,12 @@ else
         using var generador = new QRCodeGenerator();
         using var datos = generador.CreateQrCode(codigo, QRCodeGenerator.ECCLevel.M);
         using var imagen = new SvgQRCode(datos);
-        return imagen.GetGraphic(5);
+        return imagen.GetGraphic(
+            pixelsPerModule: 8,
+            darkColorHex: "#000000",
+            lightColorHex: "#FFFFFF",
+            drawQuietZones: true,
+            sizingMode: SvgQRCode.SizingMode.ViewBoxAttribute);
     }
 
     protected override async Task OnInitializedAsync()
