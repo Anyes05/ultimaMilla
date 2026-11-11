@@ -338,11 +338,11 @@ public sealed class SincronizarEntregas
         var regla = await _reglas.ObtenerVigenteAsync(operadorId, DateTime.UtcNow, cancellationToken);
         var admiteParcial = regla?.AdmiteEntregaParcial ?? false;
         var motivosValidos = regla?.MotivosNoEntrega ?? ReglaOperativa.MotivosNoEntregaPredeterminados;
-                if (resultados.Any(resultado =>
-                        resultado.Estado is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita &&
-                        !motivosValidos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase) &&
-                        !(usuario == CierreEnviosSinIntento.UsuarioSistema &&
-                            resultado.MotivoNoEntrega == CierreEnviosSinIntento.MotivoNoEntregado)))
+        if (resultados.Any(resultado =>
+                resultado.Estado is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita &&
+                !motivosValidos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase) &&
+                !(usuario == CierreRutasSinIntento.UsuarioSistema &&
+                    resultado.MotivoNoEntrega == CierreRutasSinIntento.MotivoNoEntregado)))
         {
             return new EventoRechazado(
             envio.Id,
