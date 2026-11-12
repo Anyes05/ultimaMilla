@@ -52,7 +52,7 @@ public partial class App : Application
 		}
 		async void CambioRuta(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
 		{
-			if (e.PropertyName == nameof(vm.Ocupado) && !vm.Ocupado && activa)
+			if (e.PropertyName == nameof(vm.Ocupado) && !vm.Ocupado && activa && !vm.HaySeleccion)
 			{
 				await rastreo.ActualizarAsync(vm.PantallaActiva && !vm.HaySeleccion);
 				await rastreo.EnviarPendientesAsync();
