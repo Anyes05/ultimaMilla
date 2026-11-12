@@ -6,6 +6,7 @@
 @inject IRetiroRepositorio Retiros
 @inject IOperadorRepositorio Operadores
 @inject IComercioRepositorio Comercios
+@inject GestionCobertura Cobertura
 
 @* Seguimiento público de un retiro: sin sesión, con el mismo límite de tasa que /seguimiento, y sin dirección,
    contacto ni identificadores internos. *@
@@ -38,7 +39,10 @@
                     {
                         <p class="small mb-1">Pedido por <strong>@comercio</strong></p>
                     }
-                    <p class="small mb-3">Fecha del retiro: <strong>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</strong></p>
+                    <p class="small mb-3">Fecha del retiro: <strong>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</strong>@if (franja is not null)
+                    {
+                        <span data-franja-retiro>, entre las <strong>@franja.Desde.ToString("HH:mm")</strong> y las <strong>@franja.Hasta.ToString("HH:mm")</strong></span>
+                    }</p>
                     @if (!string.IsNullOrWhiteSpace(operador.TelefonoContacto) || !string.IsNullOrWhiteSpace(operador.EmailContacto))
                     {
                         <p class="small text-muted mb-3" data-contacto-operador>¿Consultas? @string.Join(" · ", new[] { operador.TelefonoContacto, operador.EmailContacto }.Where(dato => !string.IsNullOrWhiteSpace(dato)))</p>
@@ -67,6 +71,7 @@
     private SolicitudRetiro? retiro;
     private Operador? operador;
     private string? comercio;
+    private FranjaHoraria? franja;
 
     protected override async Task OnInitializedAsync()
     {
@@ -79,6 +84,8 @@
 
         operador = await Operadores.ObtenerAsync(operadorId);
         comercio = (await Comercios.ObtenerAsync(operadorId, retiro.ComercioId))?.NombreComercial;
+        if (retiro.FranjaId is Guid franjaId)
+            franja = (await Cobertura.ListarTodasLasFranjasAsync(operadorId)).FirstOrDefault(item => item.Id == franjaId);
     }
 
     private static string NombreEstado(EstadoRetiro estado) => estado switch

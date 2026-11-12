@@ -18,8 +18,23 @@ builder.Services.AddHostedService<BarridoEntregasPendientes>();
 // Cierre diario e indicadores de cumplimiento (letra sección 4), una sola réplica a la vez.
 builder.Services.AddHostedService<CierreDiarioOperacion>();
 builder.Services.AddHostedService<MonitorColas>();
-// Push de reasignación (opcional 7.3). Sin FCM, el emisor de registro lo deja en el log; Álvaro lo reemplaza por FCM.
-builder.Services.AddSingleton<IEmisorPush, EmisorPushRegistro>();
+// Push de reasignación (letra 6.11, opcional 7.3). Con la cuenta de servicio de Firebase (secreto
+// Push__Fcm__CuentaServicioJson) se manda por FCM; sin ella, el emisor de registro lo deja en el log.
+var cuentaFcm = builder.Configuration["Push:Fcm:CuentaServicioJson"];
+if (!string.IsNullOrWhiteSpace(cuentaFcm))
+{
+    builder.Services.AddHttpClient(EmisorPushFcm.ClienteHttp, cliente => cliente.Timeout = TimeSpan.FromSeconds(15));
+    builder.Services.AddSingleton(CuentaServicioGoogle.Leer(cuentaFcm));
+    builder.Services.AddSingleton<IEmisorPush>(proveedor => new EmisorPushFcm(
+        proveedor.GetRequiredService<IHttpClientFactory>(),
+        proveedor.GetRequiredService<ILogger<EmisorPushFcm>>(),
+        proveedor.GetRequiredService<CuentaServicioGoogle>(),
+        builder.Configuration["Push:Fcm:ProjectId"]));
+}
+else
+{
+    builder.Services.AddSingleton<IEmisorPush, EmisorPushRegistro>();
+}
 builder.Services.AddHostedService<ConsumidorPushReasignacion>();
 // Notificación al destinatario (RF 27). Sin servidor de correo, el emisor de registro lo deja en el log.
 builder.Services.Configure<OpcionesNotificaciones>(builder.Configuration.GetSection(OpcionesNotificaciones.Seccion));

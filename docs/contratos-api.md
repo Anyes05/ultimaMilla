@@ -312,6 +312,38 @@ Sugerencia para la app: una posición cada 30 a 60 s mientras la ruta está en c
 
 ---
 
+### 3.5 Retiros en la app (RF 40)
+
+`GET /api/repartidor/rutas/hoy` suma a cada ruta el campo **`retiros`** (la app actual lo ignora sin romperse):
+
+```json
+"retiros": [
+  { "id": "…", "direccion": "Calle 1234", "contacto": "Ana 099 …", "motivo": "Cambio de producto", "observaciones": "",
+    "cantidadBultos": 2, "pesoKg": 3.5, "posicionEnRuta": 1, "franjaDesde": "09:00:00", "franjaHasta": "12:00:00",
+    "estado": "EnCurso" }
+]
+```
+
+`posicionEnRuta`: después de cuántas entregas se hace el retiro (0 = antes de la primera; `null` = al final).
+
+**`POST /api/repartidor/retiros/sincronizacion`** (token de repartidor), hasta 100 por lote:
+
+```json
+{ "fecha": "2026-11-12",
+  "eventos": [
+    { "eventoId": "…", "retiroId": "…", "resultado": "Retirado",
+      "codigosBultos": ["CAMBIO-1", "CAMBIO-2"], "foto": "<jpeg base64>", "firma": "[[{\"x\":1,\"y\":1}]]",
+      "nombreEntrega": "Ana", "fechaDispositivo": "2026-11-12T10:15:00-03:00", "latitud": -34.9, "longitud": -56.16 },
+    { "eventoId": "…", "retiroId": "…", "resultado": "NoRetirado", "motivo": "No había nadie",
+      "fechaDispositivo": "2026-11-12T11:00:00-03:00", "latitud": -34.9, "longitud": -56.16 } ] }
+```
+
+- `Retirado` exige al menos un código de bulto, foto (JPEG hasta 512 KiB) y firma (JSON de trazos hasta 64 KiB). `NoRetirado` exige motivo.
+- Respuesta `200`: `{ "aplicados": [{ "retiroId", "estado" }], "rechazados": [{ "retiroId", "motivo", "estado" }] }`. Misma política que las entregas (ADR 0013): el mismo `eventoId` reenviado devuelve el mismo resultado; un retiro que no está en la ruta de hoy, ya cerrado o con evidencia inválida vuelve rechazado con el motivo.
+- `Retirado` emite `RetiroCompletado` (avisos v2) y actualiza el Tablero en vivo.
+
+---
+
 ## 4. Endpoints de gestión (web)
 
 ### 4.1 `GET /api/repartidores`
@@ -409,13 +441,15 @@ Requiere bandera `retiro-domicilio` activa en el operador. El comercio solicita 
 
 | Método | Ruta | Body | Notas |
 |---|---|---|---|
-| `POST` | `/api/retiros` | `{ direccion, fecha, contacto?, observaciones?, cantidadBultos?, pesoKg?, volumenCm3? }` | Emite outbox `RetiroSolicitado`. Responde `{ id, estado, fechaSolicitada, tarifaCalculada }` |
+| `POST` | `/api/retiros` | `{ direccion, fecha, motivo?, franjaId?, contacto?, observaciones?, cantidadBultos?, pesoKg?, volumenCm3? }` | Emite outbox `RetiroSolicitado`. Responde `{ id, estado, fechaSolicitada, tarifaCalculada }` |
 | `GET` | `/api/retiros` | — | Lista del operador (filtrada por comercio si aplica); cada retiro incluye `tarifaCalculada` y `reglaTarifariaId` |
 | `POST` | `/api/retiros/{id}/programar` | `{ rutaId, posicion? }` | Estado → `Programado`. `posicion`: después de cuántas entregas se retira (0 = antes de la primera; vacío = al final). 400 si el vehículo de la ruta no alcanza en algún tramo (RF 39) |
 | `POST` | `/api/retiros/{id}/completar` | `{ envioAsociadoId? }` | Estado → `Completado` (retirado) + `RetiroCompletado` |
 | `POST` | `/api/retiros/{id}/no-retirado` | `{ motivo }` | Estado → `NoRetirado`; se puede volver a programar (nueva visita) |
 | `POST` | `/api/retiros/{id}/recibir` | — | Estado → `EnDeposito` (solo desde `Completado`) |
 | `POST` | `/api/retiros/{id}/cancelar` | `{ motivo? }` | Estado → `Cancelado` |
+
+**Pedido (RF 37):** `motivo` es texto libre (el portal ofrece "Cambio de producto", "Devolución del comprador", "Producto fallado" y "Otro"); por API es opcional para no romper a quien ya integró. `franjaId` es una franja activa del operador; si el retiro es para hoy, la franja no puede haber terminado. Al asignarlo a una ruta que ya tiene envíos con franja, tiene que ser la misma (RF 14).
 
 **Estados (RF 38):** `Solicitado` → `Programado` → `EnCurso` (al iniciar la ruta) → `Completado` (retirado) → `EnDeposito`. Desde `Programado` o `EnCurso` puede pasar a `NoRetirado` (con motivo) y de ahí volver a `Programado` en una ruta del mismo día o de un día posterior; `Cancelado` mientras no se retiró. Las transiciones están en `TransicionesRetiro`.
 

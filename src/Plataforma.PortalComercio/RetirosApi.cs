@@ -31,7 +31,9 @@ public static class RetirosApi
                     ct,
                     solicitud.CantidadBultos ?? 1,
                     solicitud.PesoKg ?? 0,
-                    solicitud.VolumenCm3 ?? 0);
+                    solicitud.VolumenCm3 ?? 0,
+                    solicitud.FranjaId,
+                    solicitud.Motivo ?? "");
                 return Results.Json(new { r.Id, r.Estado, r.FechaSolicitada, r.TarifaCalculada }, ObtenerRutasDeHoy.OpcionesJson);
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
@@ -90,6 +92,8 @@ public sealed record RetiroPortalSolicitud(
     string? Observaciones = null,
     int? CantidadBultos = null,
     decimal? PesoKg = null,
-    decimal? VolumenCm3 = null);
+    decimal? VolumenCm3 = null,
+    Guid? FranjaId = null,
+    string? Motivo = null);
 
 public sealed record CancelarRetiroPortalSolicitud(string? Motivo = null);

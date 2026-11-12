@@ -15,8 +15,22 @@ public class RetirosModel : PageModel
     private readonly ListarRutasDelDia _rutas;
     private readonly IOperadorRepositorio _operadores;
     private readonly IBanderasOperador _banderas;
+    private readonly GestionCobertura _cobertura;
+    private readonly IComprobanteRetiroRepositorio _comprobantes;
+
+    /// <summary>RF 40: lo que registró la app del repartidor en cada retiro.</summary>
+    public ILookup<Guid, ComprobanteRetiro> Comprobantes { get; private set; } = Array.Empty<ComprobanteRetiro>().ToLookup(c => c.RetiroId);
+
+    public IReadOnlyDictionary<Guid, FranjaHoraria> Franjas { get; private set; } = new Dictionary<Guid, FranjaHoraria>();
+
+    public string NombreFranja(Guid? franjaId) =>
+        franjaId is Guid id && Franjas.TryGetValue(id, out var franja)
+            ? $"{franja.Nombre} ({franja.Desde:HH\\:mm} a {franja.Hasta:HH\\:mm})"
+            : "Cualquier horario";
 
     public RetirosModel(
+        IComprobanteRetiroRepositorio comprobantes,
+        GestionCobertura cobertura,
         IBanderasOperador banderas,
         GestionRetiros retiros,
         GestionComercios comercios,
@@ -28,6 +42,8 @@ public class RetirosModel : PageModel
         _rutas = rutas;
         _operadores = operadores;
         _banderas = banderas;
+        _cobertura = cobertura;
+        _comprobantes = comprobantes;
     }
 
     /// <summary>Bandera "retiro-domicilio": apagada, los comercios no pueden pedir; lo ya pedido se sigue gestionando.</summary>
@@ -73,6 +89,9 @@ public class RetirosModel : PageModel
             .ToDictionary(comercio => comercio.Id, comercio => comercio.NombreComercial);
 
         Hoy = Operador?.DiaActual() ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        Franjas = (await _cobertura.ListarTodasLasFranjasAsync(acceso.OperadorId, ct)).ToDictionary(franja => franja.Id);
+        Comprobantes = (await _comprobantes.ListarPorRetirosAsync(acceso.OperadorId, Retiros.Select(retiro => retiro.Id).ToList(), ct))
+            .ToLookup(comprobante => comprobante.RetiroId);
         var rutas = new Dictionary<DateOnly, IReadOnlyList<RutaDelDiaResumen>>();
         foreach (var fecha in Retiros.Where(EstaAbierto).Select(FechaParaRutas).Distinct())
             rutas[fecha] = await _rutas.EjecutarAsync(acceso.OperadorId, fecha, ct);

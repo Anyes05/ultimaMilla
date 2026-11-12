@@ -59,6 +59,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
     public DbSet<RecargoZonaTarifa> RecargosZonaTarifa => Set<RecargoZonaTarifa>();
     public DbSet<BonificacionTarifa> BonificacionesTarifa => Set<BonificacionTarifa>();
     public DbSet<CierreDiario> CierresDiarios => Set<CierreDiario>();
+    public DbSet<ComprobanteRetiro> ComprobantesRetiro => Set<ComprobanteRetiro>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -104,6 +105,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         AplicarFiltroOperador<RecargoZonaTarifa>(modelBuilder);
         AplicarFiltroOperador<BonificacionTarifa>(modelBuilder);
         AplicarFiltroOperador<CierreDiario>(modelBuilder);
+        AplicarFiltroOperador<ComprobanteRetiro>(modelBuilder);
 
         modelBuilder.Entity<Envio>(entidad =>
         {
@@ -229,6 +231,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
             entidad.Property(r => r.Direccion).HasMaxLength(300);
             entidad.Property(r => r.Contacto).HasMaxLength(120);
             entidad.Property(r => r.MotivoNoRetiro).HasMaxLength(300).HasDefaultValue(string.Empty);
+            entidad.Property(r => r.Motivo).HasMaxLength(200).HasDefaultValue(string.Empty);
             entidad.Property(r => r.CantidadBultos).HasDefaultValue(1);
             entidad.HasIndex(r => new { r.OperadorId, r.Estado });
         });
@@ -267,6 +270,21 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         });
 
         // Lo escribe el worker con SQL (CierreDiarioOperacion): la clave única evita dos cierres del mismo día.
+        // RF 40: evidencia del retiro desde la app; el eventoId del teléfono la hace idempotente.
+        modelBuilder.Entity<ComprobanteRetiro>(entidad =>
+        {
+            entidad.HasKey(c => c.Id);
+            entidad.HasIndex(c => new { c.OperadorId, c.EventoId }).IsUnique();
+            entidad.HasIndex(c => c.RetiroId);
+            entidad.Property(c => c.CodigosBultos).HasMaxLength(10_200);
+            entidad.Property(c => c.NombreEntrega).HasMaxLength(100);
+            entidad.Property(c => c.Motivo).HasMaxLength(300);
+            entidad.Property(c => c.Usuario).HasMaxLength(200);
+            entidad.Property(c => c.Latitud).HasPrecision(9, 6);
+            entidad.Property(c => c.Longitud).HasPrecision(9, 6);
+            entidad.Ignore(c => c.Codigos);
+        });
+
         modelBuilder.Entity<CierreDiario>(entidad =>
         {
             entidad.HasKey(c => c.Id);

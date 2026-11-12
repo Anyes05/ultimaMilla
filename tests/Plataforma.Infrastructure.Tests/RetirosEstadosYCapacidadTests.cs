@@ -104,6 +104,82 @@ public sealed class RetirosEstadosYCapacidadTests
         Assert.Equal(EstadoRetiro.EnCurso, (await new RetiroRepositorio(otro).ObtenerAsync(Operador, pesado.Id))!.Estado);
     }
 
+    [Fact]
+    public async Task Pedido_ConFranjaYMotivo_YLaFranjaTieneQueCoincidirConLaRuta()
+    {
+        await using var ctx = Crear();
+        var comercio = Plataforma.Domain.Comercio.Registrar(Guid.NewGuid(), Operador, "Comercio", "Comercio SA", "211111110018", "Calle 1");
+        ctx.Comercios.Add(comercio);
+        var manana = FranjaHoraria.Definir(Guid.NewGuid(), Operador, "Mañana", new TimeOnly(0, 0), new TimeOnly(23, 59));
+        var tarde = FranjaHoraria.Definir(Guid.NewGuid(), Operador, "Tarde", new TimeOnly(0, 0), new TimeOnly(23, 59));
+        ctx.FranjasHorarias.AddRange(manana, tarde);
+        var ruta = Ruta.Programar(Operador, Guid.NewGuid(), Hoy);
+        ctx.Rutas.Add(ruta);
+        var envio = Envio.Admitir(Operador, comercio.Id, "D", "C", franjaId: manana.Id);
+        envio.CambiarEstado(EstadoEnvio.EnDeposito);
+        envio.AsignarARuta(ruta.Id);
+        ctx.Envios.Add(envio);
+        await ctx.SaveChangesAsync();
+        var gestion = Gestion(ctx);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => gestion.SolicitarAsync(
+            Operador, comercio.Id, "Calle 1", "", Hoy, franjaId: Guid.NewGuid(), motivo: "Cambio de producto"));
+
+        var retiro = await gestion.SolicitarAsync(
+            Operador, comercio.Id, "Calle 1", "", Hoy, franjaId: tarde.Id, motivo: "Cambio de producto");
+        Assert.Equal((tarde.Id, "Cambio de producto"), (retiro.FranjaId, retiro.Motivo));
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => gestion.ProgramarAsync(Operador, retiro.Id, ruta.Id));
+        Assert.Contains("otra franja", error.Message);
+    }
+
+    [Fact]
+    public async Task App_RegistraRetiradoYNoRetirado_Idempotente_YValidaEvidencia()
+    {
+        await using var ctx = Crear();
+        var repartidor = Guid.NewGuid();
+        var ruta = Ruta.Programar(Operador, repartidor, Hoy);
+        var otraRuta = Ruta.Programar(Operador, Guid.NewGuid(), Hoy);
+        ctx.Rutas.AddRange(ruta, otraRuta);
+        var uno = Retiro();
+        var dos = Retiro();
+        var ajeno = Retiro();
+        uno.ProgramarEnRuta(ruta.Id);
+        dos.ProgramarEnRuta(ruta.Id);
+        ajeno.ProgramarEnRuta(otraRuta.Id);
+        ctx.SolicitudesRetiro.AddRange(uno, dos, ajeno);
+        await ctx.SaveChangesAsync();
+        var registrar = new RegistrarRetirosRepartidor(
+            new RutaRepositorio(ctx), new RetiroRepositorio(ctx), new ComprobanteRetiroRepositorio(ctx), Gestion(ctx), new CacheLecturaMemoria());
+        const string Foto = "/9j/2Q==";
+        const string Firma = "[[{\"x\":1,\"y\":1},{\"x\":9,\"y\":9}]]";
+        var ahora = DateTimeOffset.UtcNow;
+        var retirado = new ComprobanteRetiroApp(Guid.NewGuid(), uno.Id, "Retirado", ["CAMBIO-1", "CAMBIO-2"], Foto, Firma, "Ana", null, ahora, -34.9m, -56.16m);
+
+        var resultado = await registrar.EjecutarAsync(Operador, repartidor, Hoy,
+        [
+            retirado,
+            new ComprobanteRetiroApp(Guid.NewGuid(), dos.Id, "Retirado", ["X"], null, Firma, null, null, ahora, null, null),
+            new ComprobanteRetiroApp(Guid.NewGuid(), ajeno.Id, "NoRetirado", null, null, null, null, "Cerrado", ahora, null, null)
+        ], "alvaro");
+
+        Assert.Equal(EstadoRetiro.Completado, Assert.Single(resultado.Aplicados).Estado);
+        Assert.Contains(resultado.Rechazados, r => r.RetiroId == dos.Id && r.Motivo.Contains("foto"));
+        Assert.Contains(resultado.Rechazados, r => r.RetiroId == ajeno.Id && r.Motivo.Contains("no está en tu ruta"));
+        var guardado = Assert.Single(ctx.ComprobantesRetiro.AsNoTracking().ToList());
+        Assert.Equal((uno.Id, "CAMBIO-1\nCAMBIO-2", "Ana"), (guardado.RetiroId, guardado.CodigosBultos, guardado.NombreEntrega));
+
+        // Reenvío por respuesta perdida: mismo resultado, sin duplicar.
+        var reenvio = await registrar.EjecutarAsync(Operador, repartidor, Hoy, [retirado], "alvaro");
+        Assert.Equal(EstadoRetiro.Completado, Assert.Single(reenvio.Aplicados).Estado);
+        Assert.Single(ctx.ComprobantesRetiro.AsNoTracking().ToList());
+
+        var noRetirado = await registrar.EjecutarAsync(Operador, repartidor, Hoy,
+            [new ComprobanteRetiroApp(Guid.NewGuid(), dos.Id, "NoRetirado", null, null, null, null, "No había nadie", ahora, null, null)], "alvaro");
+        Assert.Equal(EstadoRetiro.NoRetirado, Assert.Single(noRetirado.Aplicados).Estado);
+        Assert.Equal("No había nadie", (await new RetiroRepositorio(ctx).ObtenerAsync(Operador, dos.Id))!.MotivoNoRetiro);
+    }
+
     private static GestionRetiros Gestion(PlataformaDbContext ctx) =>
         new(
             new RetiroRepositorio(ctx),

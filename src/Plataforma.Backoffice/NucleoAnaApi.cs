@@ -119,7 +119,9 @@ public static class NucleoAnaApi
                     ct,
                     solicitud.CantidadBultos ?? 1,
                     solicitud.PesoKg ?? 0,
-                    solicitud.VolumenCm3 ?? 0);
+                    solicitud.VolumenCm3 ?? 0,
+                    solicitud.FranjaId,
+                    solicitud.Motivo ?? "");
                 return Results.Json(new { r.Id, r.Estado, r.FechaSolicitada, r.TarifaCalculada }, ObtenerRutasDeHoy.OpcionesJson);
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
@@ -820,7 +822,9 @@ public sealed record RetiroSolicitudApi(
     string? Observaciones = null,
     int? CantidadBultos = null,
     decimal? PesoKg = null,
-    decimal? VolumenCm3 = null);
+    decimal? VolumenCm3 = null,
+    Guid? FranjaId = null,
+    string? Motivo = null);
 /// <summary>Posicion: después de cuántas entregas se retira (0 = antes de la primera; vacío = al final).</summary>
 public sealed record ProgramarRetiroSolicitud(Guid RutaId, int? Posicion = null);
 public sealed record NoRetiradoSolicitud(string Motivo);

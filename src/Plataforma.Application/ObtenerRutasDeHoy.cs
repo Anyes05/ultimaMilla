@@ -18,6 +18,8 @@ public sealed class ObtenerRutasDeHoy
     private readonly ICacheLectura _cache;
     private readonly IBultoRepositorio? _bultos;
     private readonly IReglaOperativaRepositorio? _reglas;
+    private readonly IRetiroRepositorio? _retiros;
+    private readonly ICoberturaRepositorio? _cobertura;
 
     public ObtenerRutasDeHoy(
         IRutaRepositorio rutas,
@@ -26,8 +28,12 @@ public sealed class ObtenerRutasDeHoy
         IBanderasOperador banderas,
         ICacheLectura cache,
         IBultoRepositorio? bultos = null,
-        IReglaOperativaRepositorio? reglas = null)
+        IReglaOperativaRepositorio? reglas = null,
+        IRetiroRepositorio? retiros = null,
+        ICoberturaRepositorio? cobertura = null)
     {
+        _retiros = retiros;
+        _cobertura = cobertura;
         _rutas = rutas;
         _envios = envios;
         _operadores = operadores;
@@ -74,6 +80,17 @@ public sealed class ObtenerRutasDeHoy
 
         var rutas = await _rutas.ObtenerDeHoyAsync(operadorId, repartidorId, fecha, cancellationToken);
         var resultado = new List<RutaDelDia>(rutas.Count);
+        // RF 40: los retiros asignados a estas rutas, con su parada y su franja.
+        var retirosDelDia = _retiros is null || rutas.Count == 0
+            ? []
+            : (await _retiros.ListarAsync(operadorId, null, cancellationToken))
+                .Where(retiro => retiro.RutaId is Guid rutaId && rutas.Any(ruta => ruta.Id == rutaId)
+                                 && retiro.Estado is EstadoRetiro.Programado or EstadoRetiro.EnCurso
+                                     or EstadoRetiro.Completado or EstadoRetiro.NoRetirado)
+                .ToList();
+        var franjas = retirosDelDia.Any(retiro => retiro.FranjaId is not null) && _cobertura is not null
+            ? (await _cobertura.ListarTodasLasFranjasAsync(operadorId, cancellationToken)).ToDictionary(franja => franja.Id)
+            : new Dictionary<Guid, FranjaHoraria>();
         foreach (var ruta in rutas)
         {
             var envios = await _envios.ObtenerPorRutaAsync(operadorId, ruta.Id, cancellationToken);
@@ -88,11 +105,24 @@ public sealed class ObtenerRutasDeHoy
                         .ToArray();
                 enviosDeRuta.Add(EnvioDeRuta.Desde(envio) with { Bultos = bultos });
             }
+            var retirosDeRuta = retirosDelDia
+                .Where(retiro => retiro.RutaId == ruta.Id)
+                .OrderBy(retiro => retiro.PosicionEnRuta ?? int.MaxValue)
+                .ThenBy(retiro => retiro.CreadoEn)
+                .Select(retiro =>
+                {
+                    var franja = retiro.FranjaId is Guid franjaId && franjas.TryGetValue(franjaId, out var encontrada) ? encontrada : null;
+                    return new RetiroDeRuta(
+                        retiro.Id, retiro.Direccion, retiro.Contacto, retiro.Motivo, retiro.Observaciones,
+                        retiro.CantidadBultos, retiro.PesoKg, retiro.PosicionEnRuta, franja?.Desde, franja?.Hasta, retiro.Estado);
+                })
+                .ToList();
             resultado.Add(new RutaDelDia(
                 ruta.Id,
                 ruta.Fecha,
                 operador,
-                enviosDeRuta));
+                enviosDeRuta,
+                retirosDeRuta));
         }
 
         await _cache.GuardarAsync(clave, JsonSerializer.Serialize(resultado, OpcionesJson), TimeSpan.FromSeconds(30), cancellationToken);

@@ -63,10 +63,30 @@
                     var programable = retiro.Estado is EstadoRetiro.Solicitado or EstadoRetiro.Programado or EstadoRetiro.NoRetirado;
                     var completable = retiro.Estado is EstadoRetiro.Programado or EstadoRetiro.EnCurso;
                     <tr data-retiro="@retiro.Id">
-                        <td>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</td>
+                        <td>
+                            @retiro.FechaSolicitada.ToString("dd/MM/yyyy")
+                            <span class="d-block small text-muted" data-franja-retiro>@Model.NombreFranja(retiro.FranjaId)</span>
+                        </td>
                         <td class="fw-semibold">@(Model.Comercios.TryGetValue(retiro.ComercioId, out var comercio) ? comercio : "—")</td>
                         <td>
                             @retiro.Direccion
+                            @if (!string.IsNullOrWhiteSpace(retiro.Motivo))
+                            {
+                                <span class="d-block small" data-motivo-retiro>Motivo: @retiro.Motivo</span>
+                            }
+                            @foreach (var comprobante in Model.Comprobantes[retiro.Id])
+                            {
+                                <span class="d-block small text-success" data-comprobante-retiro>
+                                    App, @comprobante.FechaDispositivo.ToOffset(Plataforma.Application.RelojOperacion.Offset).ToString("dd/MM HH:mm"):
+                                    @(comprobante.Resultado == EstadoRetiro.Completado
+                                        ? $"retiró {string.Join(", ", comprobante.Codigos)}{(string.IsNullOrEmpty(comprobante.Foto) ? "" : " · con foto")}{(string.IsNullOrEmpty(comprobante.Firma) ? "" : " y firma")}{(string.IsNullOrWhiteSpace(comprobante.NombreEntrega) ? "" : $" de {comprobante.NombreEntrega}")}"
+                                        : $"no retiró ({comprobante.Motivo})")
+                                    @if (comprobante.Latitud is decimal lat && comprobante.Longitud is decimal lon)
+                                    {
+                                        <a href="https://www.openstreetmap.org/?mlat=@lat.ToString(System.Globalization.CultureInfo.InvariantCulture)&mlon=@lon.ToString(System.Globalization.CultureInfo.InvariantCulture)#map=17/@lat.ToString(System.Globalization.CultureInfo.InvariantCulture)/@lon.ToString(System.Globalization.CultureInfo.InvariantCulture)" target="_blank" rel="noopener">ver posición</a>
+                                    }
+                                </span>
+                            }
                             <span class="d-block small text-muted" data-carga-retiro>@retiro.CantidadBultos bulto(s)@(retiro.PesoKg > 0 ? $" · {retiro.PesoKg:0.##} kg" : "")@(retiro.VolumenCm3 > 0 ? $" · {retiro.VolumenCm3:0.##} cm³" : "")</span>
                             @if (retiro.Estado == EstadoRetiro.NoRetirado && !string.IsNullOrWhiteSpace(retiro.MotivoNoRetiro))
                             {

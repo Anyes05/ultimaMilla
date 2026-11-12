@@ -48,7 +48,13 @@ public sealed record BultoDeRuta(
     EstadoBulto Estado,
     string? MotivoNoEntrega = null);
 
-public sealed record RutaDelDia(Guid Id, DateOnly Fecha, OperadorVisible Operador, IReadOnlyList<EnvioDeRuta> Envios);
+/// <summary>Retiros: paradas de retiro de la ruta mixta (RF 39 y 40); null o vacío si no tiene.</summary>
+public sealed record RutaDelDia(
+    Guid Id,
+    DateOnly Fecha,
+    OperadorVisible Operador,
+    IReadOnlyList<EnvioDeRuta> Envios,
+    IReadOnlyList<RetiroDeRuta>? Retiros = null);
 
 /// <summary>Resultado por bulto en sincronización v2 (borrador; v1 ignora la lista).</summary>
 public sealed record ResultadoBultoSync(

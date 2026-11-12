@@ -62,7 +62,9 @@ public sealed class GestionRetiros
         CancellationToken cancellationToken = default,
         int cantidadBultos = 1,
         decimal pesoKg = 0,
-        decimal volumenCm3 = 0)
+        decimal volumenCm3 = 0,
+        Guid? franjaId = null,
+        string motivo = "")
     {
         if (!await _banderas.EstaActivaAsync(operadorId, CatalogoBanderas.RetiroDomicilio, cancellationToken))
             throw new InvalidOperationException("El retiro en domicilio no está habilitado para este operador.");
@@ -70,11 +72,22 @@ public sealed class GestionRetiros
         if (!await _comercios.EstaActivoAsync(comercioId, cancellationToken))
             throw new InvalidOperationException("El comercio está dado de baja y no puede pedir retiros.");
 
+        // RF 37: la franja tiene que ser del operador, estar activa y no haber terminado si el retiro es para hoy.
+        if (franjaId is Guid franjaPedida && franjaPedida != Guid.Empty && _cobertura is not null)
+        {
+            var franja = await _cobertura.ObtenerFranjaAsync(operadorId, franjaPedida, cancellationToken);
+            if (franja is null || !franja.Activa)
+                throw new InvalidOperationException("La franja horaria no existe o no está activa.");
+            var ahora = DateTimeOffset.UtcNow.ToOffset(RelojOperacion.Offset);
+            if (fecha == DateOnly.FromDateTime(ahora.DateTime) && TimeOnly.FromDateTime(ahora.DateTime) >= franja.Hasta)
+                throw new InvalidOperationException($"La franja {franja.Nombre} ya terminó hoy: elegí otra franja u otro día.");
+        }
+
         // RF 41: el retiro tiene tarifa propia; se fija al pedirlo, como la del envío al darlo de alta.
         var tarifa = _tarifa is null ? null : await _tarifa.CalcularRetiroAsync(operadorId, comercioId, cancellationToken);
         var retiro = SolicitudRetiro.Solicitar(
             Guid.NewGuid(), operadorId, comercioId, direccion, contacto, fecha, observaciones,
-            tarifa?.Importe ?? 0, tarifa?.ReglaTarifariaId, cantidadBultos, pesoKg, volumenCm3);
+            tarifa?.Importe ?? 0, tarifa?.ReglaTarifariaId, cantidadBultos, pesoKg, volumenCm3, franjaId, motivo);
         await _retiros.AgregarAsync(retiro, cancellationToken);
 
         var evento = RetiroSolicitado.Crear(operadorId, retiro.Id, comercioId, retiro.Direccion);
@@ -136,6 +149,18 @@ public sealed class GestionRetiros
                 ?? throw new InvalidOperationException("La ruta no existe para ese operador.");
 
         retiro.ProgramarEnRuta(rutaId, posicion, ruta?.Fecha);
+
+        // RF 14 en rutas mixtas: una ruta lleva una sola franja; el retiro con franja tiene que coincidir.
+        if (ruta is not null && retiro.FranjaId is Guid franjaRetiro && _envios is not null)
+        {
+            var franjasRuta = (await _envios.ObtenerPorRutaAsync(operadorId, ruta.Id, cancellationToken))
+                .Where(envio => envio.FranjaId is not null)
+                .Select(envio => envio.FranjaId!.Value)
+                .Distinct()
+                .ToList();
+            if (franjasRuta.Count > 0 && !franjasRuta.Contains(franjaRetiro))
+                throw new InvalidOperationException("El retiro es de otra franja horaria que la ruta: elegí una ruta de su franja.");
+        }
 
         if (ruta is not null && await PerfilCargaAsync(operadorId, ruta, cancellationToken, retiro) is { Problema: { } problema })
             throw new InvalidOperationException($"El retiro no entra en el vehículo de esa ruta. {problema} Elegí otra parada u otra ruta.");

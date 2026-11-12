@@ -78,6 +78,8 @@ public static class DependencyInjection
         services.AddScoped<ICierreDiarioRepositorio, CierreDiarioRepositorio>();
         services.AddScoped<ListarCierresDiarios>();
         services.AddScoped<RegistrarPosiciones>();
+        services.AddScoped<IComprobanteRetiroRepositorio, ComprobanteRetiroRepositorio>();
+        services.AddScoped<RegistrarRetirosRepartidor>();
         services.AddScoped<ObtenerFlota>();
         services.AddScoped<ICoberturaRepositorio, CoberturaRepositorio>();
         services.AddScoped<IComercioRepositorio, ComercioRepositorio>();

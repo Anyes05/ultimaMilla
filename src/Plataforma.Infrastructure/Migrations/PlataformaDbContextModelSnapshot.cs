@@ -431,6 +431,76 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("Comercios");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.ComprobanteRetiro", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodigosBultos")
+                        .IsRequired()
+                        .HasMaxLength(10200)
+                        .HasColumnType("character varying(10200)");
+
+                    b.Property<Guid>("EventoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("FechaDispositivo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Firma")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Foto")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("Latitud")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<decimal?>("Longitud")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("NombreEntrega")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RegistradoUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Resultado")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RetiroId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Usuario")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RetiroId");
+
+                    b.HasIndex("OperadorId", "EventoId")
+                        .IsUnique();
+
+                    b.ToTable("ComprobantesRetiro");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.Destinatario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1328,6 +1398,16 @@ namespace Plataforma.Infrastructure.Migrations
 
                     b.Property<DateOnly>("FechaSolicitada")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("FranjaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasDefaultValue("");
 
                     b.Property<string>("MotivoNoRetiro")
                         .IsRequired()

@@ -102,3 +102,18 @@ public enum ResultadoPush
 2. Nadia deja el consumidor con `IEmisorPush` de prueba (registra en el log): se puede probar con el evento
    publicado a mano en RabbitMQ local, sin esperar a Ana ni a Álvaro.
 3. Ana publica el evento real; Álvaro enchufa FCM. Ninguno espera al otro.
+
+## Emisor FCM real (11/11)
+
+El worker ya tiene `EmisorPushFcm` (FCM HTTP v1). Se activa solo si existe la configuración
+`Push:Fcm:CuentaServicioJson`; sin ella sigue el emisor de registro, así que el entorno local no cambia.
+
+- **Joel:** en Firebase, Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada. El JSON
+  completo va como clave `Push__Fcm__CuentaServicioJson` del secreto que ya usa el worker
+  (`tallernet-application-secrets`). Nunca en el repositorio. Opcional `Push__Fcm__ProjectId` si difiere del JSON.
+- **Álvaro:** en la app, Firebase Messaging para Android (`google-services.json` del mismo proyecto), pedir el token y
+  registrarlo con `POST /api/repartidor/dispositivos` (y darlo de baja al cerrar sesión). Crear el canal de
+  notificación `reasignaciones` (es el que manda el servidor) y, al tocar la notificación, abrir la ruta con los
+  datos `tipo`, `envioId` y `rutaId`.
+- Respuestas de FCM: `UNREGISTERED` o token inválido marcan el token como inválido (no se reintenta); 401/403, 429,
+  5xx y falta de red se reintentan con la espera del worker. El token de acceso de Google se renueva solo.

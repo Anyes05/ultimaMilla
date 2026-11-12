@@ -180,6 +180,7 @@ app.MapPost("/logout", (HttpContext httpContext) =>
 
 app.MapApisRepartidor();
 app.MapApisPosiciones();
+app.MapApisRetirosRepartidor();
 app.MapApisNucleoAna();
 app.MapAvisosTecnicos();
 app.MapHistorialEventos();

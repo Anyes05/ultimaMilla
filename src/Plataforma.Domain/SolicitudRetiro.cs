@@ -63,6 +63,16 @@ public class SolicitudRetiro
     /// <summary>Motivo del último intento sin retirar (RF 38).</summary>
     public string MotivoNoRetiro { get; private set; } = string.Empty;
 
+    /// <summary>Franja horaria en la que el comprador espera el retiro (RF 37); vacía = cualquier horario.</summary>
+    public Guid? FranjaId { get; private set; }
+
+    /// <summary>Por qué se pide el retiro (RF 37): cambio, devolución, producto fallado u otro.</summary>
+    public string Motivo { get; private set; } = string.Empty;
+
+    /// <summary>Motivos que ofrece el portal; por API se acepta cualquier texto.</summary>
+    public static readonly IReadOnlyList<string> MotivosSugeridos =
+        ["Cambio de producto", "Devolución del comprador", "Producto fallado", "Otro"];
+
     /// <summary>Los paquetes ya están en manos del operador (en el vehículo o en el depósito).</summary>
     public bool FueRetirado => Estado is EstadoRetiro.Completado or EstadoRetiro.EnDeposito;
 
@@ -82,7 +92,9 @@ public class SolicitudRetiro
         Guid? reglaTarifariaId = null,
         int cantidadBultos = 1,
         decimal pesoKg = 0,
-        decimal volumenCm3 = 0)
+        decimal volumenCm3 = 0,
+        Guid? franjaId = null,
+        string motivo = "")
     {
         if (id == Guid.Empty)
             throw new ArgumentException("El retiro necesita un identificador.", nameof(id));
@@ -98,6 +110,10 @@ public class SolicitudRetiro
             throw new ArgumentOutOfRangeException(nameof(cantidadBultos), "La cantidad de bultos del retiro debe estar entre 1 y 100.");
         if (pesoKg < 0 || volumenCm3 < 0)
             throw new ArgumentOutOfRangeException(nameof(pesoKg), "El peso y el volumen del retiro no pueden ser negativos.");
+        if ((motivo ?? string.Empty).Trim().Length > 200)
+            throw new ArgumentException("El motivo del retiro es demasiado largo.", nameof(motivo));
+        if (franjaId == Guid.Empty)
+            franjaId = null;
 
         return new SolicitudRetiro
         {
@@ -114,7 +130,9 @@ public class SolicitudRetiro
             ReglaTarifariaId = reglaTarifariaId,
             CantidadBultos = cantidadBultos,
             PesoKg = pesoKg,
-            VolumenCm3 = volumenCm3
+            VolumenCm3 = volumenCm3,
+            FranjaId = franjaId,
+            Motivo = (motivo ?? string.Empty).Trim()
         };
     }
 

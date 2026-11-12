@@ -6,6 +6,7 @@
 @inject GestionRetiros GestionRetiros
 @inject IBanderasOperador Banderas
 @inject IOperadorRepositorio Operadores
+@inject GestionCobertura Cobertura
 @inject NavigationManager Navegacion
 @inject Microsoft.AspNetCore.DataProtection.IDataProtectionProvider Proteccion
 
@@ -43,6 +44,26 @@
                     <div class="col-md-4">
                         <label class="form-label fw-semibold" for="fecha">Fecha</label>
                         <InputDate id="fecha" @bind-Value="Formulario!.Fecha" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" for="franja">Franja horaria <span class="text-muted fw-normal">(opcional)</span></label>
+                        <InputSelect id="franja" @bind-Value="Formulario!.FranjaId" class="form-select">
+                            <option value="">Cualquier horario</option>
+                            @foreach (var franja in franjas)
+                            {
+                                <option value="@franja.Id">@franja.Nombre (@franja.Desde.ToString("HH:mm") a @franja.Hasta.ToString("HH:mm"))</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold" for="motivo">Motivo</label>
+                        <InputSelect id="motivo" @bind-Value="Formulario!.Motivo" class="form-select">
+                            <option value="">Elegí un motivo</option>
+                            @foreach (var motivo in SolicitudRetiro.MotivosSugeridos)
+                            {
+                                <option value="@motivo">@motivo</option>
+                            }
+                        </InputSelect>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold" for="contacto">Contacto <span class="text-muted fw-normal">(opcional)</span></label>
@@ -119,7 +140,7 @@ else
                                     <td>@retiro.FechaSolicitada.ToString("dd/MM/yyyy")</td>
                                     <td>
                                         @retiro.Direccion
-                                        <span class="d-block small text-muted">@retiro.CantidadBultos bulto(s)@(retiro.PesoKg > 0 ? $" · {retiro.PesoKg:0.##} kg" : "")</span>
+                                        <span class="d-block small text-muted">@retiro.CantidadBultos bulto(s)@(retiro.PesoKg > 0 ? $" · {retiro.PesoKg:0.##} kg" : "")@(string.IsNullOrWhiteSpace(retiro.Motivo) ? "" : $" · {retiro.Motivo}")@NombreFranja(retiro.FranjaId)</span>
                                         @if (retiro.Estado == EstadoRetiro.NoRetirado && !string.IsNullOrWhiteSpace(retiro.MotivoNoRetiro))
                                         {
                                             <span class="d-block small text-danger">No retirado: @retiro.MotivoNoRetiro</span>
@@ -160,6 +181,12 @@ else
     private string? mensajeError;
     private DateOnly hoy;
     private ResultadoTarifa? cotizacion;
+    private IReadOnlyList<FranjaHoraria> franjas = [];
+
+    private string NombreFranja(Guid? franjaId) =>
+        franjaId is Guid id && franjas.FirstOrDefault(franja => franja.Id == id) is { } franja
+            ? $" · {franja.Nombre} ({franja.Desde:HH\\:mm} a {franja.Hasta:HH\\:mm})"
+            : string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -178,6 +205,7 @@ else
         habilitado = await Banderas.EstaActivaAsync(acceso.OperadorId, CatalogoBanderas.RetiroDomicilio);
         if (habilitado)
             cotizacion = await GestionRetiros.CotizarAsync(acceso.OperadorId, comercioId);
+        franjas = await Cobertura.ListarFranjasAsync(acceso.OperadorId);
         await CargarAsync(acceso.OperadorId, comercioId);
     }
 
@@ -198,7 +226,8 @@ else
             await GestionRetiros.SolicitarAsync(
                 acceso.OperadorId, comercioId, Formulario.Direccion, Formulario.Contacto ?? string.Empty,
                 Formulario.Fecha, Formulario.Observaciones ?? string.Empty,
-                cantidadBultos: Formulario.CantidadBultos ?? 1, pesoKg: Formulario.PesoKg ?? 0, volumenCm3: Formulario.VolumenCm3 ?? 0);
+                cantidadBultos: Formulario.CantidadBultos ?? 1, pesoKg: Formulario.PesoKg ?? 0, volumenCm3: Formulario.VolumenCm3 ?? 0,
+                franjaId: Formulario.FranjaId, motivo: Formulario.Motivo ?? string.Empty);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
@@ -296,5 +325,10 @@ else
 
         [System.ComponentModel.DataAnnotations.Range(typeof(decimal), "0", "100000000", ErrorMessage = "El volumen no puede ser negativo.")]
         public decimal? VolumenCm3 { get; set; }
+
+        public Guid? FranjaId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Elegí el motivo del retiro.")]
+        public string? Motivo { get; set; }
     }
 }
