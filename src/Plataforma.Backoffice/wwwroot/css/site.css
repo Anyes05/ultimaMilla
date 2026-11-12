@@ -415,8 +415,10 @@ td .tracking-number {
 }
 
 /* Con menú lateral, el pie de la plantilla (position: absolute; width: 100%) medía todo el ancho de la pantalla
-   pero empezaba después del menú, y se salía 250 px. Dentro del diseño con menú va en el flujo, al final. */
-.app-content > .footer {
+   pero empezaba después del menú, y se salía 250 px. Dentro del diseño con menú va en el flujo, al final.
+   El "body" sube la prioridad: la regla aislada de _Layout.cshtml.css (.footer[b-…]) se carga después y,
+   con la misma prioridad, ganaba ella. */
+body .app-content > .footer {
   margin-top: auto;
   position: static;
   width: auto;
