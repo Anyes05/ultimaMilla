@@ -21,11 +21,13 @@ public class DespachoModel : PageModel
     private readonly IOperadorRepositorio _operadores;
     private readonly GestionCobertura _cobertura;
     private readonly GestionRetiros _retiros;
+    private readonly ReasignarEnvio _reasignar;
 
     /// <summary>RF 39: carga del vehículo parada por parada, con los retiros de la ruta.</summary>
     public IReadOnlyDictionary<Guid, PerfilCargaRuta> Perfiles { get; private set; } = new Dictionary<Guid, PerfilCargaRuta>();
 
     public DespachoModel(
+        ReasignarEnvio reasignar,
         GestionRetiros retiros,
         GestionCobertura cobertura,
         ListarEnvios listarEnvios,
@@ -43,6 +45,41 @@ public class DespachoModel : PageModel
         _operadores = operadores;
         _cobertura = cobertura;
         _retiros = retiros;
+        _reasignar = reasignar;
+    }
+
+    /// <summary>
+    /// Pasa un envío de la ruta a otro repartidor en la misma jornada (si no tiene ruta ese día, se le crea).
+    /// Urgente publica <c>EnvioReasignado</c> con prioridad: el worker manda el push al repartidor nuevo (7.3).
+    /// La app del repartidor anterior ve el cambio al bajar la ruta, y si lo entregó sin señal, el servidor
+    /// rechaza ese comprobante con motivo (ADR 0013).
+    /// </summary>
+    public async Task<IActionResult> OnPostReasignarAsync(Guid envioId, Guid repartidorNuevoId, DateOnly fechaRuta, bool urgente)
+    {
+        if (!AccesoActual.Intentar(User, out var acceso))
+            return Challenge();
+
+        try
+        {
+            if (repartidorNuevoId == Guid.Empty)
+                throw new ArgumentException("Elegí a qué repartidor reasignar.");
+            var ct = HttpContext.RequestAborted;
+            var fecha = fechaRuta == default
+                ? (await _operadores.ObtenerAsync(acceso.OperadorId, ct))?.DiaActual() ?? DateOnly.FromDateTime(DateTime.UtcNow)
+                : fechaRuta;
+            await _reasignar.EjecutarAsync(acceso.OperadorId, envioId, repartidorNuevoId, fecha, urgente, ct);
+            var nombre = (await _listarRepartidores.EjecutarAsync(acceso.OperadorId, ct))
+                .FirstOrDefault(repartidor => repartidor.Id == repartidorNuevoId)?.Nombre ?? "el repartidor elegido";
+            TempData["Mensaje"] = urgente
+                ? $"Envío reasignado a {nombre}. Se le avisa por notificación push."
+                : $"Envío reasignado a {nombre}.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            TempData["Error"] = TextosUsuario.Error(ex);
+        }
+
+        return RedirectToPage();
     }
 
     /// <summary>Vehículos activos: elegir uno valida paradas, peso y volumen (RF 13 y 14).</summary>
