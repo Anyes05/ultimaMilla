@@ -122,7 +122,8 @@ public sealed class ObtenerRutasDeHoy
                 ruta.Fecha,
                 operador,
                 enviosDeRuta,
-                retirosDeRuta));
+                retirosDeRuta,
+                ruta.IniciadaEn));
         }
 
         await _cache.GuardarAsync(clave, JsonSerializer.Serialize(resultado, OpcionesJson), TimeSpan.FromSeconds(30), cancellationToken);

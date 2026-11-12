@@ -65,6 +65,13 @@ public sealed class DespacharRuta
         if (!repartidor.Activo)
             throw new InvalidOperationException("El repartidor no está activo.");
 
+        var enviosSeleccionados = new Dictionary<Guid, Envio>();
+        foreach (var envioId in envioIds)
+            enviosSeleccionados[envioId] = await _envios.ObtenerPorOperadorAsync(envioId, operadorId, cancellationToken)
+                ?? throw new InvalidOperationException($"El envío {envioId} no existe para ese operador.");
+        var cantidadParadas = enviosSeleccionados.Values.Select(envio => DireccionNormalizada(envio.DireccionEntrega))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Count();
+
         // Capacidad: solo bultos disponibles para nueva ruta (RF 34 / capacidad variable).
         var bultosPorEnvio = new Dictionary<Guid, IReadOnlyList<Bulto>>();
         foreach (var envioIdCap in envioIds)
@@ -79,7 +86,7 @@ public sealed class DespacharRuta
                 ?? throw new InvalidOperationException("El vehículo no existe para ese operador.");
             if (!vehiculo.Activo)
                 throw new InvalidOperationException("El vehículo no está activo.");
-            if (vehiculo.MaximoParadas > 0 && envioIds.Count > vehiculo.MaximoParadas)
+            if (vehiculo.MaximoParadas > 0 && cantidadParadas > vehiculo.MaximoParadas)
                 throw new InvalidOperationException(
                     $"El vehículo admite como máximo {vehiculo.MaximoParadas} paradas.");
 
@@ -116,7 +123,7 @@ public sealed class DespacharRuta
             ruta.AsignarVehiculo(vehiculoElegido);
         var paradas = new List<Parada>(envioIds.Count);
         var eventIds = new List<Guid>();
-        var orden = 1;
+        var ordenPorDireccion = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         // RF 16: el orden de visita lo decide el despacho (ver OrdenDeParadas) y la app lo recorre tal cual.
         foreach (var envioId in await OrdenarAsync(operadorId, envioIds, cancellationToken))
@@ -143,7 +150,13 @@ public sealed class DespacharRuta
                 operadorId, envio.Id, anterior, envio.Estado, cancellationToken, responsable: "despacho");
             if (eventId is Guid id)
                 eventIds.Add(id);
-            paradas.Add(Parada.Programar(Guid.NewGuid(), operadorId, ruta.Id, envioId, orden++));
+            var direccion = DireccionNormalizada(envio.DireccionEntrega);
+            if (!ordenPorDireccion.TryGetValue(direccion, out var orden))
+            {
+                orden = ordenPorDireccion.Count + 1;
+                ordenPorDireccion.Add(direccion, orden);
+            }
+            paradas.Add(Parada.Programar(Guid.NewGuid(), operadorId, ruta.Id, envioId, orden));
             await CacheSeguimiento.PublicarAsync(_cache, envio, cancellationToken);
         }
 
@@ -172,7 +185,12 @@ public sealed class DespacharRuta
             .ThenBy(item => item.Zona ?? string.Empty, StringComparer.CurrentCultureIgnoreCase)
             .ThenBy(item => item.Posicion)
             .Select(item => item.Envio)
+            .GroupBy(envio => DireccionNormalizada(envio.DireccionEntrega), StringComparer.OrdinalIgnoreCase)
+            .SelectMany(grupo => grupo)
             .ToList();
+
+    public static string DireccionNormalizada(string direccion) =>
+        string.Join(" ", direccion.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
 
     private static string? ZonaDe(Envio envio, IReadOnlyDictionary<Guid, string> nombresDeZona) =>
         envio.ZonaId is Guid zona && nombresDeZona.TryGetValue(zona, out var nombre) ? nombre : null;

@@ -19,6 +19,7 @@ public interface IRepartidorService
     Task<bool> IniciarSesionAsync(string usuario, string clave) => Task.FromResult(IniciarSesion(usuario, clave));
     Task<ResultadoSincronizacion> SincronizarAsync() => Task.FromResult(Sincronizar());
     Task DescargarRutaAsync() => Task.CompletedTask;
+    Task IniciarRutaAsync() => throw new InvalidOperationException("Inicio de ruta no disponible en este servicio.");
     IReadOnlyList<EntregaPendiente> ObtenerHistorialEntregas() => ObtenerRuta().Envios
         .SelectMany(envio => (envio.Historial ?? [])
             .Where(comprobante => comprobante.Estado is EstadoEnvio.Entregado or EstadoEnvio.EntregadoParcialmente)

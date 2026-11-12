@@ -12,19 +12,22 @@ public sealed class IniciarRuta
     private readonly RegistrarOutboxEstado _outbox;
     private readonly PublicarOutboxPendientes _publicar;
     private readonly ICacheLectura _cache;
+    private readonly IRetiroRepositorio? _retiros;
 
     public IniciarRuta(
         IEnvioRepositorio envios,
         IRutaRepositorio rutas,
         RegistrarOutboxEstado outbox,
         PublicarOutboxPendientes publicar,
-        ICacheLectura cache)
+        ICacheLectura cache,
+        IRetiroRepositorio? retiros = null)
     {
         _envios = envios;
         _rutas = rutas;
         _outbox = outbox;
         _publicar = publicar;
         _cache = cache;
+        _retiros = retiros;
     }
 
     public async Task<ResultadoInicioRuta> EjecutarAsync(
@@ -42,10 +45,25 @@ public sealed class IniciarRuta
         var ruta = await _rutas.ObtenerAsync(operadorId, rutaId, cancellationToken)
             ?? throw new InvalidOperationException("La ruta no existe para ese operador.");
 
+        foreach (var otra in (await _rutas.ObtenerDelDiaAsync(operadorId, ruta.Fecha, cancellationToken))
+            .Where(item => item.RepartidorId == ruta.RepartidorId && item.Id != ruta.Id))
+        {
+            var otrosEnvios = await _envios.ObtenerPorRutaAsync(operadorId, otra.Id, cancellationToken);
+            if (otrosEnvios.Any(envio => envio.Estado == EstadoEnvio.EnTransito) ||
+                (_retiros is not null && (await _retiros.ListarAsync(operadorId, null, cancellationToken))
+                    .Any(retiro => retiro.RutaId == otra.Id && retiro.Estado == EstadoRetiro.EnCurso)))
+                throw new InvalidOperationException("El repartidor debe terminar su ruta en curso antes de iniciar otra.");
+        }
         var envios = await _envios.ObtenerPorRutaParaEditarAsync(operadorId, rutaId, cancellationToken);
         var pendientes = envios.Where(envio => envio.Estado == EstadoEnvio.AsignadoARuta).ToList();
-        if (pendientes.Count == 0)
-            throw new InvalidOperationException("La ruta no tiene envíos pendientes de salir.");
+        var retirosProgramados = _retiros is null ? [] :
+            (await _retiros.ListarAsync(operadorId, null, cancellationToken))
+                .Where(retiro => retiro.RutaId == ruta.Id && retiro.Estado == EstadoRetiro.Programado).ToList();
+        if (ruta.IniciadaEn is not null && pendientes.Count == 0 && retirosProgramados.Count == 0)
+            return new ResultadoInicioRuta(0, []);
+        if (pendientes.Count == 0 && retirosProgramados.Count == 0 &&
+            !envios.Any(envio => envio.Estado == EstadoEnvio.EnTransito))
+            throw new InvalidOperationException("La ruta no tiene envíos ni retiros pendientes de salir.");
 
         var iniciados = 0;
         var errores = new List<string>();
@@ -73,9 +91,12 @@ public sealed class IniciarRuta
             }
         }
 
-        if (iniciados == 0)
+        if (iniciados == 0 && pendientes.Count > 0)
             throw new InvalidOperationException(string.Join(" ", errores));
 
+        foreach (var retiro in retirosProgramados)
+            (await _retiros!.ObtenerAsync(operadorId, retiro.Id, cancellationToken))?.MarcarEnCurso();
+        ruta.Iniciar();
         await _envios.GuardarAsync(cancellationToken);
         foreach (var eventId in eventIds)
             await _publicar.EjecutarUnoAsync(eventId, cancellationToken);

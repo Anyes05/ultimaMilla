@@ -14,7 +14,7 @@ public sealed class RutaRepositorio : IRutaRepositorio
     }
 
     public Task<Ruta?> ObtenerAsync(Guid operadorId, Guid rutaId, CancellationToken cancellationToken = default) =>
-        _context.Rutas.AsNoTracking().FirstOrDefaultAsync(
+        _context.Rutas.FirstOrDefaultAsync(
             ruta => ruta.OperadorId == operadorId && ruta.Id == rutaId,
             cancellationToken);
 

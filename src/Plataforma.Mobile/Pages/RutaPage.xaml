@@ -20,6 +20,9 @@
             <Label Text="{Binding Titulo}" Style="{StaticResource HeadingLabel}" FontSize="22" />
             <Label Text="{Binding Resumen}" AutomationId="RutaResumen" FontAttributes="Bold" />
             <Label Text="{Binding EstadoPush}" Style="{StaticResource MutedLabel}" />
+                <Label Text="{Binding EstadoInicioRuta}" Style="{StaticResource MutedLabel}" />
+                <Button Text="Iniciar ruta" Command="{Binding IniciarRutaCommand}"
+                    IsVisible="{Binding PuedeIniciarRuta}" Style="{StaticResource SecondaryButton}" />
             <VerticalStackLayout IsVisible="{Binding RecorridoActivo}" Spacing="6">
                 <Label Text="{Binding ProgresoRecorrido}" Style="{StaticResource SectionLabel}" />
                 <Button Text="Siguiente parada" Command="{Binding SiguienteParadaCommand}" Style="{StaticResource SecondaryButton}" />

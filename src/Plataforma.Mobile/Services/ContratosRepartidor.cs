@@ -32,7 +32,8 @@ public sealed record EnvioContrato(
     IReadOnlyList<BultoContrato>? Bultos = null);
 public sealed record RutaContrato(
     Guid Id, DateOnly Fecha, OperadorContrato Operador, IReadOnlyList<EnvioContrato> Envios,
-    IReadOnlyList<RetiroContrato>? Retiros = null);
+    IReadOnlyList<RetiroContrato>? Retiros = null,
+    DateTimeOffset? IniciadaEn = null);
 public sealed record RetiroContrato(Guid Id, string Direccion, string Contacto,
     int CantidadBultos, int? PosicionEnRuta, Plataforma.Domain.EstadoRetiro Estado,
     string Motivo = "", string Observaciones = "", decimal PesoKg = 0,

@@ -120,7 +120,7 @@ public class DespachoModel : PageModel
 
     // Despachar e iniciar en un solo paso; desmarcado, la ruta queda esperando "Iniciar ruta".
     [BindProperty]
-    public bool IniciarAlDespachar { get; set; } = true;
+    public bool IniciarAlDespachar { get; set; }
 
     public async Task OnGetAsync()
     {

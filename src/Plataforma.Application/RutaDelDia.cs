@@ -54,7 +54,8 @@ public sealed record RutaDelDia(
     DateOnly Fecha,
     OperadorVisible Operador,
     IReadOnlyList<EnvioDeRuta> Envios,
-    IReadOnlyList<RetiroDeRuta>? Retiros = null);
+    IReadOnlyList<RetiroDeRuta>? Retiros = null,
+    DateTimeOffset? IniciadaEn = null);
 
 /// <summary>Resultado por bulto en sincronización v2 (borrador; v1 ignora la lista).</summary>
 public sealed record ResultadoBultoSync(

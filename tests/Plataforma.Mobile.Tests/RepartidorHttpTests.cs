@@ -35,6 +35,50 @@ public sealed partial class RepartidorHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task DespachoPosteriorNoSeMezclaConLaRutaEnCurso()
+    {
+        await Login();
+        var contrato = ContratosRepartidor.Leer<RutaContrato[]>(
+            ContratosRepartidor.LeerEjemplo("rutas-hoy.response.json"))[0];
+        var activa = contrato with
+        {
+            IniciadaEn = DateTimeOffset.UtcNow,
+            Envios = [contrato.Envios[0] with { Estado = EstadoEnvio.EnTransito }]
+        };
+        var siguiente = contrato with
+        {
+            Id = Guid.NewGuid(),
+            Envios = [contrato.Envios[0] with { Id = Guid.NewGuid(), Estado = EstadoEnvio.AsignadoARuta }]
+        };
+        handler.Respuestas.Enqueue(Ok(new[] { siguiente, activa }));
+
+        await service.DescargarRutaAsync();
+
+        Assert.Equal(activa.Id, service.ObtenerRuta().Id);
+        Assert.Equal(activa.Envios[0].Id, Assert.Single(service.ObtenerRuta().Envios).Id);
+        handler.Respuestas.Enqueue(Ok(new[] { activa with
+        {
+            Envios = [activa.Envios[0] with { Estado = EstadoEnvio.Entregado }]
+        }, siguiente }));
+        await service.DescargarRutaAsync();
+        Assert.Equal(siguiente.Id, service.ObtenerRuta().Id);
+        Assert.Null(service.ObtenerRuta().IniciadaEn);
+    }
+
+    [Fact]
+    public async Task IniciarRutaSolicitaConfirmacionSinAdelantarElEstadoLocal()
+    {
+        await Login();
+        var ruta = service.ObtenerRuta();
+        handler.Respuestas.Enqueue(Ok(new { iniciados = 1, errores = Array.Empty<string>() }));
+
+        await service.IniciarRutaAsync();
+
+        Assert.Equal($"/api/repartidor/rutas/{ruta.Id}/iniciar", handler.Requests.Last().Path);
+        Assert.Equal(ruta, service.ObtenerRuta());
+    }
+
+    [Fact]
     public async Task ActualizarRutaIncorporaDosEnviosDespachados()
     {
         await Login();
@@ -383,7 +427,6 @@ public sealed partial class RepartidorHttpTests : IDisposable
     {
         await RechazoConservaComprobanteYEstadoServidor();
         var comprobante = service.ObtenerRuta().Envios[0].Entrega;
-        // Cerrar sesión ya no se bloquea (93c8592): borra el token pero conserva el rechazo y su evidencia.
         service.CerrarSesion();
         Assert.False(service.HaySesion);
         Assert.Equal(comprobante, data.Leer().Ruta!.Envios[0].Entrega);
@@ -544,7 +587,6 @@ public sealed partial class RepartidorHttpTests : IDisposable
         Assert.Equal(DateOnly.FromDateTime(DateTime.Today), service.ObtenerRuta().Fecha);
         var archivada = Assert.Single(data.Leer().RutasPendientes!);
         Assert.Equal(envioPendiente.Id, Assert.Single(archivada.Envios).Id);
-        // La entrega de la ruta archivada sigue pendiente de enviar (no se descarta al cambiar de día).
         Assert.Equal(1, service.ObtenerCantidadSincronizacionesPendientes());
 
         handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(

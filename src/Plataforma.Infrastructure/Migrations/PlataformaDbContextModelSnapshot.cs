@@ -1349,6 +1349,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<DateOnly>("Fecha")
                         .HasColumnType("date");
 
+                    b.Property<DateTimeOffset?>("IniciadaEn")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("OperadorId")
                         .HasColumnType("uuid");
 

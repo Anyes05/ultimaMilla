@@ -24,6 +24,7 @@ public sealed class RepartidorHttpService(
         {
             var estado = data.Leer();
             return estado.HaySesion && !estado.RequiereAutenticacion &&
+                estado.Ruta?.IniciadaEn is not null &&
                 estado.Ruta?.Fecha == DateOnly.FromDateTime(DateTime.Today) &&
                 (estado.Ruta.Envios.Any(envio => envio.Estado == EstadoEnvio.EnTransito && envio.Entrega is null) ||
                  (estado.Ruta.Retiros ?? []).Any(retiro => retiro.PuedeRetirar &&
@@ -255,6 +256,20 @@ public sealed class RepartidorHttpService(
             ComprobantesConfirmados = historial,
             RutasPendientes = pendientesArchivados
         });
+    }
+
+    public async Task IniciarRutaAsync()
+    {
+        using var operacion = ExigirOperacion();
+        ExigirConexion();
+        var ruta = ObtenerRuta();
+        if (ruta.Id == Guid.Empty) throw new InvalidOperationException("No tienes una ruta asignada.");
+        var token = await LeerTokenAsync();
+        if (string.IsNullOrWhiteSpace(token)) throw new SesionRepartidorVencidaException();
+        using var solicitud = new HttpRequestMessage(HttpMethod.Post, $"api/repartidor/rutas/{ruta.Id}/iniciar");
+        solicitud.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        using var respuesta = await EnviarAsync(solicitud);
+        ExigirExito(respuesta);
     }
 
     public async Task<bool> IniciarSesionAsync(string usuario, string clave)
@@ -534,6 +549,12 @@ public sealed class RepartidorHttpService(
             throw new InvalidOperationException("La ruta recibida esta incompleta. Intenta actualizarla de nuevo; si continua, avisa al operador.");
         if (rutas.Any(ruta => ruta.Fecha != rutas[0].Fecha || !MismoOperador(ruta.Operador, rutas[0].Operador)))
             throw new InvalidOperationException("Las rutas recibidas no corresponden a una misma jornada. Solicita al operador que revise tu asignacion.");
+        var elegida = rutas.FirstOrDefault(ruta => ruta.Envios.Any(envio => envio.Estado == EstadoEnvio.EnTransito) ||
+                (ruta.Retiros ?? []).Any(retiro => retiro.Estado == Plataforma.Domain.EstadoRetiro.EnCurso))
+            ?? rutas.FirstOrDefault(ruta => ruta.Envios.Any(envio => envio.Estado == EstadoEnvio.AsignadoARuta) ||
+                (ruta.Retiros ?? []).Any(retiro => retiro.Estado == Plataforma.Domain.EstadoRetiro.Programado))
+            ?? rutas[0];
+        rutas = [elegida];
         var envios = rutas.SelectMany(ruta => ruta.Envios).ToArray();
         if (envios.Any(envio => envio is null || envio.Id == Guid.Empty) ||
             envios.Select(envio => envio.Id).Distinct().Count() != envios.Length)
@@ -549,7 +570,7 @@ public sealed class RepartidorHttpService(
             operador.PoliticaBultosPendientes, operador.ExigeDocumentoReceptor,
             rutas.SelectMany(ruta => (ruta.Retiros ?? []).Select(retiro => new RetiroEnRuta(
                 retiro.Id, ruta.Id, ruta.Fecha, retiro.Direccion, retiro.Contacto,
-                retiro.CantidadBultos, retiro.PosicionEnRuta, retiro.Estado))).ToArray());
+                retiro.CantidadBultos, retiro.PosicionEnRuta, retiro.Estado))).ToArray(), elegida.IniciadaEn);
     }
 
     private static bool MismoOperador(OperadorContrato actual, OperadorContrato esperado) =>

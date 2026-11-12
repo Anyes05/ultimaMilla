@@ -61,6 +61,29 @@ public partial class RutaViewModel(
     private Guid[] recorrido = [];
     private int paradaActual;
     private Ruta? rutaActual;
+    public bool PuedeIniciarRuta => rutaActual is { Id: var id, IniciadaEn: null } && id != Guid.Empty &&
+        (Envios.Any(envio => envio.Estado is EstadoEnvio.AsignadoARuta or EstadoEnvio.EnTransito) ||
+         Retiros.Any(retiro => retiro.Estado == Plataforma.Domain.EstadoRetiro.Programado));
+    public string EstadoInicioRuta => rutaActual?.IniciadaEn is { } inicio
+        ? $"Ruta iniciada: {inicio.ToLocalTime():dd/MM HH:mm}"
+        : "Ruta pendiente de inicio";
+
+    [RelayCommand]
+    private async Task IniciarRutaAsync()
+    {
+        if (Ocupado || !PuedeIniciarRuta) return;
+        Ocupado = true;
+        try
+        {
+            await repartidor.IniciarRutaAsync();
+            await repartidor.DescargarRutaAsync();
+            ActualizarRuta();
+            Mensaje = "Ruta iniciada. Puedes comenzar el reparto.";
+        }
+        catch (SesionRepartidorVencidaException ex) { await PedirAutenticacionAsync(ex); }
+        catch (InvalidOperationException ex) { Mensaje = ex.Message; }
+        finally { Ocupado = false; }
+    }
     private bool entregaParcialHabilitada;
     private IReadOnlyList<EntregaPendiente> historialCompleto = [];
     private IReadOnlyList<EntregaPendiente> historialFiltrado = [];
@@ -671,6 +694,7 @@ public partial class RutaViewModel(
     {
         var ruta = repartidor.ObtenerRuta();
         rutaActual = ruta;
+        OnPropertyChanged(nameof(EstadoInicioRuta));
         entregaParcialHabilitada = ruta.EntregaParcialHabilitada;
         OnPropertyChanged(nameof(UsaEntregaParcial));
         OnPropertyChanged(nameof(UsaEntregaCompleta));
@@ -693,11 +717,15 @@ public partial class RutaViewModel(
         if (!esRutaDeHoy)
             Mensaje = "La ruta guardada corresponde a otra fecha. Se conservan sus comprobantes; actualiza para consultar los envios de hoy.";
 
-        Resumen = $"{Envios.Count} envios | {Retiros.Count} retiros | " +
+        var paradasEntrega = Envios.Select(envio => string.Join(" ", envio.Direccion
+                .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)))
+            .Distinct(StringComparer.OrdinalIgnoreCase).Count();
+        Resumen = $"{paradasEntrega} paradas de entrega | {Envios.Count} envios | {Retiros.Count} retiros | " +
                   $"{Envios.Count(item => item.Estado == EstadoEnvio.Entregado)} entregados | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Pendiente)} pendientes | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Rechazado)} rechazados";
         ActualizarVisibles();
+        OnPropertyChanged(nameof(PuedeIniciarRuta));
     }
 
     private static int EnviarAlFinal(Envio envio) =>

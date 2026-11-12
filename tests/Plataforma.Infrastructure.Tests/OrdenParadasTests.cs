@@ -29,6 +29,19 @@ public sealed class OrdenParadasTests
     }
 
     [Fact]
+    public void MismaDireccionAgrupaEnviosSinPerderSusIdentificadores()
+    {
+        var primero = Envio.Admitir(Operador, Comercio, "Primero", "Calle 123");
+        var otraDireccion = Envio.Admitir(Operador, Comercio, "Segundo", "Otra calle 456");
+        var mismaDireccion = Envio.Admitir(Operador, Comercio, "Tercero", "  CALLE   123  ");
+
+        var orden = DespacharRuta.OrdenDeParadas([primero, otraDireccion, mismaDireccion], new Dictionary<Guid, string>());
+
+        Assert.Equal([primero.Id, mismaDireccion.Id, otraDireccion.Id], orden.Select(envio => envio.Id));
+        Assert.Equal(2, orden.Select(envio => DespacharRuta.DireccionNormalizada(envio.DireccionEntrega)).Distinct().Count());
+    }
+
+    [Fact]
     public async Task ObtenerPorRuta_DevuelveEnOrdenDeParada()
     {
         var operadorActual = new OperadorActualFijo(Operador);

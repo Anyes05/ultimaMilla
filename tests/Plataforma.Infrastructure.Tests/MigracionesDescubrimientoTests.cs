@@ -23,7 +23,8 @@ public class MigracionesDescubrimientoTests
         using var contexto = new PlataformaDbContext(options);
         var ids = contexto.Database.GetMigrations().ToArray();
 
-        Assert.Equal(22, ids.Length);
+        Assert.Equal(23, ids.Length);
+        Assert.Contains("20261112120000_InicioExplicitoRuta", ids);
         Assert.Contains("20261013023329_InitialCreate", ids);
         Assert.Contains("20261023010000_SeguimientoUnicoComprobanteYZona", ids);
         Assert.Contains("20261023020000_OutboxEnvioEstadoCambiado", ids);

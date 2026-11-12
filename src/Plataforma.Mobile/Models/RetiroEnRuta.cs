@@ -11,9 +11,9 @@ public sealed record RetiroEnRuta(Guid Id, Guid RutaId, DateOnly Fecha, string D
     RetiroPendiente? Comprobante = null, EstadoSincronizacion Sincronizacion = EstadoSincronizacion.SinCambios,
     string? MotivoRechazo = null)
 {
-    public bool PuedeRetirar => Comprobante is null && Estado is EstadoRetiro.Programado or EstadoRetiro.EnCurso;
+    public bool PuedeRetirar => Comprobante is null && Estado == EstadoRetiro.EnCurso;
     public string ParadaTexto => PosicionEnRuta is int posicion
-        ? $"Retiro despues de {posicion} entregas | {CantidadBultos} bultos | {Fecha:dd/MM}"
+        ? $"Retiro despues de {posicion} paradas | {CantidadBultos} bultos | {Fecha:dd/MM}"
         : $"Retiro al final de la ruta | {CantidadBultos} bultos | {Fecha:dd/MM}";
     public string EstadoTexto => Sincronizacion switch
     {
@@ -22,4 +22,4 @@ public sealed record RetiroEnRuta(Guid Id, Guid RutaId, DateOnly Fecha, string D
         EstadoSincronizacion.Sincronizado => "Retiro confirmado",
         _ => Estado.ToString()
     };
-}
+}

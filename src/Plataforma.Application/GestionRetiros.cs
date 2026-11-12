@@ -192,18 +192,24 @@ public sealed class GestionRetiros
             : null;
 
         var entregas = new List<EntregaEnRuta>();
-        foreach (var envio in await _envios.ObtenerPorRutaAsync(operadorId, ruta.Id, cancellationToken))
+        var enviosDeRuta = await _envios.ObtenerPorRutaAsync(operadorId, ruta.Id, cancellationToken);
+        foreach (var grupo in enviosDeRuta.GroupBy(envio => DespacharRuta.DireccionNormalizada(envio.DireccionEntrega)))
         {
+            decimal pesoParada = 0;
+            decimal volumenParada = 0;
+            foreach (var envio in grupo)
+            {
             // A bordo: lo que todavía no se entregó ni se devolvió.
             var aBordo = envio.Estado is EstadoEnvio.AsignadoARuta or EstadoEnvio.EnTransito
                 ? (await _bultos.ListarPorEnvioAsync(operadorId, envio.Id, cancellationToken))
                     .Where(bulto => bulto.Estado is EstadoBulto.Pendiente or EstadoBulto.EnRuta or EstadoBulto.PendienteNuevaVisita)
                     .ToList()
                 : [];
+                pesoParada += aBordo.Sum(bulto => bulto.PesoKg);
+                volumenParada += aBordo.Sum(bulto => bulto.AltoCm * bulto.AnchoCm * bulto.LargoCm);
+            }
             entregas.Add(new EntregaEnRuta(
-                $"Entrega {envio.NumeroSeguimiento}",
-                aBordo.Sum(bulto => bulto.PesoKg),
-                aBordo.Sum(bulto => bulto.AltoCm * bulto.AnchoCm * bulto.LargoCm)));
+                $"Entrega {grupo.First().DireccionEntrega}", pesoParada, volumenParada));
         }
 
         var retiros = (await _retiros.ListarAsync(operadorId, null, cancellationToken))

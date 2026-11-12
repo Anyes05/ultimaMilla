@@ -6,6 +6,7 @@ public class Ruta
     public Guid OperadorId { get; private set; }
     public Guid RepartidorId { get; private set; }
     public DateOnly Fecha { get; private set; }
+    public DateTimeOffset? IniciadaEn { get; private set; }
 
     /// <summary>Vehículo elegido al despachar; contra su capacidad se validan los retiros que se suman (RF 39).</summary>
     public Guid? VehiculoId { get; private set; }
@@ -36,5 +37,10 @@ public class Ruta
         if (vehiculoId == Guid.Empty)
             throw new ArgumentException("El vehículo es requerido.", nameof(vehiculoId));
         VehiculoId = vehiculoId;
+    }
+
+    public void Iniciar()
+    {
+        IniciadaEn ??= DateTimeOffset.UtcNow;
     }
 }

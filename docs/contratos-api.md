@@ -141,6 +141,21 @@ Archivo: `contracts/repartidor/login.response.json` (el `token` de ejemplo es fi
 
 ### 3.2 `GET /api/repartidor/rutas/hoy`
 
+Cada ruta incluye `iniciadaEn` (datetime con offset, nullable): null hasta iniciar,
+y la fecha UTC del primer inicio confirmado despues. La app selecciona la ruta
+con tareas en curso; los despachos posteriores no se agregan a ese recorrido.
+
+**Inicio explicito:** `POST /api/repartidor/rutas/{rutaId}/iniciar`, con Bearer de
+repartidor y sin cuerpo. Verifica operador y pertenencia al repartidor; inicia
+los envios asignados y los retiros programados, y conserva la fecha en reintentos.
+Devuelve `200` con `{ "iniciados": 2, "errores": [] }`, `401` sin acceso valido,
+`404` si la ruta no pertenece al repartidor y `409` si no puede iniciarse
+(por ejemplo, otra ruta de esa jornada sigue con tareas en curso).
+
+En el despacho, direcciones iguales ignorando mayusculas y espacios repetidos
+comparten numero de parada; no se fusionan los envios ni sus comprobantes.
+Los limites de peso y volumen siguen considerando todos sus bultos.
+
 Devuelve las rutas del día del repartidor autenticado. Los `envios` de cada ruta vienen **en orden de visita** (RF 16): urgentes primero, después agrupados por zona y, dentro de cada grupo, en el orden en que el despachador los eligió. La app los recorre en ese orden.
 
 **Headers:** `Authorization: Bearer <token repartidor>`

@@ -1,5 +1,30 @@
 # Plataforma.Mobile - desarrollo local y handoff de CI
 
+## Inicio de ruta y paradas agrupadas (12/11)
+
+Desplegar primero el backend y aplicar la migracion
+20261112120000_InicioExplicitoRuta. El inicio confirmado guarda IniciadaEn en UTC.
+No se aplico esta migracion al ambiente publicado desde esta sesion.
+
+La app muestra Iniciar ruta para la ruta pendiente. Requiere conexion y confirma
+POST /api/repartidor/rutas/{rutaId}/iniciar antes de descargar el estado actualizado.
+El servidor verifica operador y repartidor, pasa envios a EnTransito y retiros
+a EnCurso, y rechaza iniciar otra ruta si quedan tareas en curso en otra ruta
+de la misma jornada. Backoffice conserva el inicio manual; Iniciar al despachar
+queda desmarcado por defecto. Un inicio repetido conserva la fecha original.
+
+La app prioriza la ruta en curso y no mezcla los despachos posteriores con ella.
+Tras confirmar sus tareas y actualizar, muestra la siguiente ruta pendiente.
+La evidencia offline sigue conservandose hasta sincronizar; iniciar no se simula
+localmente sin confirmacion del servidor.
+
+Al despachar, los envios a la misma direccion comparten numero de parada.
+La comparacion ignora mayusculas y espacios repetidos; no interpreta abreviaturas
+ni coordenadas. El limite de paradas del vehiculo usa direcciones distintas,
+pero peso y volumen siguen sumando todos los bultos. Cada envio mantiene su
+identificador, comprobante y resultado individual. En rutas mixtas, la posicion
+del retiro se calcula respecto a las paradas de entrega agrupadas.
+
 ## Preparacion de defensa: pendientes del 11/11
 
 La app Android incorpora documento del receptor, biometria nativa, control de

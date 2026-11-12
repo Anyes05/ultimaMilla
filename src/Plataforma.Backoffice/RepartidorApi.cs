@@ -107,6 +107,29 @@ public static class RepartidorApi
 
         var repartidor = app.MapGroup("/api/repartidor");
 
+        repartidor.MapPost("/rutas/{rutaId:guid}/iniciar", async (
+            Guid rutaId, ClaimsPrincipal principal, IRutaRepositorio rutas,
+            IniciarRuta iniciar, GestionRetiros retiros, CancellationToken cancellationToken) =>
+        {
+            if (!AccesoActual.Intentar(principal, out var acceso) || acceso.Rol != Roles.Repartidor ||
+                acceso.RepartidorId is not Guid repartidorId)
+                return Results.Unauthorized();
+            var ruta = await rutas.ObtenerAsync(acceso.OperadorId, rutaId, cancellationToken);
+            if (ruta is null || ruta.RepartidorId != repartidorId) return Results.NotFound();
+            try
+            {
+                var resultado = await iniciar.EjecutarAsync(acceso.OperadorId, rutaId,
+                    principal.Identity?.Name, cancellationToken);
+                await retiros.IniciarRutaAsync(acceso.OperadorId, rutaId, cancellationToken);
+                return Results.Json(resultado, ObtenerRutasDeHoy.OpcionesJson);
+            }
+            catch (ArgumentException ex) { return Results.BadRequest(new { mensaje = ex.Message }); }
+            catch (InvalidOperationException ex) { return Results.Conflict(new { mensaje = ex.Message }); }
+        }).RequireAuthorization()
+            .WithName("IniciarRutaRepartidor")
+            .Produces<ResultadoInicioRuta>().Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
+
         repartidor.MapPost("/login", async (
             LoginRepartidorSolicitud solicitud,
             IniciarSesionRepartidor iniciar,
