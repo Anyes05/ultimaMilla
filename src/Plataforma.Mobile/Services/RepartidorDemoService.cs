@@ -125,7 +125,9 @@ public sealed class RepartidorDemoService(RepartidorLocalData data) : IRepartido
     {
         var bultos = envio.Bultos ?? throw new InvalidOperationException("La ruta no contiene el detalle de bultos. Actualiza la ruta antes de registrar una entrega parcial.");
         var resultadosEvento = evento.Bultos ?? throw new InvalidOperationException("El evento no contiene resultados por bulto.");
-        if (!ruta.EntregaParcialHabilitada)
+        if (!ruta.EntregaParcialHabilitada &&
+            resultadosEvento.Any(resultado => resultado.Estado == EstadoBulto.Entregado) &&
+            resultadosEvento.Any(resultado => resultado.Estado != EstadoBulto.Entregado))
             throw new InvalidOperationException("La entrega parcial no esta habilitada para este operador.");
         if (resultadosEvento.Select(resultado => resultado.BultoId).Distinct().Count() != resultadosEvento.Count)
             throw new InvalidOperationException("No se puede registrar dos veces el mismo bulto en una parada.");

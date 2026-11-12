@@ -308,8 +308,8 @@ public partial class RutaViewModel(
         repartidor.ObtenerCantidadComprobantesFueraDeRuta() > 0 ||
         Retiros.Any(retiro => retiro.Sincronizacion == EstadoSincronizacion.Rechazado);
     public bool SinEnvios => Envios.Count == 0 && Retiros.Count == 0;
-    public bool UsaEntregaParcial => entregaParcialHabilitada &&
-        (EnvioSeleccionado?.Bultos?.Any(bulto => bulto.PuedeEntregarse) ?? false);
+    public bool UsaEntregaParcial =>
+        EnvioSeleccionado?.Bultos?.Any(bulto => bulto.PuedeEntregarse) ?? false;
     public bool UsaEntregaCompleta => !EsRetiro && !UsaEntregaParcial;
     public string EvidenciaRequeridaTexto => rutaActual is null
         ? string.Empty
@@ -385,7 +385,7 @@ public partial class RutaViewModel(
         IntentoFallido = false;
         BultosEntrega.Clear();
         var bultosEnvio = envio.Bultos ?? [];
-        if (entregaParcialHabilitada && bultosEnvio.Count > 0)
+        if (bultosEnvio.Count > 0)
         {
             var motivos = rutaActual?.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados;
             foreach (var bulto in bultosEnvio.Where(bulto => bulto.PuedeEntregarse))
@@ -445,6 +445,9 @@ public partial class RutaViewModel(
                 throw new InvalidOperationException("La regla del operador exige el documento del receptor.");
             if (UsaEntregaParcial)
             {
+                if (!entregaParcialHabilitada && BultosEntrega.Any(item => item.Entregado) &&
+                    BultosEntrega.Any(item => !item.Entregado))
+                    throw new InvalidOperationException("Escanea todos los bultos para entregar el envio. El operador no permite entregas parciales.");
                 if (BultosEntrega.Any(item => !item.Entregado && string.IsNullOrWhiteSpace(item.MotivoNoEntrega)))
                     throw new InvalidOperationException("Selecciona un motivo del catálogo para cada bulto no entregado.");
                 if (BultosEntrega.Any(item => item.Entregado) && string.IsNullOrWhiteSpace(NombreReceptor))
@@ -466,7 +469,8 @@ public partial class RutaViewModel(
                 var estadosFinales = bultosEnvio.Select(bulto => bulto.Estado).ToArray();
                 for (var index = 0; index < bultosEnvio.Count; index++)
                 {
-                    var resultado = bultos.Single(item => item.BultoId == bultosEnvio[index].Id);
+                    var resultado = bultos.SingleOrDefault(item => item.BultoId == bultosEnvio[index].Id);
+                    if (resultado is null) continue;
                     var estadoBulto = resultado.Estado;
                     if (estadoBulto == EstadoBulto.NoEntregado && rutaActual?.AdmiteEntregaParcial == true)
                         estadoBulto = rutaActual.PoliticaBultosPendientes == PoliticaBultosPendientes.DevolucionAlComercio

@@ -1,5 +1,15 @@
 # Plataforma.Mobile - desarrollo local y handoff de CI
 
+## Escaneo de entrega por bulto (RF 32)
+
+Si el envio contiene bultos, cada bulto entregado requiere su escaneo, incluso
+cuando es el unico y la entrega parcial esta deshabilitada. Un codigo incorrecto
+no lo marca como entregado. Los no entregados requieren un motivo del catalogo.
+Sin entrega parcial habilitada no se admite mezclar entregados y no entregados.
+El escaneo se conserva localmente hasta guardar el comprobante; las evidencias
+se asocian a los bultos entregados. El flujo sin detalle de bultos conserva el
+comportamiento anterior por envio.
+
 ## Inicio de ruta y paradas agrupadas (12/11)
 
 Desplegar primero el backend y aplicar la migracion

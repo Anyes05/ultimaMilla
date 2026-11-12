@@ -305,6 +305,42 @@ public sealed class RecorridoDemoTests : IDisposable
     }
 
     [Fact]
+    public async Task UnSoloBultoExigeEscaneoAunqueEntregaParcialEsteDeshabilitada()
+    {
+        var servicio = CrearSesion();
+        var ruta = servicio.ObtenerRuta();
+        var envio = ruta.Envios[0];
+        var bulto = new BultoEnvio(Guid.NewGuid(), "UNICO-1", 1, EstadoBulto.EnRuta);
+        var data = new RepartidorLocalData(Path.Combine(directory, "demo.db"));
+        data.Guardar(data.Leer() with
+        {
+            Ruta = ruta with
+            {
+                Funcionalidades = [], AdmiteEntregaParcial = false,
+                Envios = ruta.Envios.Select(item => item.Id == envio.Id ? item with { Bultos = [bulto] } : item).ToArray()
+            }
+        });
+        var vm = new RutaViewModel(new RepartidorDemoService(data), new NavegacionPrueba(), NullLogger<RutaViewModel>.Instance);
+        vm.CargarCommand.Execute(null);
+        vm.ConexionSimulada = false;
+        vm.SeleccionarEntregaCommand.Execute(vm.Envios.Single(item => item.Id == envio.Id));
+        vm.NombreReceptor = "Receptor";
+
+        Assert.Single(vm.BultosEntrega);
+        await vm.GuardarEntregaCommand.ExecuteAsync(null);
+        Assert.Null(data.Leer().Ruta!.Envios.Single(item => item.Id == envio.Id).Entrega);
+        vm.RegistrarBultoEntregado(bulto.Id, "INCORRECTO");
+        Assert.False(Assert.Single(vm.BultosEntrega).Entregado);
+        vm.RegistrarBultoEntregado(bulto.Id, bulto.Codigo);
+        await vm.GuardarEntregaCommand.ExecuteAsync(null);
+
+        var comprobante = data.Leer().Ruta!.Envios.Single(item => item.Id == envio.Id).Entrega;
+        Assert.NotNull(comprobante);
+        Assert.Equal(EstadoEnvio.Entregado, comprobante.Estado);
+        Assert.Equal(bulto.Id, Assert.Single(comprobante.Bultos!).BultoId);
+    }
+
+    [Fact]
     public void EntregaParcialGuardaResultadosPorBultoYMotivoEnLaColaOffline()
     {
         var service = CrearSesion();
