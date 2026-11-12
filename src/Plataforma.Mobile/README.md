@@ -37,8 +37,8 @@ archivo existente RepartidorHttpTests.
 
 Configurar huella o reconocimiento facial en Android 9 o posterior. Guardar una
 entrega, intento o retiro pide identidad biometrica. Cancelar o fallar no guarda
-el comprobante. Salir con pendientes, rechazos o escaneos tambien pide biometria;
-si se confirma, elimina la sesion y conserva los datos de la cuenta original.
+el comprobante. Cerrar sesion no pide biometria porque no elimina evidencias:
+elimina la sesion y conserva los datos cifrados de la cuenta original.
 La app no guarda huellas ni imagenes del rostro ni sustituye biometria por una
 confirmacion simple. Un dispositivo sin biometria configurada no puede completar
 esas operaciones.
@@ -235,7 +235,9 @@ identificadores y se marca que hace falta autenticar de nuevo. La app muestra
 acceso sin ejecutar Cerrar sesion ni borrar la cola. Tampoco restaura esa sesion
 como valida tras reiniciar ni reintenta automaticamente hasta ingresar de nuevo.
 El login de la misma cuenta conserva pendientes y desbloquea la sincronizacion;
-otra cuenta/operador no puede reemplazar esa ruta. HTTP 403 no invalida la sesion.
+otra cuenta/operador no puede reemplazar esa ruta durante la sesion activa.
+Tras cerrar sesion puede ingresar otra cuenta, con sus datos locales separados.
+HTTP 403 no invalida la sesion.
 
 Cada solicitud HTTP de la app crea una Activity W3C y envia traceparent.
 Si hay una operacion padre, conserva su TraceId con un SpanId nuevo y propaga
@@ -281,8 +283,10 @@ Cada base API queda ligada al operador y repartidor del login; se rechaza
 reemplazarla con otro usuario mientras conserve su ruta. Cerrar sesion elimina
 el token y permite volver al acceso aunque haya pendientes o rechazos. En ese
 caso, o si hay escaneos guardados, conserva los datos locales para la cuenta
-original. Hay que ingresar con esa cuenta y resolverlos antes de cambiar de
-usuario. Sin pendientes ni escaneos se libera la ruta al cerrar sesion.
+original. Se permite cambiar de usuario tras salir: cada operador/repartidor
+tiene un snapshot independiente, cifrado con el mismo mecanismo que la cola.
+Volver a autenticar la cuenta original recupera sus comprobantes pendientes.
+Sin pendientes ni escaneos se libera la ruta activa al cerrar sesion.
 
 Login descarga rutas cuando no hay ruta local; reautenticarse conserva los
 comprobantes. **Descargar ruta** actualiza desde el servidor solo sin pendientes

@@ -101,6 +101,15 @@ public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? ci
                 throw new InvalidOperationException("No pudimos proteger los nuevos datos. Se conservo el registro anterior; solicita ayuda al operador antes de continuar.");
             command.Parameters.AddWithValue("$datos", payload);
             command.ExecuteNonQuery();
+            if (estado.OperadorId is Guid operador && estado.RepartidorId is Guid repartidor)
+            {
+                using var cuenta = connection.CreateCommand();
+                cuenta.Transaction = transaction;
+                cuenta.CommandText = "INSERT INTO EstadosCuenta (Cuenta, Datos) VALUES ($cuenta, $datos) ON CONFLICT(Cuenta) DO UPDATE SET Datos = excluded.Datos";
+                cuenta.Parameters.AddWithValue("$cuenta", $"{operador:N}:{repartidor:N}");
+                cuenta.Parameters.AddWithValue("$datos", payload);
+                cuenta.ExecuteNonQuery();
+            }
             transaction.Commit();
         }
         catch (SqliteException ex)
@@ -111,6 +120,22 @@ public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? ci
         {
             throw new InvalidOperationException("No pudimos proteger ni guardar el registro. No salgas del formulario; solicita ayuda al operador.", ex);
         }
+    }
+
+    public EstadoLocalDemo? LeerCuenta(Guid operador, Guid repartidor)
+    {
+        using var connection = Abrir();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Datos FROM EstadosCuenta WHERE Cuenta = $cuenta";
+        command.Parameters.AddWithValue("$cuenta", $"{operador:N}:{repartidor:N}");
+        if (command.ExecuteScalar() is not string json) return null;
+        if (json.StartsWith("aesgcm1:", StringComparison.Ordinal))
+            json = (cipher ?? throw new InvalidOperationException("No se pueden abrir los datos protegidos de la cuenta.")).Descifrar(json);
+        var estado = JsonSerializer.Deserialize<EstadoLocalDemo>(json, JsonOptions)
+            ?? throw new InvalidOperationException("No se pudieron recuperar los datos de la cuenta.");
+        if (estado.OperadorId != operador || estado.RepartidorId != repartidor)
+            throw new InvalidOperationException("Los datos guardados no corresponden a la cuenta.");
+        return estado;
     }
 
     private SqliteConnection Abrir()
@@ -130,6 +155,10 @@ public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? ci
                 PRAGMA secure_delete = ON;
                 CREATE TABLE IF NOT EXISTS EstadoDemo (
                     Id INTEGER PRIMARY KEY CHECK (Id = 1),
+                    Datos TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS EstadosCuenta (
+                    Cuenta TEXT PRIMARY KEY,
                     Datos TEXT NOT NULL
                 );
                 """;

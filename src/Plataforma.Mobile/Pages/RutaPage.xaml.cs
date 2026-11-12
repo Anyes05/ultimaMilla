@@ -85,9 +85,9 @@ public partial class RutaPage : ContentPage
     private async void CerrarSesion(object? sender, EventArgs e)
     {
         if (viewModel.Ocupado) return;
-        if (viewModel.TieneComprobantesSinResolver && !await ConfirmarIdentidadAsync("Cerrar sesion con comprobantes pendientes")) return;
         viewModel.Ocupado = true;
-        try { await notificaciones.QuitarAsync(); }
+        try { await notificaciones.QuitarAsync().WaitAsync(TimeSpan.FromSeconds(5)); }
+        catch (TimeoutException) { logger.LogWarning("El cierre local continua sin esperar al registro push"); }
         finally { viewModel.Ocupado = false; }
         await viewModel.CerrarSesionCommand.ExecuteAsync(null);
         await rastreo.ActualizarAsync(permitirInicio: false);

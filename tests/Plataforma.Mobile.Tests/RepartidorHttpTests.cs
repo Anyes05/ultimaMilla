@@ -550,6 +550,33 @@ public sealed partial class RepartidorHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task CambiarCuentaTrasSalirConservaPendientesSinMezclarlos()
+    {
+        await Login();
+        var sesionOriginal = ContratosRepartidor.Leer<LoginRespuesta>(ContratosRepartidor.LeerEjemplo("login.response.json"));
+        service.RegistrarEntrega(service.ObtenerRuta().Envios[0].Id, "Receptor", "");
+        var comprobante = service.ObtenerRuta().Envios[0].Entrega;
+        service.CerrarSesion();
+        Assert.False(service.HaySesion);
+        Assert.Null(tokens.Value);
+        handler.Respuestas.Enqueue(Ok(sesionOriginal with
+        {
+            OperadorId = Guid.NewGuid(), RepartidorId = Guid.NewGuid(), Token = "otra-cuenta"
+        }));
+        handler.Respuestas.Enqueue(Ok(Array.Empty<RutaContrato>()));
+
+        Assert.True(await service.IniciarSesionAsync("otra-cuenta", "clave"));
+        Assert.Empty(service.ObtenerRuta().Envios);
+        Assert.Equal(0, service.ObtenerCantidadSincronizacionesPendientes());
+        service.CerrarSesion();
+        handler.Respuestas.Enqueue(Ok(sesionOriginal));
+
+        Assert.True(await service.IniciarSesionAsync("original", "clave"));
+        Assert.Equal(comprobante, service.ObtenerRuta().Envios[0].Entrega);
+        Assert.Equal(1, service.ObtenerCantidadSincronizacionesPendientes());
+    }
+
+    [Fact]
     public async Task ReloginConservaColaYRechazaOtroOperador()
     {
         await Login();

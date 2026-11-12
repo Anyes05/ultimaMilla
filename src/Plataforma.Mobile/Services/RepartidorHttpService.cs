@@ -293,7 +293,15 @@ public sealed class RepartidorHttpService(
         var estado = data.Leer();
         if (estado.Ruta is not null &&
             (estado.RepartidorId != sesion.RepartidorId || estado.OperadorId != sesion.OperadorId))
-            throw new InvalidOperationException("Hay datos pendientes de otro repartidor. Ingresa con la cuenta original y sincronizalos antes de cambiar de usuario.");
+        {
+            if (estado.HaySesion)
+                throw new InvalidOperationException("Cierra la sesion actual antes de cambiar de cuenta.");
+            data.Guardar(estado);
+            estado = data.LeerCuenta(sesion.OperadorId, sesion.RepartidorId)
+                ?? new EstadoLocalDemo(null, false, new Dictionary<Guid, EstadoEnvio>());
+        }
+        else if (estado.Ruta is null)
+            estado = data.LeerCuenta(sesion.OperadorId, sesion.RepartidorId) ?? estado;
         // Una nueva autenticacion no puede reemplazar comprobantes locales.
         if (estado.Ruta is null)
         {
