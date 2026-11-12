@@ -240,7 +240,10 @@ public partial class RutaPage : ContentPage
         catch (Exception ex)
         {
             logger.LogWarning(ex, "No se pudo escanear el bulto de entrega");
-            viewModel.Mensaje = "No se pudo escanear el bulto. No se marco como entregado.";
+            viewModel.Mensaje = ex is InvalidOperationException
+                ? ex.Message
+                : "No se pudo escanear el bulto. No se marco como entregado.";
+            await DisplayAlertAsync("Bulto sin registrar", viewModel.Mensaje, "Aceptar");
         }
     }
 
@@ -300,7 +303,12 @@ public partial class RutaPage : ContentPage
                 finally { resultado.TrySetResult(string.IsNullOrWhiteSpace(codigo) ? null : codigo.Trim()); }
             }
             camera.BarcodesDetected += (_, args) =>
-                MainThread.BeginInvokeOnMainThread(async () => await Terminar(args.Results.FirstOrDefault()?.Value));
+            {
+                var codigo = args.Results.FirstOrDefault(resultadoDetectado =>
+                    !string.IsNullOrWhiteSpace(resultadoDetectado.Value))?.Value;
+                if (string.IsNullOrWhiteSpace(codigo)) return;
+                MainThread.BeginInvokeOnMainThread(async () => await Terminar(codigo));
+            };
             cerrar.Clicked += async (_, _) => await Terminar(null);
             manual.Clicked += async (_, _) =>
             {
@@ -327,6 +335,7 @@ public partial class RutaPage : ContentPage
         viewModel.SoloRutasDeHoy = true;
         viewModel.ConexionSimulada = Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
         viewModel.PropertyChanged += CambioSeleccion;
+        if (viewModel.Ocupado) return;
         await viewModel.RefrescarRutaAlMostrarAsync();
         await rastreo.ActualizarAsync();
         await notificaciones.ActualizarAsync();

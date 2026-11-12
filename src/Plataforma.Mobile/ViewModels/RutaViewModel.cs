@@ -505,9 +505,22 @@ public partial class RutaViewModel(
 
     public void RegistrarBultoEntregado(Guid bultoId, string codigoEscaneado)
     {
-        if (Ocupado || !UsaEntregaParcial) return;
+        if (Ocupado)
+        {
+            Mensaje = "Hay una operacion en curso. Vuelve a escanear el bulto cuando termine.";
+            return;
+        }
+        if (!UsaEntregaParcial)
+        {
+            Mensaje = "La entrega seleccionada ya no permite registrar bultos. Vuelve a abrirla.";
+            return;
+        }
         var item = BultosEntrega.SingleOrDefault(bulto => bulto.Bulto.Id == bultoId);
-        if (item is null) return;
+        if (item is null)
+        {
+            Mensaje = "El bulto ya no pertenece a la entrega seleccionada. Vuelve a abrirla.";
+            return;
+        }
         if (!string.Equals(item.Bulto.Codigo, codigoEscaneado, StringComparison.Ordinal))
         {
             Mensaje = "El codigo escaneado no corresponde a este bulto. No se marco como entregado.";
