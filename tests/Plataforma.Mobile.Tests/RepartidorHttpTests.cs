@@ -376,7 +376,17 @@ public sealed partial class RepartidorHttpTests : IDisposable
         Assert.Equal(new ResultadoSincronizacion(0, 1, 1), await service.SincronizarAsync());
         Assert.Equal(comprobante, service.ObtenerRuta().Envios[0].Entrega);
         Assert.Equal(EstadoEnvio.Extraviado, service.ObtenerRuta().Envios[0].Estado);
-        Assert.Throws<InvalidOperationException>(() => service.CerrarSesion());
+    }
+
+    [Fact]
+    public async Task CerrarSesionConservaRechazosYSuEvidencia()
+    {
+        await RechazoConservaComprobanteYEstadoServidor();
+        var comprobante = service.ObtenerRuta().Envios[0].Entrega;
+        // Cerrar sesión ya no se bloquea (93c8592): borra el token pero conserva el rechazo y su evidencia.
+        service.CerrarSesion();
+        Assert.False(service.HaySesion);
+        Assert.Equal(comprobante, data.Leer().Ruta!.Envios[0].Entrega);
     }
 
     [Theory]
@@ -534,7 +544,8 @@ public sealed partial class RepartidorHttpTests : IDisposable
         Assert.Equal(DateOnly.FromDateTime(DateTime.Today), service.ObtenerRuta().Fecha);
         var archivada = Assert.Single(data.Leer().RutasPendientes!);
         Assert.Equal(envioPendiente.Id, Assert.Single(archivada.Envios).Id);
-        Assert.Throws<InvalidOperationException>(() => service.CerrarSesion());
+        // La entrega de la ruta archivada sigue pendiente de enviar (no se descarta al cambiar de día).
+        Assert.Equal(1, service.ObtenerCantidadSincronizacionesPendientes());
 
         handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
             [new AplicadoContrato(envioPendiente.Id, EstadoEnvio.Entregado, 1)], [])));
