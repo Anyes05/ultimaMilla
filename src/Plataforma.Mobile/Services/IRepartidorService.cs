@@ -40,4 +40,9 @@ public interface IRepartidorService
     void RegistrarEntrega(Guid envioId, string nombreReceptor, string observaciones);
     ResultadoSincronizacion Sincronizar();
     void CerrarSesion();
+    Task CerrarSesionAsync()
+    {
+        CerrarSesion();
+        return Task.CompletedTask;
+    }
 }

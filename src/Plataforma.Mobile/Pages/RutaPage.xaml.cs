@@ -82,15 +82,25 @@ public partial class RutaPage : ContentPage
         finally { viewModel.Ocupado = false; }
     }
 
+    private bool cerrandoSesion;
+
     private async void CerrarSesion(object? sender, EventArgs e)
     {
-        if (viewModel.Ocupado) return;
-        viewModel.Ocupado = true;
-        try { await notificaciones.QuitarAsync().WaitAsync(TimeSpan.FromSeconds(5)); }
-        catch (TimeoutException) { logger.LogWarning("El cierre local continua sin esperar al registro push"); }
-        finally { viewModel.Ocupado = false; }
-        await viewModel.CerrarSesionCommand.ExecuteAsync(null);
-        await rastreo.ActualizarAsync(permitirInicio: false);
+        if (cerrandoSesion) return;
+        if (viewModel.Ocupado)
+        {
+            viewModel.Mensaje = "Espera a que termine la operacion actual y vuelve a cerrar sesion.";
+            return;
+        }
+        cerrandoSesion = true;
+        try
+        {
+            try { await notificaciones.QuitarAsync().WaitAsync(TimeSpan.FromSeconds(5)); }
+            catch (TimeoutException) { logger.LogWarning("El cierre local continua sin esperar al registro push"); }
+            await viewModel.CerrarSesionCommand.ExecuteAsync(null);
+            await rastreo.ActualizarAsync(permitirInicio: false);
+        }
+        finally { cerrandoSesion = false; }
     }
 
     private void LimpiarVistaPreviaFoto()

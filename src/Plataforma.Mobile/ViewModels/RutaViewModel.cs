@@ -673,7 +673,7 @@ public partial class RutaViewModel(
         Ocupado = true;
         try
         {
-            repartidor.CerrarSesion();
+            await repartidor.CerrarSesionAsync();
             RecorridoActivo = false;
             Envios.Clear();
             CancelarEntrega();

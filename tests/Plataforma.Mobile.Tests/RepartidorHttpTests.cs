@@ -550,6 +550,26 @@ public sealed partial class RepartidorHttpTests : IDisposable
     }
 
     [Fact]
+    public async Task CierreAsincronoEsperaLaOperacionActualSinRechazarLaSalida()
+    {
+        await Login();
+        var lectura = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var token = tokens.Value;
+        tokens.Lectura = lectura.Task;
+        handler.Respuestas.Enqueue(Ejemplo("rutas-hoy.response.json"));
+        var descarga = service.DescargarRutaAsync();
+
+        var cierre = service.CerrarSesionAsync();
+
+        Assert.False(cierre.IsCompleted);
+        lectura.SetResult(token);
+        await descarga;
+        await cierre;
+        Assert.False(service.HaySesion);
+        Assert.Null(tokens.Value);
+    }
+
+    [Fact]
     public async Task CambiarCuentaTrasSalirConservaPendientesSinMezclarlos()
     {
         await Login();

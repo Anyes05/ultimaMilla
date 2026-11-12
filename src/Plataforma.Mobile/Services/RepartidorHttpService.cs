@@ -498,6 +498,18 @@ public sealed class RepartidorHttpService(
     public void CerrarSesion()
     {
         using var operacion = ExigirOperacion();
+        CerrarSesionLocal();
+    }
+
+    public async Task CerrarSesionAsync()
+    {
+        await operaciones.WaitAsync();
+        try { CerrarSesionLocal(); }
+        finally { operaciones.Release(); }
+    }
+
+    private void CerrarSesionLocal()
+    {
         var estado = data.Leer();
         var conservarDatos = (estado.RetirosConComprobante ?? []).Any(retiro => retiro.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado) ||
             RepartidorLocalData.RutasConEventosSinResolver(estado).Count > 0 ||
