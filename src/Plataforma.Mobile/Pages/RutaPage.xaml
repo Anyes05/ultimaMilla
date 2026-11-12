@@ -111,6 +111,8 @@
             </VerticalStackLayout>
         <VerticalStackLayout Grid.Row="3" Spacing="8">
             <ActivityIndicator IsRunning="{Binding Ocupado}" IsVisible="{Binding Ocupado}" HeightRequest="24" />
+            <Button Text="Sincronizar comprobantes" Command="{Binding SincronizarCommand}"
+                    Style="{StaticResource SecondaryButton}" />
             <Button Text="Actualizar ruta" Command="{Binding DescargarRutaCommand}"
                     Style="{StaticResource SecondaryButton}" />
         </VerticalStackLayout>

@@ -604,8 +604,7 @@ public partial class RutaViewModel(
         try
         {
             var resultado = await repartidor.SincronizarAsync();
-            if (resultado.Aplicadas > 0)
-                await repartidor.DescargarRutaAsync();
+            await repartidor.DescargarRutaAsync();
             ActualizarRuta();
             Mensaje = resultado.Rechazadas > 0
                 ? "Hay registros rechazados. Revisa el motivo en cada envio; los comprobantes se conservan."
@@ -653,6 +652,17 @@ public partial class RutaViewModel(
         Mensaje = "Consultando la ruta en el servidor...";
         try
         {
+            if (repartidor.ObtenerCantidadSincronizacionesPendientes() > 0)
+            {
+                Mensaje = "Sincronizando comprobantes antes de actualizar la ruta...";
+                var resultado = await repartidor.SincronizarAsync();
+                if (resultado.Rechazadas > 0)
+                {
+                    ActualizarRuta();
+                    Mensaje = "Hay registros rechazados. Revisa el motivo en el envio o retiro; las pruebas se conservan.";
+                    return;
+                }
+            }
             await repartidor.DescargarRutaAsync();
             ActualizarRuta();
             var anteriores = repartidor.ObtenerCantidadComprobantesFueraDeRuta();
@@ -710,6 +720,8 @@ public partial class RutaViewModel(
     private void ActualizarRuta()
     {
         var ruta = repartidor.ObtenerRuta();
+        if (rutaActual is not null && rutaActual.Id != ruta.Id)
+            RecorridoActivo = false;
         rutaActual = ruta;
         OnPropertyChanged(nameof(EstadoInicioRuta));
         entregaParcialHabilitada = ruta.EntregaParcialHabilitada;

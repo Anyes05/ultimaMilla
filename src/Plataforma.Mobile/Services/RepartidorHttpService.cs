@@ -149,6 +149,8 @@ public sealed class RepartidorHttpService(
         var estado = data.Leer();
         if (!HaySesion) throw new SesionRepartidorVencidaException();
         return (estado.RetirosConComprobante ?? []).Concat(estado.Ruta?.Retiros ?? [])
+            .Where(retiro => retiro.RutaId == estado.Ruta?.Id ||
+                retiro.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado)
             .DistinctBy(retiro => retiro.Id).OrderBy(retiro => retiro.PosicionEnRuta ?? int.MaxValue).ToArray();
     }
 
@@ -204,7 +206,8 @@ public sealed class RepartidorHttpService(
 
     public async Task DescargarRutaAsync()
     {
-        using var operacion = ExigirOperacion();
+        await operaciones.WaitAsync();
+        using var operacion = new Liberar(operaciones);
         ExigirConexion();
         _ = ObtenerRuta();
         var estado = data.Leer();
@@ -322,7 +325,8 @@ public sealed class RepartidorHttpService(
 
     public async Task<ResultadoSincronizacion> SincronizarAsync()
     {
-        using var operacion = ExigirOperacion();
+        await operaciones.WaitAsync();
+        using var operacion = new Liberar(operaciones);
         ExigirConexion();
         _ = ObtenerRuta();
         var estado = data.Leer();
