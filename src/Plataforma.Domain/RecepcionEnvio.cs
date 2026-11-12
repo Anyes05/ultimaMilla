@@ -16,9 +16,41 @@ public class RecepcionEnvio
     public string Usuario { get; private set; } = string.Empty;
     public DateTimeOffset Fecha { get; private set; }
 
+    /// <summary>Llegaron todos los bultos (al recibir o después): la discrepancia queda registrada pero cerrada.</summary>
+    public bool Completada => BultosRecibidos >= BultosEsperados;
+
     private RecepcionEnvio()
     {
     }
+
+    /// <summary>
+    /// Un bulto que faltaba llegó después (RF 10): deja de figurar como faltante, suma al conteo y queda anotado
+    /// cuándo llegó. Si la recepción guardó los códigos faltantes, solo acepta esos.
+    /// </summary>
+    public bool RegistrarLlegadaPosterior(string codigo, DateTimeOffset cuando)
+    {
+        if (Completada)
+            return false;
+        var faltantes = BultosFaltantes.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        if (faltantes.Count > 0)
+        {
+            var indice = faltantes.FindIndex(faltante => string.Equals(faltante, codigo.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (indice < 0)
+                return false;
+            faltantes.RemoveAt(indice);
+            BultosFaltantes = string.Join('\n', faltantes);
+        }
+
+        BultosRecibidos++;
+        var nota = $"Llegó después: {codigo.Trim()} ({RelojOperacionTexto(cuando)}).";
+        Observaciones = (string.IsNullOrWhiteSpace(Observaciones) ? nota : $"{Observaciones} {nota}");
+        if (Observaciones.Length > 2000)
+            Observaciones = Observaciones[..2000];
+        return true;
+    }
+
+    private static string RelojOperacionTexto(DateTimeOffset cuando) =>
+        cuando.ToOffset(TimeSpan.FromHours(-3)).ToString("dd/MM HH:mm");
 
     public static RecepcionEnvio Registrar(
         Guid id,

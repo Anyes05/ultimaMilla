@@ -9,6 +9,8 @@ public interface IRecepcionRepositorio
         Guid operadorId,
         int limite,
         CancellationToken cancellationToken = default);
+    /// <summary>La recepción más reciente del envío, para registrar bultos que llegan después.</summary>
+    Task<RecepcionEnvio?> ObtenerUltimaAsync(Guid operadorId, Guid envioId, CancellationToken cancellationToken = default);
     Task GuardarAsync(CancellationToken cancellationToken = default);
 }
 
@@ -86,10 +88,11 @@ public sealed class RecibirEnvioEnDeposito
     }
 
     /// <summary>
-    /// RF 10 por escaneo: el operario escanea los códigos de los bultos que llegaron (de uno o varios envíos). Cada
-    /// envío pendiente se recibe con lo escaneado y queda registrado qué bultos declarados faltaron. Escanear el número
-    /// de seguimiento recibe el envío completo (envíos sin bultos o etiqueta del envío). Los códigos que no son de
-    /// ningún envío pendiente se informan y no se reciben.
+    /// RF 10 por escaneo, de a un bulto o varios por vez: cada código marca su bulto como llegado al depósito y el
+    /// envío se recibe recién cuando llegaron todos sus bultos (sin discrepancia). Mientras tanto queda "en
+    /// recepción". Si el resto no va a llegar, el operario lo decide con <see cref="CerrarConFaltantesAsync"/>.
+    /// Escanear el número de seguimiento recibe el envío completo. Un bulto que faltó al cerrar y llega después
+    /// completa esa recepción. Los códigos que no son de ningún envío pendiente se informan.
     /// </summary>
     public async Task<ResultadoEscaneoRecepcion> RecibirPorEscaneoAsync(
         Guid operadorId,
@@ -106,9 +109,11 @@ public sealed class RecibirEnvioEnDeposito
         if (limpios.Count == 0)
             throw new ArgumentException("Escaneá al menos un código.");
 
-        var escaneadosPorEnvio = new Dictionary<Guid, HashSet<Guid>>();
+        var ahora = DateTimeOffset.UtcNow;
+        var enviosTocados = new List<Guid>();
         var completos = new HashSet<Guid>();
         var noReconocidos = new List<string>();
+        var llegadas = new List<LlegadaPosterior>();
         foreach (var codigo in limpios)
         {
             // Los códigos se generan en mayúsculas; tipeados a mano pueden venir en minúsculas.
@@ -119,44 +124,71 @@ public sealed class RecibirEnvioEnDeposito
                 var envioDelBulto = await _envios.ObtenerPorOperadorAsync(bulto.EnvioId, operadorId, cancellationToken);
                 if (envioDelBulto?.Estado != EstadoEnvio.Admitido)
                 {
+                    // Un bulto que faltó al cerrar la recepción y llega después la completa.
+                    if (envioDelBulto is not null
+                        && await _recepciones.ObtenerUltimaAsync(operadorId, envioDelBulto.Id, cancellationToken) is { } previa
+                        && previa.RegistrarLlegadaPosterior(bulto.Codigo, ahora))
+                    {
+                        bulto.MarcarRecibidoEnDeposito(ahora);
+                        llegadas.Add(new LlegadaPosterior(envioDelBulto.NumeroSeguimiento, bulto.Codigo, previa.Completada));
+                        continue;
+                    }
+
                     noReconocidos.Add($"{codigo} (su envío ya fue recibido o no está pendiente)");
                     continue;
                 }
 
-                if (!escaneadosPorEnvio.TryGetValue(bulto.EnvioId, out var bultos))
-                    escaneadosPorEnvio[bulto.EnvioId] = bultos = [];
-                bultos.Add(bulto.Id);
+                if (!bulto.MarcarRecibidoEnDeposito(ahora))
+                {
+                    noReconocidos.Add($"{codigo} (ya estaba escaneado)");
+                    continue;
+                }
+
+                if (!enviosTocados.Contains(bulto.EnvioId))
+                    enviosTocados.Add(bulto.EnvioId);
                 continue;
             }
 
             var envio = await _envios.ObtenerPorNumeroAsync(codigo, cancellationToken)
                 ?? await _envios.ObtenerPorNumeroAsync(codigo.ToUpperInvariant(), cancellationToken);
             if (envio is not null && envio.OperadorId == operadorId && envio.Estado == EstadoEnvio.Admitido)
+            {
                 completos.Add(envio.Id);
+                if (!enviosTocados.Contains(envio.Id))
+                    enviosTocados.Add(envio.Id);
+            }
             else
+            {
                 noReconocidos.Add(codigo);
+            }
         }
 
+        // Las marcas de los bultos quedan guardadas aunque el envío siga en recepción.
+        await _bultos.GuardarAsync(cancellationToken);
+
         var recibidos = new List<RecepcionEscaneada>();
+        var enCurso = new List<RecepcionEnCurso>();
         var errores = new List<string>();
-        foreach (var envioId in escaneadosPorEnvio.Keys.Union(completos))
+        foreach (var envioId in enviosTocados)
         {
             var envio = (await _envios.ObtenerPorOperadorAsync(envioId, operadorId, cancellationToken))!;
             var declarados = await _bultos.ListarPorEnvioAsync(operadorId, envioId, cancellationToken);
+            var llegados = declarados.Count(bulto => bulto.RecibidoEnDeposito is not null);
+            if (!completos.Contains(envioId) && declarados.Count > 0 && llegados < declarados.Count)
+            {
+                enCurso.Add(new RecepcionEnCurso(
+                    envio.NumeroSeguimiento,
+                    llegados,
+                    declarados.Count,
+                    declarados.Where(bulto => bulto.RecibidoEnDeposito is null).Select(bulto => bulto.Codigo).OrderBy(c => c).ToList()));
+                continue;
+            }
+
             var esperados = Math.Max(1, declarados.Count);
-            var faltantes = completos.Contains(envioId) || declarados.Count == 0
-                ? []
-                : declarados.Where(bulto => !escaneadosPorEnvio[envioId].Contains(bulto.Id)).Select(bulto => bulto.Codigo).OrderBy(c => c).ToList();
-            var cantidad = esperados - faltantes.Count;
-            var nota = faltantes.Count == 0
-                ? observaciones
-                : string.IsNullOrWhiteSpace(observaciones)
-                    ? $"Faltan: {string.Join(", ", faltantes)}"
-                    : $"{observaciones.Trim()} (faltan: {string.Join(", ", faltantes)})";
             try
             {
-                await EjecutarAsync(operadorId, envioId, cantidad, usuario, nota, cancellationToken, faltantes);
-                recibidos.Add(new RecepcionEscaneada(envio.NumeroSeguimiento, esperados, cantidad, faltantes));
+                await EjecutarAsync(operadorId, envioId, esperados, usuario, observaciones, cancellationToken);
+                recibidos.Add(new RecepcionEscaneada(envio.NumeroSeguimiento, esperados, esperados, []));
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
@@ -164,7 +196,36 @@ public sealed class RecibirEnvioEnDeposito
             }
         }
 
-        return new ResultadoEscaneoRecepcion(recibidos, noReconocidos, errores);
+        if (llegadas.Count > 0)
+            await _recepciones.GuardarAsync(cancellationToken);
+
+        return new ResultadoEscaneoRecepcion(recibidos, noReconocidos, errores, llegadas, enCurso);
+    }
+
+    /// <summary>
+    /// El operario decide que el resto de los bultos no va a llegar: recibe el envío con lo escaneado y registra
+    /// la discrepancia con los códigos que faltan. Si alguno llega después, se escanea y completa la recepción.
+    /// </summary>
+    public async Task<RecepcionEscaneada> CerrarConFaltantesAsync(
+        Guid operadorId,
+        Guid envioId,
+        string usuario,
+        string observaciones = "",
+        CancellationToken cancellationToken = default)
+    {
+        var envio = await _envios.ObtenerPorOperadorAsync(envioId, operadorId, cancellationToken)
+            ?? throw new InvalidOperationException("El envío no existe para ese operador.");
+        var declarados = await _bultos.ListarPorEnvioAsync(operadorId, envioId, cancellationToken);
+        var esperados = Math.Max(1, declarados.Count);
+        var faltantes = declarados.Where(bulto => bulto.RecibidoEnDeposito is null).Select(bulto => bulto.Codigo).OrderBy(c => c).ToList();
+        var recibidos = declarados.Count == 0 ? esperados : declarados.Count - faltantes.Count;
+        var nota = faltantes.Count == 0
+            ? observaciones
+            : string.IsNullOrWhiteSpace(observaciones)
+                ? $"Faltan: {string.Join(", ", faltantes)}"
+                : $"{observaciones.Trim()} (faltan: {string.Join(", ", faltantes)})";
+        await EjecutarAsync(operadorId, envioId, recibidos, usuario, nota, cancellationToken, faltantes);
+        return new RecepcionEscaneada(envio.NumeroSeguimiento, esperados, recibidos, faltantes);
     }
 }
 
@@ -179,7 +240,15 @@ public sealed record RecepcionEscaneada(
 public sealed record ResultadoEscaneoRecepcion(
     IReadOnlyList<RecepcionEscaneada> Recibidos,
     IReadOnlyList<string> NoReconocidos,
-    IReadOnlyList<string> Errores);
+    IReadOnlyList<string> Errores,
+    IReadOnlyList<LlegadaPosterior>? LlegadasPosteriores = null,
+    IReadOnlyList<RecepcionEnCurso>? EnCurso = null);
+
+/// <summary>Envío que se está escaneando: llegaron algunos bultos y faltan otros (todavía sin discrepancia).</summary>
+public sealed record RecepcionEnCurso(string NumeroSeguimiento, int Escaneados, int Esperados, IReadOnlyList<string> Faltantes);
+
+/// <summary>Un bulto que había faltado y llegó después; Completa = ya llegaron todos los de ese envío.</summary>
+public sealed record LlegadaPosterior(string NumeroSeguimiento, string Codigo, bool Completa);
 
 public sealed record DiscrepanciaRecepcion(
     string NumeroSeguimiento,
@@ -189,7 +258,8 @@ public sealed record DiscrepanciaRecepcion(
     string Observaciones,
     string Usuario,
     DateTimeOffset Fecha,
-    string BultosFaltantes = "");
+    string BultosFaltantes = "",
+    bool Completada = false);
 
 public sealed record ResultadoRecepcion(
     Guid EnvioId,

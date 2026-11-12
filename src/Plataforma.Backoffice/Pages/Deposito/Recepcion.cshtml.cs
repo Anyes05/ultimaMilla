@@ -57,8 +57,16 @@ public class RecepcionModel : PageModel
 
         var pendientes = new List<PendienteRecepcion>(resultado.Items.Count);
         foreach (var envio in resultado.Items)
-            pendientes.Add(new PendienteRecepcion(envio, await EsperadosAsync(acceso.OperadorId, envio.Id, ct)));
-        Pendientes = pendientes;
+        {
+            var bultos = await _bultos.ListarPorEnvioAsync(acceso.OperadorId, envio.Id, ct);
+            pendientes.Add(new PendienteRecepcion(
+                envio,
+                Math.Max(1, bultos.Count),
+                bultos.Count(bulto => bulto.RecibidoEnDeposito is not null),
+                bultos.Where(bulto => bulto.RecibidoEnDeposito is null).Select(bulto => bulto.Codigo).OrderBy(c => c).ToList()));
+        }
+        // Los que se están escaneando, primero.
+        Pendientes = pendientes.OrderByDescending(pendiente => pendiente.Escaneados > 0).ToList();
 
         Discrepancias = await _recepciones.ListarDiscrepanciasAsync(acceso.OperadorId, DiscrepanciasVisibles, ct);
     }
@@ -111,7 +119,7 @@ public class RecepcionModel : PageModel
         return RedirectToPage();
     }
 
-    /// <summary>RF 10: recibe lo escaneado (códigos de bultos o números de seguimiento), uno por línea.</summary>
+    /// <summary>RF 10: registra lo escaneado (un bulto por vez o varios); el envío se recibe al llegar todos sus bultos.</summary>
     public async Task<IActionResult> OnPostEscanearAsync(string? codigos, string? observaciones)
     {
         if (!AccesoActual.Intentar(User, out var acceso))
@@ -120,14 +128,20 @@ public class RecepcionModel : PageModel
         try
         {
             var usuario = string.IsNullOrWhiteSpace(User.Identity?.Name) ? acceso.UsuarioId.ToString() : User.Identity.Name;
-            var lista = (codigos ?? string.Empty).Split(['\n', '\r', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var lista = (codigos ?? string.Empty).Split(['\n', '\r', ',', ';', ' ', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var resultado = await _recibir.RecibirPorEscaneoAsync(
                 acceso.OperadorId, lista, usuario, observaciones ?? string.Empty, HttpContext.RequestAborted);
 
-            if (resultado.Recibidos.Count > 0)
-                TempData["Mensaje"] = string.Join(" ", resultado.Recibidos.Select(recibido => recibido.Faltantes.Count == 0
-                    ? $"{recibido.NumeroSeguimiento}: completo ({recibido.BultosRecibidos} de {recibido.BultosEsperados})."
-                    : $"{recibido.NumeroSeguimiento}: con discrepancia, llegaron {recibido.BultosRecibidos} de {recibido.BultosEsperados}; faltan {string.Join(", ", recibido.Faltantes)}."));
+            var llegadas = (resultado.LlegadasPosteriores ?? []).Select(llegada => llegada.Completa
+                ? $"{llegada.NumeroSeguimiento}: llegó {llegada.Codigo}; ya están todos sus bultos."
+                : $"{llegada.NumeroSeguimiento}: llegó {llegada.Codigo}; todavía faltan bultos.");
+            var enCurso = (resultado.EnCurso ?? []).Select(curso =>
+                $"{curso.NumeroSeguimiento}: {curso.Escaneados} de {curso.Esperados} bultos escaneados; faltan {string.Join(", ", curso.Faltantes)}.");
+            var completos = resultado.Recibidos.Select(recibido =>
+                $"{recibido.NumeroSeguimiento}: completo ({recibido.BultosRecibidos} de {recibido.BultosEsperados}), recibido en depósito.");
+            var mensajes = llegadas.Concat(enCurso).Concat(completos).ToList();
+            if (mensajes.Count > 0)
+                TempData["Mensaje"] = string.Join(" ", mensajes);
             var problemas = resultado.NoReconocidos.Select(codigo => $"No es de ningún envío pendiente: {codigo}.")
                 .Concat(resultado.Errores)
                 .ToList();
@@ -143,8 +157,33 @@ public class RecepcionModel : PageModel
         return RedirectToPage();
     }
 
+    /// <summary>El operario decide que los bultos que faltan no van a llegar: se recibe con discrepancia.</summary>
+    public async Task<IActionResult> OnPostCerrarConFaltantesAsync(Guid envioId, string? observaciones)
+    {
+        if (!AccesoActual.Intentar(User, out var acceso))
+            return Challenge();
+
+        try
+        {
+            var usuario = string.IsNullOrWhiteSpace(User.Identity?.Name) ? acceso.UsuarioId.ToString() : User.Identity.Name;
+            var cerrado = await _recibir.CerrarConFaltantesAsync(
+                acceso.OperadorId, envioId, usuario, observaciones ?? string.Empty, HttpContext.RequestAborted);
+            TempData["Mensaje"] = cerrado.Faltantes.Count == 0
+                ? $"{cerrado.NumeroSeguimiento}: recibido completo."
+                : $"{cerrado.NumeroSeguimiento}: recibido con discrepancia, llegaron {cerrado.BultosRecibidos} de {cerrado.BultosEsperados}; faltan {string.Join(", ", cerrado.Faltantes)}.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            TempData["Error"] = TextosUsuario.Error(ex);
+        }
+
+        // PRG: recargar no vuelve a cerrar.
+        return RedirectToPage();
+    }
+
     private async Task<int> EsperadosAsync(Guid operadorId, Guid envioId, CancellationToken ct) =>
         Math.Max(1, (await _bultos.ListarPorEnvioAsync(operadorId, envioId, ct)).Count);
 
-    public sealed record PendienteRecepcion(Envio Envio, int BultosEsperados);
+    /// <param name="Escaneados">Bultos ya escaneados en esta recepción (el envío sigue pendiente hasta tenerlos todos).</param>
+    public sealed record PendienteRecepcion(Envio Envio, int BultosEsperados, int Escaneados = 0, IReadOnlyList<string>? Faltantes = null);
 }

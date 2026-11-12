@@ -312,6 +312,9 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<decimal>("PesoKg")
                         .HasColumnType("numeric");
 
+                    b.Property<DateTimeOffset?>("RecibidoEnDeposito")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
 
                     b.HasIndex("OperadorId", "Estado");

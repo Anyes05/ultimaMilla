@@ -22,22 +22,22 @@
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
-        <form method="post" asp-page-handler="Escanear" class="row g-3" autocomplete="off">
-            <div class="col-12 col-lg-7">
-                <label class="form-label fw-semibold" for="codigos">Bultos escaneados</label>
-                <textarea id="codigos" name="codigos" class="form-control font-monospace" rows="5" autofocus required
-                          placeholder="Escaneá los QR de los bultos, uno por línea (el lector agrega el salto de línea)."></textarea>
-                <div class="form-text">Podés mezclar bultos de varios envíos. Si escaneás el número de seguimiento, el envío se recibe completo.</div>
+        @* El lector escribe el código y manda Enter: cada escaneo se registra solo y el foco vuelve acá. *@
+        <form method="post" asp-page-handler="Escanear" class="row g-2 align-items-end" autocomplete="off">
+            <div class="col-12 col-md-8 col-xl-6">
+                <label class="form-label fw-semibold" for="codigos">Escaneá un bulto</label>
+                <input id="codigos" name="codigos" class="form-control form-control-lg font-monospace" autofocus required
+                       placeholder="Código del QR del bulto o número de seguimiento" />
             </div>
-            <div class="col-12 col-lg-5 d-flex flex-column gap-2">
-                <div>
-                    <label class="form-label fw-semibold" for="observacionesEscaneo">Observaciones <span class="text-muted fw-normal">(opcional)</span></label>
-                    <input id="observacionesEscaneo" name="observaciones" class="form-control" maxlength="400" />
-                </div>
-                <button class="btn btn-primary btn-lg mt-lg-auto" type="submit">Recibir lo escaneado</button>
+            <div class="col-12 col-md-4 col-xl-3 d-grid">
+                <button class="btn btn-primary btn-lg" type="submit">Registrar</button>
             </div>
         </form>
-        <p class="small text-muted mt-2 mb-0">Sin lector, también podés recibir desde la lista de abajo indicando la cantidad.</p>
+        <p class="small text-muted mt-2 mb-0">
+            Escaneá los bultos de a uno, en el orden que lleguen. El envío se recibe cuando llegan todos sus bultos;
+            mientras tanto aparece abajo como "en recepción". Si los que faltan no van a llegar, usá "Cerrar con faltantes".
+            El número de seguimiento recibe el envío completo.
+        </p>
     </div>
 </div>
 
@@ -50,7 +50,7 @@
     <div class="table-responsive">
         <table class="table align-middle mb-0">
             <thead class="table-light">
-                <tr><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Esperados</th><th>Recibidos</th><th>Observaciones</th><th></th></tr>
+                <tr><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Escaneados</th><th>Recibidos</th><th>Observaciones</th><th></th></tr>
             </thead>
             <tbody>
             @if (Model.Pendientes.Count == 0)
@@ -63,7 +63,17 @@
                 <tr>
                     <td><span class="tracking-number">@pendiente.Envio.NumeroSeguimiento</span></td>
                     <td>@pendiente.Envio.Destinatario</td>
-                    <td class="text-center">@pendiente.BultosEsperados</td>
+                    <td class="text-center" data-escaneados="@pendiente.Envio.Id">
+                        @if (pendiente.Escaneados > 0)
+                        {
+                            <span class="status-badge status-en-transito">En recepción: @pendiente.Escaneados de @pendiente.BultosEsperados</span>
+                            <span class="d-block small text-muted font-monospace mt-1">Faltan: @string.Join(", ", pendiente.Faltantes ?? [])</span>
+                        }
+                        else
+                        {
+                            <span>0 de @pendiente.BultosEsperados</span>
+                        }
+                    </td>
                     <td style="max-width: 7rem">
                         <input form="@formulario" name="bultosRecibidos" type="number" min="0" step="1" value="@pendiente.BultosEsperados" class="form-control form-control-sm" aria-label="Bultos recibidos" required />
                     </td>
@@ -73,7 +83,14 @@
                     <td class="text-end">
                         <form id="@formulario" method="post" asp-page-handler="Recibir">
                             <input type="hidden" name="envioId" value="@pendiente.Envio.Id" />
-                            <button class="btn btn-sm btn-outline-primary" type="submit">Recibir</button>
+                            <div class="d-flex flex-wrap justify-content-end gap-2">
+                                <button class="btn btn-sm btn-outline-primary" type="submit">Recibir</button>
+                                @if (pendiente.Escaneados > 0)
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" type="submit" asp-page-handler="CerrarConFaltantes"
+                                            title="Los bultos que faltan no van a llegar: se recibe con discrepancia">Cerrar con faltantes</button>
+                                }
+                            </div>
                         </form>
                     </td>
                 </tr>
@@ -113,7 +130,16 @@
                     <td>@discrepancia.Destinatario</td>
                     <td class="text-center">@discrepancia.BultosEsperados</td>
                     <td class="text-center">@discrepancia.BultosRecibidos</td>
-                    <td class="small font-monospace" data-faltantes>@(string.IsNullOrEmpty(discrepancia.BultosFaltantes) ? "—" : discrepancia.BultosFaltantes.Replace("\n", ", "))</td>
+                    <td class="small font-monospace" data-faltantes>
+                        @if (discrepancia.Completada)
+                        {
+                            <span class="status-badge status-entregado">Completa</span>
+                        }
+                        else
+                        {
+                            @(string.IsNullOrEmpty(discrepancia.BultosFaltantes) ? "—" : discrepancia.BultosFaltantes.Replace("\n", ", "))
+                        }
+                    </td>
                     <td>@discrepancia.Observaciones</td>
                     <td>@discrepancia.Usuario</td>
                     <td>@RelojOperacion.ParaContrato(discrepancia.Fecha).ToString("dd/MM/yyyy HH:mm")</td>

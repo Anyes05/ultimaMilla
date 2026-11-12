@@ -72,4 +72,16 @@ public class Bulto
     }
 
     public bool DisponibleParaNuevaRuta => DerivacionEstadoEnvio.DisponibleParaNuevaRuta(Estado);
+
+    /// <summary>Cuándo se escaneó en la recepción del depósito (RF 10); vacío si todavía no llegó.</summary>
+    public DateTimeOffset? RecibidoEnDeposito { get; private set; }
+
+    /// <summary>Marca el bulto como llegado al depósito. Devuelve false si ya estaba marcado (escaneo repetido).</summary>
+    public bool MarcarRecibidoEnDeposito(DateTimeOffset cuando)
+    {
+        if (RecibidoEnDeposito is not null)
+            return false;
+        RecibidoEnDeposito = cuando;
+        return true;
+    }
 }

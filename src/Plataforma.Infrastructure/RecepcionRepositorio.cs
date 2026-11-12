@@ -28,9 +28,16 @@ public sealed class RecepcionRepositorio : IRecepcionRepositorio
                    recepcion.Observaciones,
                    recepcion.Usuario,
                    recepcion.Fecha,
-                   recepcion.BultosFaltantes))
+                   recepcion.BultosFaltantes,
+                   recepcion.BultosRecibidos >= recepcion.BultosEsperados))
             .Take(limite)
             .ToListAsync(cancellationToken);
+
+    public Task<RecepcionEnvio?> ObtenerUltimaAsync(Guid operadorId, Guid envioId, CancellationToken cancellationToken = default) =>
+        _context.RecepcionesEnvio
+            .Where(recepcion => recepcion.OperadorId == operadorId && recepcion.EnvioId == envioId)
+            .OrderByDescending(recepcion => recepcion.Fecha)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public Task GuardarAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
