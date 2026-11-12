@@ -33,6 +33,28 @@ public sealed class RecepcionRepositorio : IRecepcionRepositorio
             .Take(limite)
             .ToListAsync(cancellationToken);
 
+    public async Task AgregarSobranteAsync(BultoSobrante sobrante, CancellationToken cancellationToken = default) =>
+        await _context.BultosSobrantes.AddAsync(sobrante, cancellationToken);
+
+    public async Task<IReadOnlyList<SobranteRecepcion>> ListarSobrantesAsync(
+        Guid operadorId,
+        int limite,
+        CancellationToken cancellationToken = default) =>
+        await (from sobrante in _context.BultosSobrantes.AsNoTracking()
+               join envio in _context.Envios.AsNoTracking() on sobrante.EnvioId equals envio.Id into envios
+               from envio in envios.DefaultIfEmpty()
+               where sobrante.OperadorId == operadorId
+               orderby sobrante.Fecha descending
+               select new SobranteRecepcion(
+                   sobrante.Codigo,
+                   envio == null ? null : envio.NumeroSeguimiento,
+                   envio == null ? null : envio.Destinatario,
+                   sobrante.Motivo,
+                   sobrante.Usuario,
+                   sobrante.Fecha))
+            .Take(limite)
+            .ToListAsync(cancellationToken);
+
     public Task<RecepcionEnvio?> ObtenerUltimaAsync(Guid operadorId, Guid envioId, CancellationToken cancellationToken = default) =>
         _context.RecepcionesEnvio
             .Where(recepcion => recepcion.OperadorId == operadorId && recepcion.EnvioId == envioId)

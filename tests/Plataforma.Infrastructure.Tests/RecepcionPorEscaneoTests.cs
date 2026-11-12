@@ -40,10 +40,14 @@ public sealed class RecepcionPorEscaneoTests
         // En la misma tanda: un envío de un bulto, uno sin bultos por su número y un código ajeno.
         var tanda = await recibir.RecibirPorEscaneoAsync(Operador, ["UNO-B01", sinBultos.NumeroSeguimiento, "XYZ-999"], "operario");
         Assert.Equal(2, tanda.Recibidos.Count);
-        Assert.Equal(["XYZ-999"], tanda.NoReconocidos);
+        Assert.Empty(tanda.NoReconocidos);
+        Assert.Contains("XYZ-999", Assert.Single(tanda.Sobrantes!));
         Assert.Equal(EstadoEnvio.EnDeposito, await EstadoAsync(contexto, uno.Id));
 
+        // Sin faltantes: la única discrepancia es el código ajeno, como bulto sobrante.
         Assert.Empty(await new RecepcionRepositorio(contexto).ListarDiscrepanciasAsync(Operador, 10));
+        var sobrante = Assert.Single(await new RecepcionRepositorio(contexto).ListarSobrantesAsync(Operador, 10));
+        Assert.Equal(("XYZ-999", (string?)null), (sobrante.Codigo, sobrante.NumeroSeguimiento));
     }
 
     [Fact]
@@ -74,8 +78,11 @@ public sealed class RecepcionPorEscaneoTests
         Assert.Equal((3, true, ""), (completa.BultosRecibidos, completa.Completada, completa.BultosFaltantes));
         Assert.Contains("Llegó después: TRES-B03", completa.Observaciones);
 
-        // Ya completo: un nuevo escaneo de ese envío no se cuenta.
-        Assert.Contains("ya fue recibido", Assert.Single((await recibir.RecibirPorEscaneoAsync(Operador, ["TRES-B03"], "operario")).NoReconocidos));
+        // Ya completo: un nuevo escaneo de ese envío es un bulto sobrante, ligado a su envío.
+        var extra = await recibir.RecibirPorEscaneoAsync(Operador, ["TRES-B03"], "operario");
+        Assert.Contains("ya fue recibido", Assert.Single(extra.Sobrantes!));
+        var sobrante = Assert.Single(await new RecepcionRepositorio(contexto).ListarSobrantesAsync(Operador, 10));
+        Assert.Equal(("TRES-B03", tres.NumeroSeguimiento, "Tres bultos"), (sobrante.Codigo, sobrante.NumeroSeguimiento, sobrante.Destinatario));
     }
 
     [Fact]

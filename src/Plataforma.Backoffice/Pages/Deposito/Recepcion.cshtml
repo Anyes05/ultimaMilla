@@ -35,7 +35,8 @@
         </form>
         <p class="small text-muted mt-2 mb-0">
             Escaneá los bultos de a uno, en el orden que lleguen. El envío se recibe cuando llegan todos sus bultos;
-            mientras tanto aparece abajo como "en recepción". Si los que faltan no van a llegar, usá "Cerrar con faltantes".
+            mientras tanto aparece abajo como "en recepción". Si los que faltan no van a llegar, tocá "Recibir": se recibe con
+            lo escaneado y los que faltan quedan como discrepancia. Un bulto que no está para recibir queda como sobrante.
             El número de seguimiento recibe el envío completo.
         </p>
     </div>
@@ -75,7 +76,15 @@
                         }
                     </td>
                     <td style="max-width: 7rem">
-                        <input form="@formulario" name="bultosRecibidos" type="number" min="0" step="1" value="@pendiente.BultosEsperados" class="form-control form-control-sm" aria-label="Bultos recibidos" required />
+                        @if (pendiente.Escaneados > 0)
+                        {
+                            @* En recepción por escaneo: se recibe con lo escaneado. *@
+                            <span class="small">@pendiente.Escaneados escaneado(s)</span>
+                        }
+                        else
+                        {
+                            <input form="@formulario" name="bultosRecibidos" type="number" min="0" step="1" value="@pendiente.BultosEsperados" class="form-control form-control-sm" aria-label="Bultos recibidos" required />
+                        }
                     </td>
                     <td>
                         <input form="@formulario" name="observaciones" class="form-control form-control-sm" maxlength="500" aria-label="Observaciones" placeholder="Obligatoria si hay diferencia" />
@@ -83,14 +92,8 @@
                     <td class="text-end">
                         <form id="@formulario" method="post" asp-page-handler="Recibir">
                             <input type="hidden" name="envioId" value="@pendiente.Envio.Id" />
-                            <div class="d-flex flex-wrap justify-content-end gap-2">
-                                <button class="btn btn-sm btn-outline-primary" type="submit">Recibir</button>
-                                @if (pendiente.Escaneados > 0)
-                                {
-                                    <button class="btn btn-sm btn-outline-danger" type="submit" asp-page-handler="CerrarConFaltantes"
-                                            title="Los bultos que faltan no van a llegar: se recibe con discrepancia">Cerrar con faltantes</button>
-                                }
-                            </div>
+                            <button class="btn btn-sm @(pendiente.Escaneados > 0 && pendiente.Escaneados < pendiente.BultosEsperados ? "btn-outline-danger" : "btn-outline-primary")" type="submit"
+                                    title="@(pendiente.Escaneados > 0 ? "Recibe con lo escaneado; los que faltan quedan como discrepancia" : "Recibe con la cantidad indicada")">Recibir</button>
                         </form>
                     </td>
                 </tr>
@@ -116,16 +119,31 @@
     <div class="table-responsive">
         <table class="table align-middle mb-0">
             <thead class="table-light">
-                <tr><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Esperados</th><th class="text-center">Recibidos</th><th>Faltantes</th><th>Observaciones</th><th>Registró</th><th>Fecha</th></tr>
+                <tr><th>Tipo</th><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Esperados</th><th class="text-center">Recibidos</th><th>Bultos</th><th>Observaciones</th><th>Registró</th><th>Fecha</th></tr>
             </thead>
             <tbody>
-            @if (Model.Discrepancias.Count == 0)
+            @if (Model.Discrepancias.Count == 0 && Model.Sobrantes.Count == 0)
             {
-                <tr><td colspan="8" class="text-center text-muted py-4">No hay discrepancias registradas.</td></tr>
+                <tr><td colspan="9" class="text-center text-muted py-4">No hay discrepancias registradas.</td></tr>
+            }
+            @foreach (var sobrante in Model.Sobrantes)
+            {
+                <tr data-sobrante>
+                    <td><span class="status-badge status-no-entregado">Bulto sobrante</span></td>
+                    <td>@if (sobrante.NumeroSeguimiento is not null) { <span class="tracking-number">@sobrante.NumeroSeguimiento</span> } else { <span class="text-muted">—</span> }</td>
+                    <td>@(sobrante.Destinatario ?? "—")</td>
+                    <td class="text-center">—</td>
+                    <td class="text-center">—</td>
+                    <td class="small font-monospace">@sobrante.Codigo</td>
+                    <td>@sobrante.Motivo</td>
+                    <td>@sobrante.Usuario</td>
+                    <td>@RelojOperacion.ParaContrato(sobrante.Fecha).ToString("dd/MM/yyyy HH:mm")</td>
+                </tr>
             }
             @foreach (var discrepancia in Model.Discrepancias)
             {
                 <tr>
+                    <td><span class="status-badge @(discrepancia.Completada ? "status-entregado" : "status-extraviado")">@(discrepancia.Completada ? "Faltantes (completa)" : "Faltan bultos")</span></td>
                     <td><span class="tracking-number">@discrepancia.NumeroSeguimiento</span></td>
                     <td>@discrepancia.Destinatario</td>
                     <td class="text-center">@discrepancia.BultosEsperados</td>

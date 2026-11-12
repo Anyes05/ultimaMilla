@@ -35,6 +35,9 @@ public class RecepcionModel : PageModel
 
     public IReadOnlyList<PendienteRecepcion> Pendientes { get; private set; } = [];
     public IReadOnlyList<DiscrepanciaRecepcion> Discrepancias { get; private set; } = [];
+
+    /// <summary>Bultos de más escaneados (no estaban para recibir).</summary>
+    public IReadOnlyList<SobranteRecepcion> Sobrantes { get; private set; } = [];
     public int TotalPendientes { get; private set; }
     public int Pagina { get; private set; } = 1;
     public int TotalPaginas => Math.Max(1, (int)Math.Ceiling(TotalPendientes / (double)TamanoPagina));
@@ -69,6 +72,7 @@ public class RecepcionModel : PageModel
         Pendientes = pendientes.OrderByDescending(pendiente => pendiente.Escaneados > 0).ToList();
 
         Discrepancias = await _recepciones.ListarDiscrepanciasAsync(acceso.OperadorId, DiscrepanciasVisibles, ct);
+        Sobrantes = await _recepciones.ListarSobrantesAsync(acceso.OperadorId, DiscrepanciasVisibles, ct);
     }
 
     /// <summary>Recibe desde la lista (envioId) o por lector de códigos (numeroSeguimiento).</summary>
@@ -102,6 +106,18 @@ public class RecepcionModel : PageModel
 
         try
         {
+            // Si ya se escanearon bultos de este envío, "Recibir" lo recibe con lo escaneado: lo que falta queda
+            // registrado como discrepancia, con sus códigos.
+            var usuarioEscaneo = string.IsNullOrWhiteSpace(User.Identity?.Name) ? acceso.UsuarioId.ToString() : User.Identity.Name;
+            if ((await _bultos.ListarPorEnvioAsync(acceso.OperadorId, id.Value, ct)).Any(bulto => bulto.RecibidoEnDeposito is not null))
+            {
+                var cerrado = await _recibir.CerrarConFaltantesAsync(acceso.OperadorId, id.Value, usuarioEscaneo, observaciones ?? string.Empty, ct);
+                TempData["Mensaje"] = cerrado.Faltantes.Count == 0
+                    ? $"{cerrado.NumeroSeguimiento}: recibido completo."
+                    : $"{cerrado.NumeroSeguimiento}: recibido con discrepancia, llegaron {cerrado.BultosRecibidos} de {cerrado.BultosEsperados}. Faltan: {string.Join(", ", cerrado.Faltantes)}.";
+                return RedirectToPage();
+            }
+
             // Sin cantidad se entiende que llegó completo, que es el caso del lector de códigos.
             var recibidos = bultosRecibidos ?? await EsperadosAsync(acceso.OperadorId, id.Value, ct);
             var usuario = string.IsNullOrWhiteSpace(User.Identity?.Name) ? acceso.UsuarioId.ToString() : User.Identity.Name;
@@ -142,7 +158,8 @@ public class RecepcionModel : PageModel
             var mensajes = llegadas.Concat(enCurso).Concat(completos).ToList();
             if (mensajes.Count > 0)
                 TempData["Mensaje"] = string.Join(" ", mensajes);
-            var problemas = resultado.NoReconocidos.Select(codigo => $"No es de ningún envío pendiente: {codigo}.")
+            var problemas = (resultado.Sobrantes ?? []).Select(sobrante => $"Bulto sobrante registrado como discrepancia: {sobrante}.")
+                .Concat(resultado.NoReconocidos.Select(codigo => $"No se volvió a contar: {codigo}."))
                 .Concat(resultado.Errores)
                 .ToList();
             if (problemas.Count > 0)

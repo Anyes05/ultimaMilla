@@ -9,6 +9,9 @@ public interface IRecepcionRepositorio
         Guid operadorId,
         int limite,
         CancellationToken cancellationToken = default);
+    /// <summary>Discrepancia por un bulto de más escaneado en el depósito.</summary>
+    Task AgregarSobranteAsync(BultoSobrante sobrante, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SobranteRecepcion>> ListarSobrantesAsync(Guid operadorId, int limite, CancellationToken cancellationToken = default);
     /// <summary>La recepción más reciente del envío, para registrar bultos que llegan después.</summary>
     Task<RecepcionEnvio?> ObtenerUltimaAsync(Guid operadorId, Guid envioId, CancellationToken cancellationToken = default);
     Task GuardarAsync(CancellationToken cancellationToken = default);
@@ -114,6 +117,14 @@ public sealed class RecibirEnvioEnDeposito
         var completos = new HashSet<Guid>();
         var noReconocidos = new List<string>();
         var llegadas = new List<LlegadaPosterior>();
+        var sobrantes = new List<string>();
+        async Task SobranteAsync(string codigo, Guid? envioId, string motivo)
+        {
+            await _recepciones.AgregarSobranteAsync(
+                BultoSobrante.Registrar(operadorId, codigo, envioId, motivo, usuario, ahora), cancellationToken);
+            sobrantes.Add($"{codigo} ({motivo})");
+        }
+
         foreach (var codigo in limpios)
         {
             // Los códigos se generan en mayúsculas; tipeados a mano pueden venir en minúsculas.
@@ -134,7 +145,10 @@ public sealed class RecibirEnvioEnDeposito
                         continue;
                     }
 
-                    noReconocidos.Add($"{codigo} (su envío ya fue recibido o no está pendiente)");
+                    // No estaba para recibir: queda registrado como bulto sobrante.
+                    await SobranteAsync(bulto.Codigo, bulto.EnvioId, envioDelBulto is null
+                        ? "bulto sin envío"
+                        : $"su envío {envioDelBulto.NumeroSeguimiento} ya fue recibido o no está pendiente");
                     continue;
                 }
 
@@ -159,7 +173,9 @@ public sealed class RecibirEnvioEnDeposito
             }
             else
             {
-                noReconocidos.Add(codigo);
+                await SobranteAsync(codigo, envio is not null && envio.OperadorId == operadorId ? envio.Id : null, envio is not null && envio.OperadorId == operadorId
+                    ? $"el envío {envio.NumeroSeguimiento} ya fue recibido o no está pendiente"
+                    : "no corresponde a ningún bulto ni envío");
             }
         }
 
@@ -196,10 +212,10 @@ public sealed class RecibirEnvioEnDeposito
             }
         }
 
-        if (llegadas.Count > 0)
+        if (llegadas.Count > 0 || sobrantes.Count > 0)
             await _recepciones.GuardarAsync(cancellationToken);
 
-        return new ResultadoEscaneoRecepcion(recibidos, noReconocidos, errores, llegadas, enCurso);
+        return new ResultadoEscaneoRecepcion(recibidos, noReconocidos, errores, llegadas, enCurso, sobrantes);
     }
 
     /// <summary>
@@ -242,7 +258,17 @@ public sealed record ResultadoEscaneoRecepcion(
     IReadOnlyList<string> NoReconocidos,
     IReadOnlyList<string> Errores,
     IReadOnlyList<LlegadaPosterior>? LlegadasPosteriores = null,
-    IReadOnlyList<RecepcionEnCurso>? EnCurso = null);
+    IReadOnlyList<RecepcionEnCurso>? EnCurso = null,
+    IReadOnlyList<string>? Sobrantes = null);
+
+/// <summary>Bulto de más escaneado en el depósito, para la lista de discrepancias.</summary>
+public sealed record SobranteRecepcion(
+    string Codigo,
+    string? NumeroSeguimiento,
+    string? Destinatario,
+    string Motivo,
+    string Usuario,
+    DateTimeOffset Fecha);
 
 /// <summary>Envío que se está escaneando: llegaron algunos bultos y faltan otros (todavía sin discrepancia).</summary>
 public sealed record RecepcionEnCurso(string NumeroSeguimiento, int Escaneados, int Esperados, IReadOnlyList<string> Faltantes);

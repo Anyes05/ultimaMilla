@@ -60,6 +60,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
     public DbSet<BonificacionTarifa> BonificacionesTarifa => Set<BonificacionTarifa>();
     public DbSet<CierreDiario> CierresDiarios => Set<CierreDiario>();
     public DbSet<ComprobanteRetiro> ComprobantesRetiro => Set<ComprobanteRetiro>();
+    public DbSet<BultoSobrante> BultosSobrantes => Set<BultoSobrante>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -106,6 +107,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         AplicarFiltroOperador<BonificacionTarifa>(modelBuilder);
         AplicarFiltroOperador<CierreDiario>(modelBuilder);
         AplicarFiltroOperador<ComprobanteRetiro>(modelBuilder);
+        AplicarFiltroOperador<BultoSobrante>(modelBuilder);
 
         modelBuilder.Entity<Envio>(entidad =>
         {
@@ -242,6 +244,16 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
             entidad.Property(r => r.Usuario).HasMaxLength(120);
             entidad.Property(r => r.BultosFaltantes).HasMaxLength(4000).HasDefaultValue(string.Empty);
             entidad.HasIndex(r => new { r.OperadorId, r.EnvioId });
+        });
+
+        // RF 10: bulto de más escaneado en el depósito.
+        modelBuilder.Entity<BultoSobrante>(entidad =>
+        {
+            entidad.HasKey(s => s.Id);
+            entidad.Property(s => s.Codigo).HasMaxLength(120);
+            entidad.Property(s => s.Motivo).HasMaxLength(300);
+            entidad.Property(s => s.Usuario).HasMaxLength(120);
+            entidad.HasIndex(s => new { s.OperadorId, s.Fecha });
         });
 
         modelBuilder.Entity<PosicionRepartidor>(entidad =>

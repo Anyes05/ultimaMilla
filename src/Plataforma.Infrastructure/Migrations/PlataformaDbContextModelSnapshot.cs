@@ -325,6 +325,43 @@ namespace Plataforma.Infrastructure.Migrations
                     b.ToTable("Bultos");
                 });
 
+            modelBuilder.Entity("Plataforma.Domain.BultoSobrante", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid?>("EnvioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Fecha")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Usuario")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId", "Fecha");
+
+                    b.ToTable("BultosSobrantes");
+                });
+
             modelBuilder.Entity("Plataforma.Domain.CambioBandera", b =>
                 {
                     b.Property<Guid>("Id")
