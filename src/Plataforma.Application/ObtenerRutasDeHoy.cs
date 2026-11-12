@@ -114,7 +114,8 @@ public sealed class ObtenerRutasDeHoy
                     var franja = retiro.FranjaId is Guid franjaId && franjas.TryGetValue(franjaId, out var encontrada) ? encontrada : null;
                     return new RetiroDeRuta(
                         retiro.Id, retiro.Direccion, retiro.Contacto, retiro.Motivo, retiro.Observaciones,
-                        retiro.CantidadBultos, retiro.PesoKg, retiro.PosicionEnRuta, franja?.Desde, franja?.Hasta, retiro.Estado);
+                        retiro.CantidadBultos, retiro.PesoKg, retiro.PosicionEnRuta, franja?.Desde, franja?.Hasta, retiro.Estado,
+                        retiro.CodigosBultos);
                 })
                 .ToList();
             resultado.Add(new RutaDelDia(

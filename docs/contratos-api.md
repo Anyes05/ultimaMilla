@@ -353,7 +353,7 @@ Sugerencia para la app: una posición cada 30 a 60 s mientras la ruta está en c
       "fechaDispositivo": "2026-11-12T11:00:00-03:00", "latitud": -34.9, "longitud": -56.16 } ] }
 ```
 
-- `Retirado` exige al menos un código de bulto, foto (JPEG hasta 512 KiB) y firma (JSON de trazos hasta 64 KiB). `NoRetirado` exige motivo.
+- `Retirado` exige foto (JPEG hasta 512 KiB), firma (JSON de trazos hasta 64 KiB) y **exactamente los códigos del retiro**: los de sus etiquetas QR (`RET-…-B01`, `RET-…-B02`…), que el comercio imprime en el Portal (Retiros → Etiquetas QR) y la ruta del día trae en `retiros[].codigosBultos`. Un código ajeno o uno faltante rechaza el evento con el motivo. `NoRetirado` exige motivo.
 - Respuesta `200`: `{ "aplicados": [{ "retiroId", "estado" }], "rechazados": [{ "retiroId", "motivo", "estado" }] }`. Misma política que las entregas (ADR 0013): el mismo `eventoId` reenviado devuelve el mismo resultado; un retiro que no está en la ruta de hoy, ya cerrado o con evidencia inválida vuelve rechazado con el motivo.
 - `Retirado` emite `RetiroCompletado` (avisos v2) y actualiza el Tablero en vivo.
 

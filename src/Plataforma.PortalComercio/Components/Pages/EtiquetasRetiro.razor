@@ -1,0 +1,98 @@
+@page "/retiros/{Id:guid}/etiquetas"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize(Roles = Plataforma.Domain.Roles.Comercio)]
+@using Plataforma.Application
+@using Plataforma.Domain
+@using QRCoder
+@inject IHttpContextAccessor HttpContextAccessor
+@inject GestionRetiros GestionRetiros
+@inject IOperadorRepositorio Operadores
+@inject IComercioRepositorio Comercios
+
+<PageTitle>Etiquetas del retiro</PageTitle>
+
+<style>
+    .etiqueta { width: 100mm; min-height: 120mm; border: 1px dashed #adb5bd; padding: 6mm; margin: 0 auto 8mm; background: #fff; color: #000; }
+    .etiqueta .codigo { display: grid; place-items: center; width: 43mm; height: 43mm; margin: 0 auto 1mm; padding: 4mm; background: #fff; }
+    .etiqueta .codigo svg { display: block; width: 35mm; height: 35mm; max-width: 100%; }
+    @@media print {
+        .no-imprimir, .sidebar, .top-row { display: none !important; }
+        main, article, .content { padding: 0 !important; margin: 0 !important; }
+        .etiqueta { border: none; page-break-after: always; break-after: page; margin: 0; }
+    }
+</style>
+
+<div class="no-imprimir d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-primary fw-semibold small mb-1">Portal de comercio</p>
+        <h1 class="h3 fw-bold mb-1">Etiquetas del retiro</h1>
+        <p class="text-muted mb-0">
+            Una por bulto. Mandásela al comprador para que la pegue en cada caja antes de que pase el repartidor:
+            al retirar se escanean y solo se aceptan los bultos de este retiro.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="/retiros">Volver</a>
+        <button class="btn btn-primary" type="button" onclick="window.print()">Imprimir</button>
+    </div>
+</div>
+
+@if (retiro is null || operador is null)
+{
+    <div class="alert alert-warning" role="alert">No encontramos ese retiro entre los de tu comercio.</div>
+}
+else
+{
+    var codigos = retiro.CodigosBultos;
+    @for (var i = 0; i < codigos.Count; i++)
+    {
+        var codigo = codigos[i];
+        <section class="etiqueta" data-bulto-retiro="@codigo" aria-label="Etiqueta del bulto @(i + 1) del retiro">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <strong style="color: @SeguimientoPublico.ColorMarcaCss(operador.ColorMarca)">@operador.Nombre</strong>
+                <span class="fw-bold">Retiro · bulto @(i + 1) de @codigos.Count</span>
+            </div>
+            <p class="small text-uppercase mb-1">Retirar en</p>
+            <p class="fs-5 fw-bold mb-1">@retiro.Direccion</p>
+            <p class="mb-3">Fecha: @retiro.FechaSolicitada.ToString("dd/MM/yyyy")@(string.IsNullOrWhiteSpace(retiro.Contacto) ? "" : $" · {retiro.Contacto}")</p>
+            <p class="small mb-3">Vuelve a: <strong>@comercio</strong>@(string.IsNullOrWhiteSpace(retiro.Motivo) ? "" : $" · {retiro.Motivo}")</p>
+            <div class="codigo mb-1" role="img" aria-label="Código QR del bulto @codigo">@((MarkupString)GenerarQr(codigo))</div>
+            <p class="text-center font-monospace small mb-0">@codigo</p>
+        </section>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private SolicitudRetiro? retiro;
+    private Operador? operador;
+    private string? comercio;
+
+    private static string GenerarQr(string codigo)
+    {
+        using var generador = new QRCodeGenerator();
+        using var datos = generador.CreateQrCode(codigo, QRCodeGenerator.ECCLevel.M);
+        using var imagen = new SvgQRCode(datos);
+        return imagen.GetGraphic(
+            pixelsPerModule: 8,
+            darkColorHex: "#000000",
+            lightColorHex: "#FFFFFF",
+            drawQuietZones: true,
+            sizingMode: SvgQRCode.SizingMode.ViewBoxAttribute);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var principal = HttpContextAccessor.HttpContext?.User ?? new System.Security.Claims.ClaimsPrincipal();
+        if (!AccesoActual.Intentar(principal, out var acceso) || acceso.ComercioId is not Guid comercioId)
+            return;
+
+        // Solo los retiros del propio comercio, aunque alguien escriba otro identificador en la dirección.
+        retiro = (await GestionRetiros.ListarAsync(acceso.OperadorId, comercioId)).FirstOrDefault(item => item.Id == Id);
+        if (retiro is null)
+            return;
+        operador = await Operadores.ObtenerAsync(acceso.OperadorId);
+        comercio = (await Comercios.ObtenerAsync(acceso.OperadorId, comercioId))?.NombreComercial;
+    }
+}

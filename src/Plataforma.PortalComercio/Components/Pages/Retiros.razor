@@ -149,7 +149,13 @@ else
                                     <td>@(string.IsNullOrWhiteSpace(retiro.Contacto) ? "—" : retiro.Contacto)</td>
                                     <td class="text-end">@Importe(retiro.TarifaCalculada)</td>
                                     <td><span class="status-badge @ClaseEstado(retiro.Estado)">@NombreEstado(retiro.Estado)</span></td>
-                                    <td><a href="/seguimiento/retiro/@SeguimientoPublico.TokenRetiro(Proteccion, retiro.OperadorId, retiro.Id)" target="_blank" rel="noopener">Ver enlace</a></td>
+                                    <td>
+                                        <a href="/seguimiento/retiro/@SeguimientoPublico.TokenRetiro(Proteccion, retiro.OperadorId, retiro.Id)" target="_blank" rel="noopener">Ver enlace</a>
+                                        @if (retiro.Estado is EstadoRetiro.Solicitado or EstadoRetiro.Programado or EstadoRetiro.EnCurso or EstadoRetiro.NoRetirado)
+                                        {
+                                            <a class="d-block small" href="/retiros/@retiro.Id/etiquetas" data-etiquetas-retiro>Etiquetas QR</a>
+                                        }
+                                    </td>
                                     <td class="text-end">
                                         @if (retiro.Estado is EstadoRetiro.Solicitado or EstadoRetiro.Programado)
                                         {

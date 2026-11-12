@@ -73,6 +73,15 @@ public class SolicitudRetiro
     public static readonly IReadOnlyList<string> MotivosSugeridos =
         ["Cambio de producto", "Devolución del comprador", "Producto fallado", "Otro"];
 
+    /// <summary>
+    /// Códigos de los bultos del retiro (RF 40): uno por bulto, derivados del identificador del retiro, para las
+    /// etiquetas QR que el comercio le manda al comprador. Al retirar, la app tiene que escanear exactamente estos.
+    /// </summary>
+    public IReadOnlyList<string> CodigosBultos =>
+        Enumerable.Range(1, Math.Max(1, CantidadBultos))
+            .Select(numero => $"RET-{Id.ToString("N")[..10].ToUpperInvariant()}-B{numero:00}")
+            .ToList();
+
     /// <summary>Los paquetes ya están en manos del operador (en el vehículo o en el depósito).</summary>
     public bool FueRetirado => Estado is EstadoRetiro.Completado or EstadoRetiro.EnDeposito;
 

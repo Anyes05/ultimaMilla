@@ -154,12 +154,14 @@ public sealed class RetirosEstadosYCapacidadTests
         const string Foto = "/9j/2Q==";
         const string Firma = "[[{\"x\":1,\"y\":1},{\"x\":9,\"y\":9}]]";
         var ahora = DateTimeOffset.UtcNow;
-        var retirado = new ComprobanteRetiroApp(Guid.NewGuid(), uno.Id, "Retirado", ["CAMBIO-1", "CAMBIO-2"], Foto, Firma, "Ana", null, ahora, -34.9m, -56.16m);
+        // Los códigos de las etiquetas QR del retiro (en minúsculas también valen).
+        Assert.Matches(@"^RET-[0-9A-F]{10}-B01$", Assert.Single(uno.CodigosBultos));
+        var retirado = new ComprobanteRetiroApp(Guid.NewGuid(), uno.Id, "Retirado", [uno.CodigosBultos[0].ToLowerInvariant()], Foto, Firma, "Ana", null, ahora, -34.9m, -56.16m);
 
         var resultado = await registrar.EjecutarAsync(Operador, repartidor, Hoy,
         [
             retirado,
-            new ComprobanteRetiroApp(Guid.NewGuid(), dos.Id, "Retirado", ["X"], null, Firma, null, null, ahora, null, null),
+            new ComprobanteRetiroApp(Guid.NewGuid(), dos.Id, "Retirado", [dos.CodigosBultos[0]], null, Firma, null, null, ahora, null, null),
             new ComprobanteRetiroApp(Guid.NewGuid(), ajeno.Id, "NoRetirado", null, null, null, null, "Cerrado", ahora, null, null)
         ], "alvaro");
 
@@ -167,7 +169,7 @@ public sealed class RetirosEstadosYCapacidadTests
         Assert.Contains(resultado.Rechazados, r => r.RetiroId == dos.Id && r.Motivo.Contains("foto"));
         Assert.Contains(resultado.Rechazados, r => r.RetiroId == ajeno.Id && r.Motivo.Contains("no está en tu ruta"));
         var guardado = Assert.Single(ctx.ComprobantesRetiro.AsNoTracking().ToList());
-        Assert.Equal((uno.Id, "CAMBIO-1\nCAMBIO-2", "Ana"), (guardado.RetiroId, guardado.CodigosBultos, guardado.NombreEntrega));
+        Assert.Equal((uno.Id, uno.CodigosBultos[0], "Ana"), (guardado.RetiroId, guardado.CodigosBultos, guardado.NombreEntrega));
 
         // Reenvío por respuesta perdida: mismo resultado, sin duplicar.
         var reenvio = await registrar.EjecutarAsync(Operador, repartidor, Hoy, [retirado], "alvaro");
@@ -178,6 +180,40 @@ public sealed class RetirosEstadosYCapacidadTests
             [new ComprobanteRetiroApp(Guid.NewGuid(), dos.Id, "NoRetirado", null, null, null, null, "No había nadie", ahora, null, null)], "alvaro");
         Assert.Equal(EstadoRetiro.NoRetirado, Assert.Single(noRetirado.Aplicados).Estado);
         Assert.Equal("No había nadie", (await new RetiroRepositorio(ctx).ObtenerAsync(Operador, dos.Id))!.MotivoNoRetiro);
+    }
+
+    [Fact]
+    public async Task App_SoloAceptaLosBultosDelRetiro_PorSusCodigos()
+    {
+        await using var ctx = Crear();
+        var repartidor = Guid.NewGuid();
+        var ruta = Ruta.Programar(Operador, repartidor, Hoy);
+        ctx.Rutas.Add(ruta);
+        var retiro = SolicitudRetiro.Solicitar(Guid.NewGuid(), Operador, Comercio, "Calle 1", "", Hoy, cantidadBultos: 2);
+        var otro = SolicitudRetiro.Solicitar(Guid.NewGuid(), Operador, Comercio, "Calle 2", "", Hoy);
+        retiro.ProgramarEnRuta(ruta.Id);
+        ctx.SolicitudesRetiro.AddRange(retiro, otro);
+        await ctx.SaveChangesAsync();
+        var registrar = new RegistrarRetirosRepartidor(
+            new RutaRepositorio(ctx), new RetiroRepositorio(ctx), new ComprobanteRetiroRepositorio(ctx), Gestion(ctx), new CacheLecturaMemoria());
+        const string Foto = "/9j/2Q==";
+        const string Firma = "[[{\"x\":1,\"y\":1},{\"x\":9,\"y\":9}]]";
+        ComprobanteRetiroApp Evento(params string[] codigos) =>
+            new(Guid.NewGuid(), retiro.Id, "Retirado", codigos, Foto, Firma, "Ana", null, DateTimeOffset.UtcNow, null, null);
+        Assert.Equal(2, retiro.CodigosBultos.Count);
+
+        // Un código de producto cualquiera, o el de otro retiro: no es de este retiro.
+        var ajeno = await registrar.EjecutarAsync(Operador, repartidor, Hoy, [Evento(retiro.CodigosBultos[0], otro.CodigosBultos[0])], "alvaro");
+        Assert.Contains($"{otro.CodigosBultos[0]} no es de este retiro", Assert.Single(ajeno.Rechazados).Motivo);
+
+        // Falta uno de sus bultos.
+        var incompleto = await registrar.EjecutarAsync(Operador, repartidor, Hoy, [Evento(retiro.CodigosBultos[0])], "alvaro");
+        Assert.Contains($"Faltan bultos del retiro: {retiro.CodigosBultos[1]}", Assert.Single(incompleto.Rechazados).Motivo);
+        Assert.Equal(EstadoRetiro.Programado, (await new RetiroRepositorio(ctx).ObtenerAsync(Operador, retiro.Id))!.Estado);
+
+        // Con sus dos etiquetas: retirado.
+        var completo = await registrar.EjecutarAsync(Operador, repartidor, Hoy, [Evento(retiro.CodigosBultos[1], retiro.CodigosBultos[0])], "alvaro");
+        Assert.Equal(EstadoRetiro.Completado, Assert.Single(completo.Aplicados).Estado);
     }
 
     private static GestionRetiros Gestion(PlataformaDbContext ctx) =>

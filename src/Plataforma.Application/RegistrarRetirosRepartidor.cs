@@ -23,7 +23,8 @@ public sealed record RetiroDeRuta(
     int? PosicionEnRuta,
     TimeOnly? FranjaDesde,
     TimeOnly? FranjaHasta,
-    EstadoRetiro Estado);
+    EstadoRetiro Estado,
+    IReadOnlyList<string>? CodigosBultos = null);
 
 /// <summary>Lo que manda la app al registrar un retiro sin conexión (RF 40).</summary>
 public sealed record ComprobanteRetiroApp(
@@ -152,6 +153,27 @@ public sealed class RegistrarRetirosRepartidor
             {
                 rechazados.Add(new RetiroRechazado(retiro.Id, "Los códigos de los bultos son demasiado largos o demasiados.", retiro.Estado));
                 continue;
+            }
+
+            if (resultado == EstadoRetiro.Completado)
+            {
+                var esperados = retiro.CodigosBultos;
+                var ajenos = codigos.Where(codigo => !esperados.Contains(codigo, StringComparer.OrdinalIgnoreCase)).ToList();
+                if (ajenos.Count > 0)
+                {
+                    rechazados.Add(new RetiroRechazado(retiro.Id,
+                        $"{(ajenos.Count == 1 ? "El código" : "Los códigos")} {string.Join(", ", ajenos)} no {(ajenos.Count == 1 ? "es" : "son")} de este retiro.", retiro.Estado));
+                    continue;
+                }
+
+                var faltan = esperados.Where(codigo => !codigos.Contains(codigo, StringComparer.OrdinalIgnoreCase)).ToList();
+                if (faltan.Count > 0)
+                {
+                    rechazados.Add(new RetiroRechazado(retiro.Id, $"Faltan bultos del retiro: {string.Join(", ", faltan)}.", retiro.Estado));
+                    continue;
+                }
+
+                codigos = esperados.ToList();
             }
 
             ComprobanteRetiro comprobante;
