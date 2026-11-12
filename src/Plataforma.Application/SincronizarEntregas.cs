@@ -340,9 +340,7 @@ public sealed class SincronizarEntregas
         var motivosValidos = regla?.MotivosNoEntrega ?? ReglaOperativa.MotivosNoEntregaPredeterminados;
         if (resultados.Any(resultado =>
                 resultado.Estado is EstadoBulto.NoEntregado or EstadoBulto.PendienteNuevaVisita &&
-                !motivosValidos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase) &&
-                !(usuario == CierreRutasSinIntento.UsuarioSistema &&
-                    resultado.MotivoNoEntrega == CierreRutasSinIntento.MotivoNoEntregado)))
+                !motivosValidos.Contains(resultado.MotivoNoEntrega ?? string.Empty, StringComparer.OrdinalIgnoreCase)))
         {
             return new EventoRechazado(
             envio.Id,

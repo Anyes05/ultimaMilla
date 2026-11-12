@@ -20,6 +20,44 @@ public partial class RutaViewModel(
     public ObservableCollection<Envio> EnviosVisibles { get; } = new();
     public ObservableCollection<EntregaPendiente> EntregasHistorial { get; } = new();
     public ObservableCollection<BultoEntregaItem> BultosEntrega { get; } = new();
+    public ObservableCollection<RetiroEnRuta> Retiros { get; } = new();
+    public ObservableCollection<string> CodigosRetiro { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HaySeleccion))]
+    [NotifyPropertyChangedFor(nameof(MostrarRuta))]
+    [NotifyPropertyChangedFor(nameof(EsRetiro))]
+    [NotifyPropertyChangedFor(nameof(UsaEntregaParcial))]
+    [NotifyPropertyChangedFor(nameof(UsaEntregaCompleta))]
+    [NotifyPropertyChangedFor(nameof(ReferenciaSeleccionada))]
+    [NotifyPropertyChangedFor(nameof(TituloComprobante))]
+    private RetiroEnRuta? retiroSeleccionado;
+
+    public bool EsRetiro => RetiroSeleccionado is not null;
+    public string TituloComprobante => EsRetiro ? "Registrar retiro" : "Registrar entrega";
+    public string ReferenciaSeleccionada => RetiroSeleccionado?.Direccion ?? EnvioSeleccionado?.NumeroSeguimiento ?? string.Empty;
+    public string ResumenCodigosRetiro => $"{CodigosRetiro.Count} de {RetiroSeleccionado?.CantidadBultos ?? 0} bultos: {string.Join(", ", CodigosRetiro)}";
+
+    [RelayCommand]
+    private void SeleccionarRetiro(RetiroEnRuta retiro)
+    {
+        if (Ocupado || !retiro.PuedeRetirar) return;
+        CancelarEntrega();
+        RetiroSeleccionado = retiro;
+        Foto = Firma = null;
+        Latitud = Longitud = null;
+        CodigosRetiro.Clear();
+        OnPropertyChanged(nameof(ResumenCodigosRetiro));
+    }
+
+    public void RegistrarCodigoRetiro(string codigo)
+    {
+        if (RetiroSeleccionado is null) return;
+        if (codigo.Length > 120 || CodigosRetiro.Contains(codigo) || CodigosRetiro.Count >= RetiroSeleccionado.CantidadBultos)
+        { Mensaje = "Bulto repetido, sobrante o codigo invalido. No se agrego al retiro."; return; }
+        CodigosRetiro.Add(codigo);
+        OnPropertyChanged(nameof(ResumenCodigosRetiro));
+    }
     private Guid[] recorrido = [];
     private int paradaActual;
     private Ruta? rutaActual;
@@ -125,10 +163,14 @@ public partial class RutaViewModel(
     [NotifyPropertyChangedFor(nameof(MostrarRuta))]
     [NotifyPropertyChangedFor(nameof(UsaEntregaParcial))]
     [NotifyPropertyChangedFor(nameof(UsaEntregaCompleta))]
+    [NotifyPropertyChangedFor(nameof(ReferenciaSeleccionada))]
     private Envio? envioSeleccionado;
 
     [ObservableProperty]
     private string nombreReceptor = string.Empty;
+
+    [ObservableProperty]
+    private string documentoReceptor = string.Empty;
 
     [ObservableProperty]
     private string observaciones = string.Empty;
@@ -236,14 +278,20 @@ public partial class RutaViewModel(
         ResumenHistorial = $"Mostrando {EntregasHistorial.Count} de {historialFiltrado.Count} {etiquetaEntregas}";
     }
 
-    public bool HaySeleccion => EnvioSeleccionado is not null;
-    public bool SinEnvios => Envios.Count == 0;
+    public bool HaySeleccion => EnvioSeleccionado is not null || EsRetiro;
+    public bool TieneComprobantesSinResolver => repartidor.ObtenerCantidadSincronizacionesPendientes() > 0 ||
+        Envios.Any(envio => envio.Sincronizacion == EstadoSincronizacion.Rechazado) ||
+        Envios.Any(envio => envio.BultosEscaneadosPendientes?.Count > 0) ||
+        repartidor.ObtenerCantidadComprobantesFueraDeRuta() > 0 ||
+        Retiros.Any(retiro => retiro.Sincronizacion == EstadoSincronizacion.Rechazado);
+    public bool SinEnvios => Envios.Count == 0 && Retiros.Count == 0;
     public bool UsaEntregaParcial => entregaParcialHabilitada &&
         (EnvioSeleccionado?.Bultos?.Any(bulto => bulto.PuedeEntregarse) ?? false);
-    public bool UsaEntregaCompleta => !UsaEntregaParcial;
+    public bool UsaEntregaCompleta => !EsRetiro && !UsaEntregaParcial;
     public string EvidenciaRequeridaTexto => rutaActual is null
         ? string.Empty
-        : $"Firma: {(rutaActual.ExigeFirma ? "obligatoria" : "opcional")} | Foto: {(rutaActual.ExigeFoto ? "obligatoria" : "opcional")}";
+        : EsRetiro ? "Retiro: foto, firma, responsable y todos los bultos obligatorios"
+        : $"Firma: {(rutaActual.ExigeFirma ? "obligatoria" : "opcional")} | Foto: {(rutaActual.ExigeFoto ? "obligatoria" : "opcional")} | Documento: {(rutaActual.ExigeDocumentoReceptor ? "obligatorio" : "opcional")}";
     public string ResumenBultosEntrega
     {
         get
@@ -263,6 +311,8 @@ public partial class RutaViewModel(
     private bool intentoFallido;
     [ObservableProperty]
     private string tokenDispositivo = string.Empty;
+    [ObservableProperty]
+    private string estadoPush = "Notificaciones pendientes de registro";
     public bool MostrarRuta => !HaySeleccion && !MostrarHistorial;
     public string ModoTexto => "Tu ruta de reparto";
 
@@ -305,6 +355,7 @@ public partial class RutaViewModel(
         }
         EnvioSeleccionado = envio;
         NombreReceptor = string.Empty;
+        DocumentoReceptor = string.Empty;
         Observaciones = string.Empty;
         Foto = Firma = null;
         Latitud = Longitud = null;
@@ -326,6 +377,9 @@ public partial class RutaViewModel(
     {
         if (Ocupado) return;
         EnvioSeleccionado = null;
+        RetiroSeleccionado = null;
+        DocumentoReceptor = string.Empty;
+        CodigosRetiro.Clear();
         NombreReceptor = string.Empty;
         Observaciones = string.Empty;
         BultosEntrega.Clear();
@@ -336,6 +390,24 @@ public partial class RutaViewModel(
     private async Task GuardarEntregaAsync()
     {
         if (Ocupado) return;
+        if (RetiroSeleccionado is { } retiro)
+        {
+            var guardadoRetiro = false;
+            Ejecutar(() =>
+            {
+                if (CodigosRetiro.Count != retiro.CantidadBultos || string.IsNullOrWhiteSpace(NombreReceptor) ||
+                    string.IsNullOrWhiteSpace(Foto) || string.IsNullOrWhiteSpace(Firma) || Latitud is null || Longitud is null)
+                    throw new InvalidOperationException("El retiro requiere todos los bultos, responsable, foto, firma y GPS.");
+                repartidor.RegistrarRetiro(new RetiroPendiente(Guid.NewGuid(), retiro.Id, retiro.RutaId,
+                    DateTimeOffset.Now, CodigosRetiro.ToArray(), NombreReceptor.Trim(), Foto, Firma, Latitud.Value, Longitud.Value));
+                CancelarEntrega();
+                ActualizarRuta();
+                Mensaje = "Retiro guardado en el telefono. La evidencia se conserva hasta su confirmacion.";
+                guardadoRetiro = true;
+            });
+            if (guardadoRetiro && ConexionSimulada) await SincronizarColaAsync(automatica: true);
+            return;
+        }
         if (EnvioSeleccionado is null)
         {
             Mensaje = "Selecciona un envio.";
@@ -345,6 +417,9 @@ public partial class RutaViewModel(
         var guardado = false;
         Ejecutar(() =>
         {
+            if (rutaActual?.ExigeDocumentoReceptor == true && string.IsNullOrWhiteSpace(DocumentoReceptor) &&
+                (UsaEntregaParcial ? BultosEntrega.Any(item => item.Entregado) : !IntentoFallido))
+                throw new InvalidOperationException("La regla del operador exige el documento del receptor.");
             if (UsaEntregaParcial)
             {
                 if (BultosEntrega.Any(item => !item.Entregado && string.IsNullOrWhiteSpace(item.MotivoNoEntrega)))
@@ -380,15 +455,15 @@ public partial class RutaViewModel(
                 var estadoEnvio = Enum.Parse<Plataforma.Mobile.Models.EstadoEnvio>(estadoDerivado.ToString());
                 repartidor.RegistrarEvento(new EntregaPendiente(Guid.NewGuid(), EnvioSeleccionado.Id,
                     NombreReceptor.Trim(), Observaciones.Trim(), DateTimeOffset.Now, estadoEnvio,
-                    Foto, Firma, Latitud, Longitud, Bultos: bultos));
+                    Foto, Firma, Latitud, Longitud, Bultos: bultos, DocumentoReceptor: DocumentoReceptor.Trim()));
             }
-            else if (Foto is null && Firma is null && Latitud is null && !IntentoFallido)
+            else if (Foto is null && Firma is null && Latitud is null && !IntentoFallido && string.IsNullOrWhiteSpace(DocumentoReceptor))
                 repartidor.RegistrarEntrega(EnvioSeleccionado.Id, NombreReceptor, Observaciones);
             else
                 repartidor.RegistrarEvento(new EntregaPendiente(Guid.NewGuid(), EnvioSeleccionado.Id,
                     NombreReceptor.Trim(), Observaciones.Trim(), DateTimeOffset.Now,
                     IntentoFallido ? EstadoEnvio.NoEntregado : EstadoEnvio.Entregado,
-                    Foto, Firma, Latitud, Longitud));
+                    Foto, Firma, Latitud, Longitud, DocumentoReceptor: DocumentoReceptor.Trim()));
             CancelarEntrega();
             ActualizarRuta();
             Mensaje = ConexionSimulada
@@ -603,6 +678,11 @@ public partial class RutaViewModel(
         Titulo = "Ruta del dia";
         Envios.Clear();
         var esRutaDeHoy = !SoloRutasDeHoy || ruta.Fecha == DateOnly.FromDateTime(DateTime.Today);
+        Retiros.Clear();
+        foreach (var retiro in repartidor.ObtenerRetiros().Where(retiro =>
+            !SoloRutasDeHoy || retiro.Fecha == DateOnly.FromDateTime(DateTime.Today) ||
+            retiro.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado))
+            Retiros.Add(retiro);
         if (esRutaDeHoy)
         {
             foreach (var envio in ruta.Envios.OrderBy(EnviarAlFinal))
@@ -613,7 +693,7 @@ public partial class RutaViewModel(
         if (!esRutaDeHoy)
             Mensaje = "La ruta guardada corresponde a otra fecha. Se conservan sus comprobantes; actualiza para consultar los envios de hoy.";
 
-        Resumen = $"{Envios.Count} envios | " +
+        Resumen = $"{Envios.Count} envios | {Retiros.Count} retiros | " +
                   $"{Envios.Count(item => item.Estado == EstadoEnvio.Entregado)} entregados | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Pendiente)} pendientes | " +
                   $"{Envios.Count(item => item.Sincronizacion == EstadoSincronizacion.Rechazado)} rechazados";

@@ -1,5 +1,103 @@
 # Plataforma.Mobile - desarrollo local y handoff de CI
 
+## Preparacion de defensa: pendientes del 11/11
+
+La app Android incorpora documento del receptor, biometria nativa, control de
+carga por bulto, captura offline de retiros y SDK FCM. La compilacion no acredita
+por si sola GPS continuo, recepcion push ni un recorrido de entrega/retiro real.
+No se ejecutaron tests en esta implementacion; se agregaron regresiones al
+archivo existente RepartidorHttpTests.
+
+### Biometria y documento (6.11, RF 20)
+
+Configurar huella o reconocimiento facial en Android 9 o posterior. Guardar una
+entrega, intento o retiro pide identidad biometrica. Cancelar o fallar no guarda
+el comprobante. Salir con pendientes, rechazos o escaneos tambien pide biometria;
+si se confirma, elimina la sesion y conserva los datos de la cuenta original.
+La app no guarda huellas ni imagenes del rostro ni sustituye biometria por una
+confirmacion simple. Un dispositivo sin biometria configurada no puede completar
+esas operaciones.
+
+La regla ExigeDocumentoReceptor llega en la ruta y el documento se conserva en
+el comprobante cifrado y se envia como documentoReceptor. Comprobar una regla
+que lo exige: sin documento la app debe impedir guardar una entrega; con el
+documento, verificar su comprobante en el servidor. Un intento sin entrega no
+exige documento.
+
+### Carga por bulto (RF 19)
+
+Escanear carga solicita los codigos de todos los bultos esperados del envio.
+Un codigo ajeno avisa sobrante, uno ya contado avisa repetido y cancelar muestra
+los faltantes. No se emite la carga hasta completar el conjunto. Si el contrato
+no incluye bultos, mantiene el escaneo por numero de seguimiento.
+
+### Retiros en jornada mixta (RF 40)
+
+Requiere desplegar el servidor actualizado y aplicar la migracion
+20261111235817_NadiaRetirosEnLaApp y su predecesora NadiaRetiroFranjaYMotivo. Esta sesion no despliega ni migra el
+ambiente publicado. Habilitar retiro en domicilio y programar un retiro en una
+ruta del repartidor. La ruta devuelve retiros con direccion, contacto, cantidad,
+fecha y posicion; la app los muestra junto a las entregas, indicando su parada.
+
+Registrar retiro utiliza el mismo formulario de evidencia: codigos unicos de
+todos los bultos esperados, nombre del responsable, foto JPEG hasta 512 KiB,
+firma, GPS y hora. Con red desactivada debe guardarse y sobrevivir al reinicio o
+al cierre de sesion. Solo la cuenta original puede retomarlo. Al volver la red,
+se envia a POST /api/repartidor/retiros/sincronizacion con fecha y eventos.
+La respuesta contiene aplicados y rechazados identificados por retiroId. La misma solicitud se puede reenviar tras una
+confirmacion perdida; no se vuelve a completar ni a publicar el retiro.
+
+Los rechazos conservan evidencia y motivo; Reintentar rechazados es manual y
+reutiliza el mismo evento. Los comprobantes de dias anteriores permanecen en la
+cola aunque cambie la ruta. El servidor valida operador, ruta y repartidor antes
+de registrar, guarda evidencia y outbox en la misma transaccion y no publica
+fotos o firmas en RabbitMQ ni en el listado general de retiros.
+
+### FCM real (6.11 y 7.3)
+
+1. Registrar en el proyecto Firebase una app Android con package
+  com.companyname.plataforma.mobile y obtener su google-services.json. Ubicarlo
+  en Platforms/Android antes de compilar; ese archivo esta ignorado por Git.
+2. Activar Firebase Cloud Messaging HTTP v1. En el worker configurar
+  Push__Fcm__ProjectId con el mismo proyecto (opcional si figura en la cuenta).
+  Credenciales solo desde un Secret: Push__Fcm__CuentaServicioJson con la cuenta
+  de servicio autorizada. Nunca incluir la cuenta de servicio en la APK ni en Git.
+3. Sin Push__Fcm__CuentaServicioJson, el worker usa el emisor de laboratorio:
+  escribe en logs y no entrega notificaciones al telefono. En contenedores hay
+  que inyectar esa variable explicitamente mediante la configuracion de despliegue.
+4. Conceder permiso de notificaciones. Abrir la ruta registra automaticamente
+  el token real; su renovacion registra el nuevo y elimina el anterior de la
+  misma cuenta. La pantalla distingue registro confirmado, falta de permiso y
+  Firebase sin configurar. No imprime el token completo.
+5. Cerrar la app sin forzar su detencion desde Ajustes. Reasignar con urgencia
+  un envio al repartidor desde Backoffice. Debe recibirse el push con la app
+  cerrada y, al tocarlo, abrir y actualizar la ruta. El texto no expone datos
+  personales en la pantalla bloqueada. Android no garantiza recibir push tras
+  una detencion forzada.
+
+Salir intenta dar de baja el token en el servidor; sin red esa baja no puede
+confirmarse. El worker elimina tokens que FCM declare UNREGISTERED usando
+operador, repartidor y token como condicion. Permisos insuficientes del proyecto
+Firebase o un ProjectId incorrecto no se consideran entrega exitosa.
+
+### GPS y ADR 0013
+
+Con jornada activa y ubicacion habilitada: pantalla apagada tres minutos,
+modo avion manteniendo GPS, recuperar red y comprobar hora/posiciones en Flota
+en la calle. Verificar tambien que el servicio se detenga al completar la
+jornada o salir. No confundir proceso activo con lote aceptado por el servidor.
+
+Leer [ADR 0013](../../docs/contratos/adr/0013-conflictos-sincronizacion.md).
+Para defenderlo: el telefono propone eventos inmutables con identificador; el
+servidor decide contra asignacion, estado y reglas vigentes; un rechazo no borra
+evidencia; reenviar un evento confirmado no duplica efectos. Caso clave: entregar
+offline un envio reasignado debe conservar el comprobante y mostrar el rechazo
+al recuperar conexion. Cerrar sesion no equivale a borrar pendientes.
+
+Se elimino CierreRutasSinIntento y su excepcion de catalogo porque no estaban
+registrados y podian competir con evidencia offline. El cierre diario de
+indicadores del worker sigue igual; no se agrego una entrega fallida automatica.
+
 ## Separacion del servidor
 
 Mantener `Plataforma.Mobile` y `Plataforma.Mobile.Tests` fuera de
@@ -155,8 +253,11 @@ No usar estos accesos de desarrollo en produccion.
 La app usa exclusivamente `repartidor-api.db`. Si existe una base demo anterior,
 no se abre, elimina ni migra a la API.
 Cada base API queda ligada al operador y repartidor del login; se rechaza
-reemplazarla con otro usuario mientras conserve su ruta. Cerrar sesion exige
-no tener pendientes ni rechazos.
+reemplazarla con otro usuario mientras conserve su ruta. Cerrar sesion elimina
+el token y permite volver al acceso aunque haya pendientes o rechazos. En ese
+caso, o si hay escaneos guardados, conserva los datos locales para la cuenta
+original. Hay que ingresar con esa cuenta y resolverlos antes de cambiar de
+usuario. Sin pendientes ni escaneos se libera la ruta al cerrar sesion.
 
 Login descarga rutas cuando no hay ruta local; reautenticarse conserva los
 comprobantes. **Descargar ruta** actualiza desde el servidor solo sin pendientes

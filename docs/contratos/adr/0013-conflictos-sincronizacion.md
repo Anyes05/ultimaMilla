@@ -51,7 +51,8 @@ motivo.** Nunca se sobrescribe ni se descarta nada en silencio.
 
 5. **En el teléfono, los rechazos no se pierden.** El comprobante queda en estado *Rechazado* con el motivo del
    servidor y su evidencia. No se reenvía en bucle: "Reintentar rechazados" es una acción manual que reenvía el
-   mismo comprobante y el mismo `eventoId`, sin editarlo. No se puede cerrar sesión con pendientes o rechazos.
+  mismo comprobante y el mismo `eventoId`, sin editarlo. Cerrar sesión elimina el token, pero conserva
+  pendientes y rechazos ligados a la cuenta original; otra cuenta no puede reemplazarlos.
    Después de una sincronización con algo aplicado, la app vuelve a bajar la ruta para quedar igual al servidor.
 6. **Trazabilidad.** Todo lo aplicado deja historial con responsable, prueba de entrega con posición y hora del
    dispositivo, y evento en el outbox (incluidos los eventos por bulto), con el mismo identificador de correlación.

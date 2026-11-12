@@ -19,6 +19,7 @@
             </Grid>
             <Label Text="{Binding Titulo}" Style="{StaticResource HeadingLabel}" FontSize="22" />
             <Label Text="{Binding Resumen}" AutomationId="RutaResumen" FontAttributes="Bold" />
+            <Label Text="{Binding EstadoPush}" Style="{StaticResource MutedLabel}" />
             <VerticalStackLayout IsVisible="{Binding RecorridoActivo}" Spacing="6">
                 <Label Text="{Binding ProgresoRecorrido}" Style="{StaticResource SectionLabel}" />
                 <Button Text="Siguiente parada" Command="{Binding SiguienteParadaCommand}" Style="{StaticResource SecondaryButton}" />
@@ -37,6 +38,26 @@
             </Label.Triggers>
         </Label>
         <CollectionView Grid.Row="2" ItemsSource="{Binding EnviosVisibles}" SelectionMode="None" ItemSizingStrategy="MeasureAllItems">
+            <CollectionView.Footer>
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Retiros}" Spacing="8" Margin="0,12,0,0">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="models:RetiroEnRuta">
+                            <Border Padding="12">
+                                <VerticalStackLayout Spacing="6">
+                                    <Label Text="RETIRO EN DOMICILIO" Style="{StaticResource SectionLabel}" />
+                                    <Label Text="{Binding Direccion}" FontAttributes="Bold" />
+                                    <Label Text="{Binding Contacto}" />
+                                    <Label Text="{Binding ParadaTexto}" Style="{StaticResource MutedLabel}" />
+                                    <Label Text="{Binding EstadoTexto}" />
+                                    <Button Text="Registrar retiro" IsVisible="{Binding PuedeRetirar}"
+                                        Command="{Binding Source={RelativeSource AncestorType={x:Type vm:RutaViewModel}}, Path=SeleccionarRetiroCommand}"
+                                        CommandParameter="{Binding .}" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </CollectionView.Footer>
             <CollectionView.ItemTemplate>
                 <DataTemplate x:DataType="models:Envio">
                     <Border Padding="12" Margin="0,4">
@@ -100,7 +121,7 @@
                 Style="{StaticResource SecondaryButton}" />
             <Button Text="Historial de entregas" Command="{Binding AbrirHistorialCommand}"
                 Style="{StaticResource SecondaryButton}" />
-            <Button Text="Cerrar sesion" Command="{Binding CerrarSesionCommand}"
+            <Button Text="Cerrar sesion" Clicked="CerrarSesion"
                 Style="{StaticResource SecondaryButton}" />
             </VerticalStackLayout>
         </Border>
@@ -156,11 +177,18 @@
               <Border Padding="20" VerticalOptions="Start">
                 <VerticalStackLayout Spacing="12">
                     <Label Text="COMPROBANTE DE ENTREGA" Style="{StaticResource SectionLabel}" />
-                    <Label Text="Registrar entrega" Style="{StaticResource HeadingLabel}" FontSize="22" />
-                    <Label Text="{Binding EnvioSeleccionado.NumeroSeguimiento}" Style="{StaticResource SectionLabel}" />
+                    <Label Text="{Binding TituloComprobante}" Style="{StaticResource HeadingLabel}" FontSize="22" />
+                    <Label Text="{Binding ReferenciaSeleccionada}" Style="{StaticResource SectionLabel}" />
+                    <VerticalStackLayout IsVisible="{Binding EsRetiro}" Spacing="8">
+                        <Label Text="{Binding ResumenCodigosRetiro}" />
+                        <Button Text="Escanear bulto del retiro" Clicked="EscanearBultoRetiro" />
+                    </VerticalStackLayout>
                     <Label Text="Nombre de quien recibe" FontAttributes="Bold" />
                     <Entry Text="{Binding NombreReceptor}" MaxLength="100"
                            Placeholder="Nombre del receptor" AutomationId="EntregaReceptor" />
+                          <Label Text="Documento del receptor" FontAttributes="Bold" />
+                          <Entry Text="{Binding DocumentoReceptor}" MaxLength="50"
+                              Placeholder="Documento de identidad" AutomationId="EntregaDocumento" />
                     <Label Text="Observaciones de la parada" FontAttributes="Bold" />
                     <Editor Text="{Binding Observaciones}" MaxLength="500" HeightRequest="90"
                             AutomationId="EntregaObservaciones" />

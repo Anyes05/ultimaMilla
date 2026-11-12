@@ -12,7 +12,9 @@ public sealed record Ruta(
 	bool ExigeFirma = false,
 	bool ExigeFoto = false,
 	IReadOnlyList<string>? MotivosNoEntrega = null,
-	PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo)
+	PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo,
+	bool ExigeDocumentoReceptor = false,
+	IReadOnlyList<RetiroEnRuta>? Retiros = null)
 {
 	public bool EntregaParcialHabilitada => AdmiteEntregaParcial &&
 		(Funcionalidades?.Contains("entrega-parcial", StringComparer.Ordinal) ?? false);

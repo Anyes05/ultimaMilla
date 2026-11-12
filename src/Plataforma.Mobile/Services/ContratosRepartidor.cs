@@ -18,7 +18,8 @@ public sealed record OperadorContrato(
     bool ExigeFirma = false,
     bool ExigeFoto = false,
     IReadOnlyList<string>? MotivosNoEntrega = null,
-    PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo);
+    PoliticaBultosPendientes PoliticaBultosPendientes = PoliticaBultosPendientes.NuevaVisitaSinRecargo,
+    bool ExigeDocumentoReceptor = false);
 public sealed record BultoContrato(
     Guid Id,
     string Codigo,
@@ -30,13 +31,19 @@ public sealed record EnvioContrato(
     string EmailDestinatario, EstadoEnvio Estado, decimal TarifaCalculada, int IntentosRealizados,
     IReadOnlyList<BultoContrato>? Bultos = null);
 public sealed record RutaContrato(
-    Guid Id, DateOnly Fecha, OperadorContrato Operador, IReadOnlyList<EnvioContrato> Envios);
+    Guid Id, DateOnly Fecha, OperadorContrato Operador, IReadOnlyList<EnvioContrato> Envios,
+    IReadOnlyList<RetiroContrato>? Retiros = null);
+public sealed record RetiroContrato(Guid Id, string Direccion, string Contacto,
+    int CantidadBultos, int? PosicionEnRuta, Plataforma.Domain.EstadoRetiro Estado,
+    string Motivo = "", string Observaciones = "", decimal PesoKg = 0,
+    TimeOnly? FranjaDesde = null, TimeOnly? FranjaHasta = null);
 public sealed record EntregaContrato(
     Guid EventoId, Guid EnvioId, EstadoEnvio Estado, string NombreReceptor,
     string Observaciones, DateTimeOffset FechaDispositivo,
     string? Foto = null, string? Firma = null, double? Latitud = null,
     double? Longitud = null, string? CodigoEscaneado = null,
-    IReadOnlyList<ResultadoBultoEntrega>? Bultos = null);
+    IReadOnlyList<ResultadoBultoEntrega>? Bultos = null,
+    string? DocumentoReceptor = null);
 public sealed record SincronizacionSolicitud(DateOnly Fecha, IReadOnlyList<EntregaContrato> Eventos);
 public sealed record AplicadoContrato(Guid EnvioId, EstadoEnvio Estado, int IntentosRealizados);
 public sealed record RechazadoContrato(Guid EnvioId, string Motivo, EstadoEnvio? EstadoActual);
@@ -52,6 +59,7 @@ public static class ContratosRepartidor
         {
             new JsonStringEnumConverter<EstadoEnvio>(allowIntegerValues: false),
             new JsonStringEnumConverter<EstadoBulto>(allowIntegerValues: false),
+            new JsonStringEnumConverter<Plataforma.Domain.EstadoRetiro>(allowIntegerValues: false),
             new JsonStringEnumConverter<PoliticaBultosPendientes>(allowIntegerValues: false)
         }
     };

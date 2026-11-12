@@ -18,6 +18,7 @@ public partial class App : Application
 		var window = new Window(services.GetRequiredService<AppShell>());
 		var vm = services.GetRequiredService<ViewModels.RutaViewModel>();
 		var rastreo = services.GetRequiredService<Services.IRastreoUbicacion>();
+		var notificaciones = services.GetRequiredService<Services.NotificacionesDispositivo>();
 		var activa = false;
 		async Task ActualizarConexionAsync(bool disponible)
 		{
@@ -43,6 +44,11 @@ public partial class App : Application
 			vm.SoloRutasDeHoy = true;
 			await ActualizarConexionAsync(Connectivity.Current.NetworkAccess == NetworkAccess.Internet);
 			if (vm.PantallaActiva && !vm.HaySeleccion) await rastreo.ActualizarAsync();
+			if (vm.PantallaActiva)
+			{
+				await notificaciones.ActualizarAsync();
+				vm.EstadoPush = notificaciones.Estado;
+			}
 		}
 		async void CambioRuta(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
 		{

@@ -8,6 +8,8 @@ public sealed class SesionRepartidorVencidaException() : InvalidOperationExcepti
 public interface IRepartidorService
 {
     bool RequiereAutenticacion => false;
+    IReadOnlyList<RetiroEnRuta> ObtenerRetiros() => [];
+    void RegistrarRetiro(RetiroPendiente comprobante) => throw new InvalidOperationException("Retiros no disponibles en este servicio.");
     void RegistrarEvento(EntregaPendiente evento) => throw new InvalidOperationException("Operacion no disponible.");
     void RegistrarEscaneoBulto(Guid envioId, Guid bultoId, string codigo) => throw new InvalidOperationException("El escaneo de bultos no esta disponible.");
     void ReintentarRechazados() => throw new InvalidOperationException("Operacion no disponible.");

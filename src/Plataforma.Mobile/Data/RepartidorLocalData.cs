@@ -12,7 +12,8 @@ public sealed record EstadoLocalDemo(
     Guid? OperadorId = null,
     IReadOnlyList<EntregaPendiente>? ComprobantesConfirmados = null,
     bool RequiereAutenticacion = false,
-    IReadOnlyList<Ruta>? RutasPendientes = null);
+    IReadOnlyList<Ruta>? RutasPendientes = null,
+    IReadOnlyList<RetiroEnRuta>? RetirosConComprobante = null);
 
 public sealed class RepartidorLocalData(string databasePath, ISnapshotCipher? cipher = null)
 {

@@ -25,8 +25,9 @@ public sealed class RepartidorHttpService(
             var estado = data.Leer();
             return estado.HaySesion && !estado.RequiereAutenticacion &&
                 estado.Ruta?.Fecha == DateOnly.FromDateTime(DateTime.Today) &&
-                estado.Ruta.Envios.Any(envio => envio.Estado == EstadoEnvio.EnTransito &&
-                    envio.Entrega is null);
+                (estado.Ruta.Envios.Any(envio => envio.Estado == EstadoEnvio.EnTransito && envio.Entrega is null) ||
+                 (estado.Ruta.Retiros ?? []).Any(retiro => retiro.PuedeRetirar &&
+                    !(estado.RetirosConComprobante ?? []).Any(local => local.Id == retiro.Id)));
         }
     }
 
@@ -136,6 +137,35 @@ public sealed class RepartidorHttpService(
     {
         using var operacion = ExigirOperacion();
         local.ReintentarRechazados();
+        var estado = data.Leer();
+        data.Guardar(estado with { RetirosConComprobante = (estado.RetirosConComprobante ?? []).Select(retiro =>
+            retiro.Sincronizacion == EstadoSincronizacion.Rechazado
+                ? retiro with { Sincronizacion = EstadoSincronizacion.Pendiente, MotivoRechazo = null } : retiro).ToArray() });
+    }
+
+    public IReadOnlyList<RetiroEnRuta> ObtenerRetiros()
+    {
+        var estado = data.Leer();
+        if (!HaySesion) throw new SesionRepartidorVencidaException();
+        return (estado.RetirosConComprobante ?? []).Concat(estado.Ruta?.Retiros ?? [])
+            .DistinctBy(retiro => retiro.Id).OrderBy(retiro => retiro.PosicionEnRuta ?? int.MaxValue).ToArray();
+    }
+
+    public void RegistrarRetiro(RetiroPendiente comprobante)
+    {
+        using var operacion = ExigirOperacion();
+        var estado = data.Leer();
+        var retiro = ObtenerRetiros().SingleOrDefault(item => item.Id == comprobante.RetiroId && item.RutaId == comprobante.RutaId)
+            ?? throw new InvalidOperationException("El retiro no pertenece a tu ruta.");
+        if (!retiro.PuedeRetirar || comprobante.EventoId == Guid.Empty ||
+            comprobante.CodigosBultos.Count != retiro.CantidadBultos ||
+            comprobante.CodigosBultos.Any(string.IsNullOrWhiteSpace) ||
+            comprobante.CodigosBultos.Distinct(StringComparer.Ordinal).Count() != retiro.CantidadBultos ||
+            string.IsNullOrWhiteSpace(comprobante.Foto) || string.IsNullOrWhiteSpace(comprobante.Firma) ||
+            string.IsNullOrWhiteSpace(comprobante.NombreResponsable))
+            throw new InvalidOperationException("El retiro requiere todos sus bultos, responsable, foto y firma; no puede registrarse dos veces.");
+        data.Guardar(estado with { RetirosConComprobante = (estado.RetirosConComprobante ?? []).Append(
+            retiro with { Comprobante = comprobante, Sincronizacion = EstadoSincronizacion.Pendiente }).ToArray() });
     }
     public bool ModoDemo { get => false; set { if (value) throw new InvalidOperationException("Selecciona el servicio demo."); } }
     public bool HaySesion => local.HaySesion && !RequiereAutenticacion;
@@ -162,7 +192,8 @@ public sealed class RepartidorHttpService(
         var estado = data.Leer();
         return (estado.RutasPendientes ?? []).Append(estado.Ruta!)
             .Where(ruta => ruta is not null)
-            .Sum(ruta => ruta!.Envios.Count(envio => envio.Sincronizacion == EstadoSincronizacion.Pendiente));
+            .Sum(ruta => ruta!.Envios.Count(envio => envio.Sincronizacion == EstadoSincronizacion.Pendiente)) +
+            (estado.RetirosConComprobante ?? []).Count(retiro => retiro.Sincronizacion == EstadoSincronizacion.Pendiente);
     }
     public void RegistrarEntrega(Guid envioId, string nombreReceptor, string observaciones)
     {
@@ -247,7 +278,7 @@ public sealed class RepartidorHttpService(
         var estado = data.Leer();
         if (estado.Ruta is not null &&
             (estado.RepartidorId != sesion.RepartidorId || estado.OperadorId != sesion.OperadorId))
-            throw new InvalidOperationException("Hay datos de otro repartidor. No se reemplazaron; cierra su sesion primero.");
+            throw new InvalidOperationException("Hay datos pendientes de otro repartidor. Ingresa con la cuenta original y sincronizalos antes de cambiar de usuario.");
         // Una nueva autenticacion no puede reemplazar comprobantes locales.
         if (estado.Ruta is null)
         {
@@ -272,20 +303,75 @@ public sealed class RepartidorHttpService(
         ExigirConexion();
         _ = ObtenerRuta();
         var estado = data.Leer();
+        var retirosAplicados = 0;
+        var retirosRechazados = 0;
+        if ((estado.RetirosConComprobante ?? []).Any(retiro => retiro.Sincronizacion == EstadoSincronizacion.Pendiente))
+        {
+            var tokenRetiros = await LeerTokenAsync();
+            if (string.IsNullOrWhiteSpace(tokenRetiros)) throw new SesionRepartidorVencidaException();
+            foreach (var retiro in estado.RetirosConComprobante!.Where(item => item.Sincronizacion == EstadoSincronizacion.Pendiente).ToArray())
+            {
+                using var solicitud = new HttpRequestMessage(HttpMethod.Post, "api/repartidor/retiros/sincronizacion")
+                {
+                    Content = Json(new
+                    {
+                        fecha = retiro.Fecha,
+                        eventos = new[] { new
+                        {
+                            retiro.Comprobante!.EventoId,
+                            RetiroId = retiro.Id, Resultado = "Retirado",
+                            retiro.Comprobante.CodigosBultos, retiro.Comprobante.Foto, retiro.Comprobante.Firma,
+                            NombreEntrega = retiro.Comprobante.NombreResponsable,
+                            retiro.Comprobante.FechaDispositivo, retiro.Comprobante.Latitud, retiro.Comprobante.Longitud
+                        } }
+                    })
+                };
+                solicitud.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenRetiros);
+                using var respuesta = await EnviarAsync(solicitud);
+                RetiroEnRuta actualizado;
+                if (respuesta.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict or HttpStatusCode.NotFound)
+                {
+                    var error = ContratosRepartidor.Leer<ErrorRetiro>(await respuesta.Content.ReadAsStringAsync());
+                    actualizado = retiro with { Sincronizacion = EstadoSincronizacion.Rechazado, MotivoRechazo = error.Mensaje };
+                    retirosRechazados++;
+                }
+                else
+                {
+                    ExigirExito(respuesta);
+                    var confirmacion = ContratosRepartidor.Leer<ConfirmacionRetiros>(await respuesta.Content.ReadAsStringAsync());
+                    if (confirmacion.Aplicados.Count + confirmacion.Rechazados.Count != 1 ||
+                        confirmacion.Aplicados.Any(item => item.RetiroId != retiro.Id) ||
+                        confirmacion.Rechazados.Any(item => item.RetiroId != retiro.Id))
+                        throw new InvalidOperationException("La confirmacion del retiro no coincide. La evidencia sigue guardada.");
+                    if (confirmacion.Rechazados.SingleOrDefault() is { } rechazo)
+                    {
+                        actualizado = retiro with { Sincronizacion = EstadoSincronizacion.Rechazado, MotivoRechazo = rechazo.Motivo };
+                        retirosRechazados++;
+                    }
+                    else
+                    {
+                        actualizado = retiro with { Sincronizacion = EstadoSincronizacion.Sincronizado, Estado = confirmacion.Aplicados.Single().Estado };
+                        retirosAplicados++;
+                    }
+                }
+                estado = estado with { RetirosConComprobante = estado.RetirosConComprobante!.Select(item => item.Id == retiro.Id ? actualizado : item).ToArray() };
+                data.Guardar(estado);
+            }
+        }
         var rutas = (estado.RutasPendientes ?? []).Append(estado.Ruta!).ToArray();
         var pendientesTotales = rutas.SelectMany(ruta => ruta.Envios)
             .Where(envio => envio.Sincronizacion == EstadoSincronizacion.Pendiente).ToArray();
         var rechazadosTotales = rutas.SelectMany(ruta => ruta.Envios)
             .Count(envio => envio.Sincronizacion == EstadoSincronizacion.Rechazado);
         if (pendientesTotales.Length == 0)
-            return new ResultadoSincronizacion(0, 0, rechazadosTotales);
+            return new ResultadoSincronizacion(retirosAplicados, retirosRechazados, rechazadosTotales);
 
         var token = await LeerTokenAsync();
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Inicia sesion para sincronizar. Tus comprobantes siguen guardados.");
 
-        var totalAplicadas = 0;
-        var totalRechazadas = 0;
+        var totalAplicadas = retirosAplicados;
+        var totalRechazadas = retirosRechazados;
         foreach (var ruta in rutas)
         {
             var pendientes = ruta.Envios.Where(envio =>
@@ -318,7 +404,7 @@ public sealed class RepartidorHttpService(
             return new EntregaContrato(entrega.Id, envio.Id, entrega.Estado,
                 entrega.NombreReceptor, entrega.Observaciones, entrega.Fecha.ToUniversalTime(),
                 entrega.Foto, entrega.Firma, entrega.Latitud, entrega.Longitud, entrega.CodigoEscaneado,
-                entrega.Bultos);
+                entrega.Bultos, entrega.DocumentoReceptor);
         }).ToArray();
         using var request = new HttpRequestMessage(HttpMethod.Post, "api/repartidor/sincronizacion")
         {
@@ -389,7 +475,13 @@ public sealed class RepartidorHttpService(
     public void CerrarSesion()
     {
         using var operacion = ExigirOperacion();
-        local.CerrarSesion();
+        var estado = data.Leer();
+        var conservarDatos = (estado.RetirosConComprobante ?? []).Any(retiro => retiro.Sincronizacion is EstadoSincronizacion.Pendiente or EstadoSincronizacion.Rechazado) ||
+            RepartidorLocalData.RutasConEventosSinResolver(estado).Count > 0 ||
+            estado.Ruta?.Envios.Any(envio => envio.BultosEscaneadosPendientes?.Count > 0) == true;
+        data.Guardar(conservarDatos
+            ? estado with { HaySesion = false, RequiereAutenticacion = false }
+            : new EstadoLocalDemo(null, false, new Dictionary<Guid, EstadoEnvio>()));
         tokens.Borrar();
         ConexionSimulada = true;
     }
@@ -405,7 +497,6 @@ public sealed class RepartidorHttpService(
 
     private async Task DispositivoAsync(HttpMethod method, string token, string? plataforma)
     {
-        using var operacion = ExigirOperacion();
         ExigirConexion();
         if (string.IsNullOrWhiteSpace(token))
             throw new InvalidOperationException("Escribe el codigo del dispositivo antes de registrarlo o eliminarlo.");
@@ -416,7 +507,7 @@ public sealed class RepartidorHttpService(
             ? "api/repartidor/dispositivos" : $"api/repartidor/dispositivos/{Uri.EscapeDataString(token)}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", jwt);
         if (method == HttpMethod.Post) request.Content = Json(new { token, plataforma });
-        using var response = await EnviarAsync(request);
+        using var response = await EnviarAsync(request, marcarAutenticacion: false);
         if (method == HttpMethod.Delete && response.StatusCode == HttpStatusCode.NotFound) return;
         ExigirExito(response);
     }
@@ -455,7 +546,10 @@ public sealed class RepartidorHttpService(
         return new Ruta(rutas[0].Id, rutas[0].Fecha, operador.Nombre, enviosDeRuta,
             operador.Funcionalidades ?? [], operador.AdmiteEntregaParcial, operador.ExigeFirma,
             operador.ExigeFoto, operador.MotivosNoEntrega ?? CatalogoMotivosNoEntrega.Predeterminados,
-            operador.PoliticaBultosPendientes);
+            operador.PoliticaBultosPendientes, operador.ExigeDocumentoReceptor,
+            rutas.SelectMany(ruta => (ruta.Retiros ?? []).Select(retiro => new RetiroEnRuta(
+                retiro.Id, ruta.Id, ruta.Fecha, retiro.Direccion, retiro.Contacto,
+                retiro.CantidadBultos, retiro.PosicionEnRuta, retiro.Estado))).ToArray());
     }
 
     private static bool MismoOperador(OperadorContrato actual, OperadorContrato esperado) =>
@@ -463,6 +557,7 @@ public sealed class RepartidorHttpService(
         actual.MaximoIntentos == esperado.MaximoIntentos &&
         actual.AdmiteEntregaParcial == esperado.AdmiteEntregaParcial &&
         actual.ExigeFirma == esperado.ExigeFirma && actual.ExigeFoto == esperado.ExigeFoto &&
+        actual.ExigeDocumentoReceptor == esperado.ExigeDocumentoReceptor &&
         actual.PoliticaBultosPendientes == esperado.PoliticaBultosPendientes &&
         (actual.Funcionalidades ?? []).SequenceEqual(esperado.Funcionalidades ?? []) &&
         (actual.MotivosNoEntrega ?? []).SequenceEqual(esperado.MotivosNoEntrega ?? []);
@@ -488,6 +583,11 @@ public sealed class RepartidorHttpService(
                 : comprobante)
             .ToArray();
     }
+
+    private sealed record ErrorRetiro(string Mensaje);
+    private sealed record RetiroAplicado(Guid RetiroId, Plataforma.Domain.EstadoRetiro Estado);
+    private sealed record RetiroRechazado(Guid RetiroId, string Motivo);
+    private sealed record ConfirmacionRetiros(IReadOnlyList<RetiroAplicado> Aplicados, IReadOnlyList<RetiroRechazado> Rechazados);
 
     private void ExigirConexion()
     {

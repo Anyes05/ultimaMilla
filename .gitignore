@@ -25,6 +25,8 @@ out/
 *.sqlite3
 **/keys/
 **/DataProtection-Keys/
+**/google-services.json
+**/firebase-adminsdk*.json
 
 # --- IDE / SO ---
 .vs/

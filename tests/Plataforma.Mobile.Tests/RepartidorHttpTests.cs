@@ -74,6 +74,7 @@ public sealed partial class RepartidorHttpTests : IDisposable
             Funcionalidades = ["entrega-parcial"],
             AdmiteEntregaParcial = true,
             ExigeFirma = true,
+            ExigeDocumentoReceptor = true,
             MotivosNoEntrega = ["Destinatario ausente"]
         };
         handler.Respuestas.Enqueue(Ok(new[] { rutaOriginal with { Operador = operador, Envios = [envio] } }));
@@ -83,8 +84,85 @@ public sealed partial class RepartidorHttpTests : IDisposable
         var ruta = service.ObtenerRuta();
         Assert.True(ruta.EntregaParcialHabilitada);
         Assert.True(ruta.ExigeFirma);
+        Assert.True(ruta.ExigeDocumentoReceptor);
         Assert.Contains("Destinatario ausente", ruta.MotivosNoEntrega!);
         Assert.Equal(2, Assert.Single(ruta.Envios).Bultos!.Count);
+    }
+
+    [Fact]
+    public async Task DocumentoReceptorViajaConElComprobanteSincronizado()
+    {
+        await Login();
+        var envio = service.ObtenerRuta().Envios[0];
+        service.RegistrarEvento(new EntregaPendiente(Guid.NewGuid(), envio.Id, "Receptor", "",
+            DateTimeOffset.Now, DocumentoReceptor: "12345678"));
+        handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
+            [new AplicadoContrato(envio.Id, EstadoEnvio.Entregado, 0)], [])));
+
+        await service.SincronizarAsync();
+
+        var solicitud = ContratosRepartidor.Leer<SincronizacionSolicitud>(handler.Requests.Last().Body);
+        Assert.Equal("12345678", Assert.Single(solicitud.Eventos).DocumentoReceptor);
+        Assert.Equal("12345678", Assert.Single(service.ObtenerHistorialEntregas()).DocumentoReceptor);
+    }
+
+    [Fact]
+    public async Task RetiroOfflineConservaEvidenciaAlCerrarSesion()
+    {
+        await Login();
+        var ruta = service.ObtenerRuta();
+        var retiro = new RetiroEnRuta(Guid.NewGuid(), ruta.Id, ruta.Fecha, "Direccion", "Contacto", 1, 0,
+            Plataforma.Domain.EstadoRetiro.EnCurso);
+        data.Guardar(data.Leer() with { Ruta = ruta with { Retiros = [retiro] } });
+        service.ConexionSimulada = false;
+        var comprobante = new RetiroPendiente(Guid.NewGuid(), retiro.Id, retiro.RutaId, DateTimeOffset.Now,
+            ["BULTO-RETIRO"], "Responsable", "/9j/2Q==", "[[{\"x\":1,\"y\":1},{\"x\":2,\"y\":2}]]", -34.9, -56.16);
+
+        service.RegistrarRetiro(comprobante);
+        service.CerrarSesion();
+
+        Assert.False(service.HaySesion);
+        Assert.Null(tokens.Value);
+        var guardado = Assert.Single(data.Leer().RetirosConComprobante!);
+        Assert.Equal(EstadoSincronizacion.Pendiente, guardado.Sincronizacion);
+        Assert.Equal(comprobante.EventoId, guardado.Comprobante!.EventoId);
+        Assert.Equal(comprobante.Foto, guardado.Comprobante.Foto);
+        Assert.Equal(comprobante.Firma, guardado.Comprobante.Firma);
+    }
+
+    [Fact]
+    public async Task RetiroUsaContratoPorLoteYFechaDeLaRuta()
+    {
+        await Login();
+        var contrato = ContratosRepartidor.Leer<RutaContrato[]>(
+            ContratosRepartidor.LeerEjemplo("rutas-hoy.response.json"))[0];
+        var retiroId = Guid.NewGuid();
+        handler.Respuestas.Enqueue(Ok(new[] { contrato with
+        {
+            Retiros = [new RetiroContrato(retiroId, "Direccion", "Contacto", 1, 0,
+                Plataforma.Domain.EstadoRetiro.EnCurso)]
+        } }));
+        await service.DescargarRutaAsync();
+        var retiro = Assert.Single(service.ObtenerRetiros());
+        Assert.Equal(contrato.Id, retiro.RutaId);
+        Assert.Equal(contrato.Fecha, retiro.Fecha);
+        service.RegistrarRetiro(new RetiroPendiente(Guid.NewGuid(), retiro.Id, retiro.RutaId,
+            DateTimeOffset.Now, ["BULTO-RETIRO"], "Responsable", "/9j/2Q==", "firma", -34.9, -56.16));
+        handler.Respuestas.Enqueue(Ok(new
+        {
+            aplicados = new[] { new { retiroId, estado = "Completado" } },
+            rechazados = Array.Empty<object>()
+        }));
+
+        await service.SincronizarAsync();
+
+        using var solicitud = System.Text.Json.JsonDocument.Parse(handler.Requests.Last().Body);
+        Assert.Equal(contrato.Fecha.ToString("yyyy-MM-dd"), solicitud.RootElement.GetProperty("fecha").GetString());
+        var evento = Assert.Single(solicitud.RootElement.GetProperty("eventos").EnumerateArray());
+        Assert.Equal(retiroId, evento.GetProperty("retiroId").GetGuid());
+        Assert.Equal("Retirado", evento.GetProperty("resultado").GetString());
+        Assert.Equal("Responsable", evento.GetProperty("nombreEntrega").GetString());
+        Assert.Equal(EstadoSincronizacion.Sincronizado, Assert.Single(service.ObtenerRetiros()).Sincronizacion);
     }
 
     [Fact]

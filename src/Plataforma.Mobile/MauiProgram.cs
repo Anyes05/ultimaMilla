@@ -32,6 +32,8 @@ public static class MauiProgram
 			proveedor.GetRequiredService<ITokenRepartidor>(),
 			proveedor.GetRequiredService<ColaPosiciones>()));
 		builder.Services.AddSingleton<IRastreoUbicacion, RastreoUbicacion>();
+		builder.Services.AddSingleton<AutenticacionBiometrica>();
+		builder.Services.AddSingleton<NotificacionesDispositivo>();
 		builder.Services.AddSingleton<IRepartidorService>(proveedor =>
 			proveedor.GetRequiredService<RepartidorHttpService>());
 		builder.Services.AddSingleton<INavigationService, ShellNavigationService>();

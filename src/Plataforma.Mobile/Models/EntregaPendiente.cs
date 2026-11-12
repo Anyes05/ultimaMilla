@@ -14,7 +14,8 @@ public sealed record EntregaPendiente(
     string? CodigoEscaneado = null,
     string? NumeroSeguimiento = null,
     string? Destinatario = null,
-    IReadOnlyList<ResultadoBultoEntrega>? Bultos = null)
+    IReadOnlyList<ResultadoBultoEntrega>? Bultos = null,
+    string? DocumentoReceptor = null)
 {
     public string FechaTexto => Fecha.ToString("dd/MM/yyyy HH:mm");
 }

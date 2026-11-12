@@ -13,9 +13,14 @@ public partial class RutaPage : ContentPage
     private readonly FirmaDrawable firma = new();
     private readonly ILogger<RutaPage> logger;
     private readonly IRastreoUbicacion rastreo;
+    private readonly AutenticacionBiometrica biometria;
+    private readonly NotificacionesDispositivo notificaciones;
 
-    public RutaPage(RutaViewModel viewModel, ILogger<RutaPage> logger, IRastreoUbicacion rastreo)
+    public RutaPage(RutaViewModel viewModel, ILogger<RutaPage> logger, IRastreoUbicacion rastreo,
+        AutenticacionBiometrica biometria, NotificacionesDispositivo notificaciones)
     {
+        this.notificaciones = notificaciones;
+        this.biometria = biometria;
         this.rastreo = rastreo;
         this.logger = logger;
         this.viewModel = viewModel;
@@ -48,6 +53,7 @@ public partial class RutaPage : ContentPage
     private async void GuardarEvidencia(object? sender, EventArgs e)
     {
         if (viewModel.Ocupado || !viewModel.HaySeleccion) return;
+        if (!await ConfirmarIdentidadAsync("Confirmar entrega o intento")) return;
         if (!await ObtenerGpsAsync()) return;
         viewModel.Firma = firma.Exportar();
         await viewModel.GuardarEntregaCommand.ExecuteAsync(null);
@@ -56,6 +62,35 @@ public partial class RutaPage : ContentPage
             BorrarFirma(null, EventArgs.Empty);
             EstadoEvidencia.Text = "";
         }
+    }
+
+    private async Task<bool> ConfirmarIdentidadAsync(string operacion)
+    {
+        viewModel.Ocupado = true;
+        try
+        {
+            var confirmada = await biometria.ConfirmarAsync(operacion);
+            if (!confirmada) viewModel.Mensaje = "Identidad no verificada. La operacion no se realizo; revisa tu biometria en Ajustes.";
+            return confirmada;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudo verificar identidad biometrica");
+            viewModel.Mensaje = "No se pudo verificar tu identidad. La operacion no se realizo.";
+            return false;
+        }
+        finally { viewModel.Ocupado = false; }
+    }
+
+    private async void CerrarSesion(object? sender, EventArgs e)
+    {
+        if (viewModel.Ocupado) return;
+        if (viewModel.TieneComprobantesSinResolver && !await ConfirmarIdentidadAsync("Cerrar sesion con comprobantes pendientes")) return;
+        viewModel.Ocupado = true;
+        try { await notificaciones.QuitarAsync(); }
+        finally { viewModel.Ocupado = false; }
+        await viewModel.CerrarSesionCommand.ExecuteAsync(null);
+        await rastreo.ActualizarAsync(permitirInicio: false);
     }
 
     private void LimpiarVistaPreviaFoto()
@@ -151,6 +186,29 @@ public partial class RutaPage : ContentPage
         if (viewModel.Ocupado || sender is not Button { CommandParameter: Envio envio }) return;
         try
         {
+            var esperados = envio.Bultos?.Where(bulto => bulto.PuedeEntregarse)
+                .Select(bulto => bulto.Codigo).ToHashSet(StringComparer.Ordinal) ?? [];
+            if (esperados.Count > 0)
+            {
+                var leidos = new HashSet<string>(StringComparer.Ordinal);
+                while (leidos.Count < esperados.Count)
+                {
+                    var faltantes = esperados.Except(leidos).ToArray();
+                    var bulto = await EscanearCodigoAsync("Control de carga",
+                        $"Faltan {faltantes.Length}: {string.Join(", ", faltantes)}");
+                    if (bulto is null)
+                    {
+                        viewModel.Mensaje = $"Carga sin confirmar. Faltan {faltantes.Length} bultos: {string.Join(", ", faltantes)}.";
+                        return;
+                    }
+                    if (!esperados.Contains(bulto))
+                        await DisplayAlertAsync("Bulto sobrante", "El codigo no pertenece a los bultos esperados de este envio. Separalo y avisa al deposito.", "Aceptar");
+                    else if (!leidos.Add(bulto))
+                        await DisplayAlertAsync("Bulto repetido", "Este bulto ya fue contado; no se suma de nuevo.", "Aceptar");
+                }
+                await viewModel.RegistrarCargaAsync(envio, envio.NumeroSeguimiento);
+                return;
+            }
             var codigo = await EscanearCodigoAsync("Escanear carga", $"Escanea {envio.NumeroSeguimiento}");
             if (codigo is not null) await viewModel.RegistrarCargaAsync(envio, codigo);
         }
@@ -173,6 +231,21 @@ public partial class RutaPage : ContentPage
         {
             logger.LogWarning(ex, "No se pudo escanear el bulto de entrega");
             viewModel.Mensaje = "No se pudo escanear el bulto. No se marco como entregado.";
+        }
+    }
+
+    private async void EscanearBultoRetiro(object? sender, EventArgs e)
+    {
+        if (viewModel.Ocupado || !viewModel.EsRetiro) return;
+        try
+        {
+            var codigo = await EscanearCodigoAsync("Bulto del retiro", "Escanea el codigo del paquete a retirar");
+            if (!string.IsNullOrWhiteSpace(codigo)) viewModel.RegistrarCodigoRetiro(codigo);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "No se pudo escanear el retiro");
+            viewModel.Mensaje = "No se pudo escanear el bulto del retiro. Revisa el permiso de camara.";
         }
     }
 
@@ -246,6 +319,8 @@ public partial class RutaPage : ContentPage
         viewModel.PropertyChanged += CambioSeleccion;
         await viewModel.RefrescarRutaAlMostrarAsync();
         await rastreo.ActualizarAsync();
+        await notificaciones.ActualizarAsync();
+        viewModel.EstadoPush = notificaciones.Estado;
     }
 
     protected override void OnDisappearing()
@@ -257,7 +332,7 @@ public partial class RutaPage : ContentPage
 
     private void CambioSeleccion(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(RutaViewModel.EnvioSeleccionado)) return;
+        if (e.PropertyName is not (nameof(RutaViewModel.EnvioSeleccionado) or nameof(RutaViewModel.RetiroSeleccionado))) return;
         LimpiarVistaPreviaFoto();
         BorrarFirma(null, EventArgs.Empty);
         EstadoEvidencia.Text = "";
