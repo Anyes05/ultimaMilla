@@ -6,7 +6,7 @@ using Plataforma.Domain;
 
 namespace Plataforma.Backoffice.Pages.Deposito;
 
-/// <summary>Recepción en depósito con conteo de bultos y registro de discrepancias (RF 10).</summary>
+/// <summary>Recepción en depósito por escaneo de bultos, con registro de los que faltan (RF 10).</summary>
 [Authorize(Roles = PermisosPerfil.Deposito)]
 public class RecepcionModel : PageModel
 {
@@ -101,6 +101,38 @@ public class RecepcionModel : PageModel
             TempData["Mensaje"] = resultado.HayDiscrepancia
                 ? $"Recibido con discrepancia: esperados {resultado.BultosEsperados}, recibidos {resultado.BultosRecibidos}."
                 : "Envío recibido en depósito.";
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            TempData["Error"] = TextosUsuario.Error(ex);
+        }
+
+        // PRG: recargar no vuelve a recibir.
+        return RedirectToPage();
+    }
+
+    /// <summary>RF 10: recibe lo escaneado (códigos de bultos o números de seguimiento), uno por línea.</summary>
+    public async Task<IActionResult> OnPostEscanearAsync(string? codigos, string? observaciones)
+    {
+        if (!AccesoActual.Intentar(User, out var acceso))
+            return Challenge();
+
+        try
+        {
+            var usuario = string.IsNullOrWhiteSpace(User.Identity?.Name) ? acceso.UsuarioId.ToString() : User.Identity.Name;
+            var lista = (codigos ?? string.Empty).Split(['\n', '\r', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var resultado = await _recibir.RecibirPorEscaneoAsync(
+                acceso.OperadorId, lista, usuario, observaciones ?? string.Empty, HttpContext.RequestAborted);
+
+            if (resultado.Recibidos.Count > 0)
+                TempData["Mensaje"] = string.Join(" ", resultado.Recibidos.Select(recibido => recibido.Faltantes.Count == 0
+                    ? $"{recibido.NumeroSeguimiento}: completo ({recibido.BultosRecibidos} de {recibido.BultosEsperados})."
+                    : $"{recibido.NumeroSeguimiento}: con discrepancia, llegaron {recibido.BultosRecibidos} de {recibido.BultosEsperados}; faltan {string.Join(", ", recibido.Faltantes)}."));
+            var problemas = resultado.NoReconocidos.Select(codigo => $"No es de ningún envío pendiente: {codigo}.")
+                .Concat(resultado.Errores)
+                .ToList();
+            if (problemas.Count > 0)
+                TempData["Error"] = string.Join(" ", problemas);
         }
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {

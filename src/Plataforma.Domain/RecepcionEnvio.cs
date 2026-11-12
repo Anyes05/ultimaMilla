@@ -10,6 +10,9 @@ public class RecepcionEnvio
     public int BultosRecibidos { get; private set; }
     public bool HayDiscrepancia { get; private set; }
     public string Observaciones { get; private set; } = string.Empty;
+
+    /// <summary>Códigos de los bultos declarados que no se escanearon al recibir (uno por línea).</summary>
+    public string BultosFaltantes { get; private set; } = string.Empty;
     public string Usuario { get; private set; } = string.Empty;
     public DateTimeOffset Fecha { get; private set; }
 
@@ -24,7 +27,8 @@ public class RecepcionEnvio
         int bultosEsperados,
         int bultosRecibidos,
         string usuario,
-        string observaciones = "")
+        string observaciones = "",
+        IReadOnlyList<string>? bultosFaltantes = null)
     {
         if (id == Guid.Empty)
             throw new ArgumentException("La recepción necesita un identificador.", nameof(id));
@@ -52,6 +56,7 @@ public class RecepcionEnvio
             BultosRecibidos = bultosRecibidos,
             HayDiscrepancia = discrepancia,
             Observaciones = (observaciones ?? string.Empty).Trim(),
+            BultosFaltantes = string.Join('\n', (bultosFaltantes ?? []).Select(codigo => codigo.Trim())),
             Usuario = usuario.Trim(),
             Fecha = DateTimeOffset.UtcNow
         };

@@ -240,6 +240,7 @@ public class PlataformaDbContext : IdentityDbContext<UsuarioIdentity, IdentityRo
         {
             entidad.HasKey(r => r.Id);
             entidad.Property(r => r.Usuario).HasMaxLength(120);
+            entidad.Property(r => r.BultosFaltantes).HasMaxLength(4000).HasDefaultValue(string.Empty);
             entidad.HasIndex(r => new { r.OperadorId, r.EnvioId });
         });
 

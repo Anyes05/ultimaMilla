@@ -8,7 +8,7 @@
 <div class="mb-4">
     <p class="text-uppercase text-primary fw-semibold small mb-1">Depósito</p>
     <h1 class="display-6 fw-bold mb-1">Recepción de envíos</h1>
-    <p class="text-muted mb-0">Contá los bultos que llegan. Si faltan o sobran, dejá una observación.</p>
+    <p class="text-muted mb-0">Escaneá la etiqueta QR de cada bulto que llega. Lo que falte de cada envío queda registrado como discrepancia.</p>
 </div>
 
 @if (Model.Mensaje is not null)
@@ -22,17 +22,22 @@
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body p-4">
-        <form method="post" asp-page-handler="Recibir" class="row g-2 align-items-end" autocomplete="off">
-            <div class="col-sm-8 col-lg-6">
-                <label class="form-label fw-semibold" for="numeroSeguimiento">Número de seguimiento</label>
-                <input id="numeroSeguimiento" name="numeroSeguimiento" class="form-control form-control-lg"
-                       placeholder="Escaneá el código o escribí el número" autofocus required />
+        <form method="post" asp-page-handler="Escanear" class="row g-3" autocomplete="off">
+            <div class="col-12 col-lg-7">
+                <label class="form-label fw-semibold" for="codigos">Bultos escaneados</label>
+                <textarea id="codigos" name="codigos" class="form-control font-monospace" rows="5" autofocus required
+                          placeholder="Escaneá los QR de los bultos, uno por línea (el lector agrega el salto de línea)."></textarea>
+                <div class="form-text">Podés mezclar bultos de varios envíos. Si escaneás el número de seguimiento, el envío se recibe completo.</div>
             </div>
-            <div class="col-sm-4 col-lg-3">
-                <button class="btn btn-primary btn-lg w-100" type="submit">Recibir completo</button>
+            <div class="col-12 col-lg-5 d-flex flex-column gap-2">
+                <div>
+                    <label class="form-label fw-semibold" for="observacionesEscaneo">Observaciones <span class="text-muted fw-normal">(opcional)</span></label>
+                    <input id="observacionesEscaneo" name="observaciones" class="form-control" maxlength="400" />
+                </div>
+                <button class="btn btn-primary btn-lg mt-lg-auto" type="submit">Recibir lo escaneado</button>
             </div>
         </form>
-        <p class="small text-muted mt-2 mb-0">Para registrar una diferencia, usá la cantidad de la lista de abajo.</p>
+        <p class="small text-muted mt-2 mb-0">Sin lector, también podés recibir desde la lista de abajo indicando la cantidad.</p>
     </div>
 </div>
 
@@ -94,12 +99,12 @@
     <div class="table-responsive">
         <table class="table align-middle mb-0">
             <thead class="table-light">
-                <tr><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Esperados</th><th class="text-center">Recibidos</th><th>Observaciones</th><th>Registró</th><th>Fecha</th></tr>
+                <tr><th>N° Tracking</th><th>Destinatario</th><th class="text-center">Esperados</th><th class="text-center">Recibidos</th><th>Faltantes</th><th>Observaciones</th><th>Registró</th><th>Fecha</th></tr>
             </thead>
             <tbody>
             @if (Model.Discrepancias.Count == 0)
             {
-                <tr><td colspan="7" class="text-center text-muted py-4">No hay discrepancias registradas.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">No hay discrepancias registradas.</td></tr>
             }
             @foreach (var discrepancia in Model.Discrepancias)
             {
@@ -108,6 +113,7 @@
                     <td>@discrepancia.Destinatario</td>
                     <td class="text-center">@discrepancia.BultosEsperados</td>
                     <td class="text-center">@discrepancia.BultosRecibidos</td>
+                    <td class="small font-monospace" data-faltantes>@(string.IsNullOrEmpty(discrepancia.BultosFaltantes) ? "—" : discrepancia.BultosFaltantes.Replace("\n", ", "))</td>
                     <td>@discrepancia.Observaciones</td>
                     <td>@discrepancia.Usuario</td>
                     <td>@RelojOperacion.ParaContrato(discrepancia.Fecha).ToString("dd/MM/yyyy HH:mm")</td>

@@ -27,7 +27,8 @@ public sealed class RecepcionRepositorio : IRecepcionRepositorio
                    recepcion.BultosRecibidos,
                    recepcion.Observaciones,
                    recepcion.Usuario,
-                   recepcion.Fecha))
+                   recepcion.Fecha,
+                   recepcion.BultosFaltantes))
             .Take(limite)
             .ToListAsync(cancellationToken);
 

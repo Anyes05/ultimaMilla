@@ -1150,6 +1150,13 @@ namespace Plataforma.Infrastructure.Migrations
                     b.Property<int>("BultosEsperados")
                         .HasColumnType("integer");
 
+                    b.Property<string>("BultosFaltantes")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasDefaultValue("");
+
                     b.Property<int>("BultosRecibidos")
                         .HasColumnType("integer");
 
