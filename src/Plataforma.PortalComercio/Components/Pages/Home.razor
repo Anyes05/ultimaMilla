@@ -70,7 +70,8 @@
                                     <option value="">Sin franja</option>
                                     @foreach (var franja in Franjas)
                                     {
-                                        <option value="@franja.Id">@franja.Nombre (@franja.Desde.ToString("HH:mm") a @franja.Hasta.ToString("HH:mm"))</option>
+                                        @* data-zona: el script de App.razor deja elegir solo las franjas de la zona elegida (o de todas). *@
+                                        <option value="@franja.Id" data-zona="@(franja.ZonaId?.ToString() ?? string.Empty)">@franja.Nombre (@franja.Desde.ToString("HH:mm") a @franja.Hasta.ToString("HH:mm"))</option>
                                     }
                                 </InputSelect>
                             </div>

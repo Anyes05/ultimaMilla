@@ -18,6 +18,30 @@
     <Routes />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script>
+        // Alta de envío (RF 2 y 14): al elegir una zona, solo se pueden elegir las franjas de esa zona o las que valen
+        // para todas. Mismo criterio que valida el servidor (AdmitirEnvio). Sin zona, valen todas.
+        (function () {
+            function filtrarFranjas() {
+                var zona = document.getElementById('zona');
+                var franja = document.getElementById('franja');
+                if (!zona || !franja) return;
+                Array.prototype.forEach.call(franja.options, function (opcion) {
+                    if (!opcion.value) return;
+                    var zonaFranja = opcion.getAttribute('data-zona') || '';
+                    var valida = !zona.value || !zonaFranja || zonaFranja === zona.value;
+                    opcion.disabled = !valida;
+                    opcion.hidden = !valida;
+                });
+                if (franja.selectedIndex > 0 && franja.options[franja.selectedIndex].disabled) franja.value = '';
+            }
+            document.addEventListener('change', function (evento) {
+                if (evento.target && evento.target.id === 'zona') filtrarFranjas();
+            });
+            filtrarFranjas();
+            if (window.Blazor && Blazor.addEventListener) Blazor.addEventListener('enhancedload', filtrarFranjas);
+        })();
+    </script>
 </body>
 
 </html>
