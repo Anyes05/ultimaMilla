@@ -164,10 +164,7 @@
                         @(perfil.Vehiculo is null ? "Sin vehículo" : $"Vehículo {perfil.Vehiculo}") ·
                         sale con @perfil.CargaInicialPesoKg.ToString("0.##") kg ·
                         carga máxima en el recorrido @perfil.PicoPesoKg.ToString("0.##") kg@(perfil.CapacidadPesoKg > 0 ? $" de {perfil.CapacidadPesoKg:0.##} kg" : "")
-                        @if (perfil.Paradas.Any(parada => parada.EsRetiro))
-                        {
-                            <span class="d-block">Recorrido: @string.Join(" → ", perfil.Paradas.Select(parada => $"{parada.Numero}. {(parada.EsRetiro ? "↑ " : "")}{parada.Descripcion} ({parada.CargaPesoKg:0.##} kg)"))</span>
-                        }
+                        <span class="d-block">Recorrido: @string.Join(" → ", perfil.Paradas.Select(parada => $"{parada.Numero}. {(parada.EsRetiro ? "↑ " : "")}{parada.Descripcion} ({parada.CargaPesoKg:0.##} kg)"))</span>
                     </p>
                 }
                 <ol class="list-unstyled mb-0" data-paradas="@ruta.RutaId">
