@@ -18,22 +18,20 @@
 
 <div class="row justify-content-center">
     <div class="col-md-10 col-lg-7">
-        <div class="mb-4">
-            <p class="text-uppercase text-primary fw-semibold small mb-1">Seguimiento</p>
+        <section class="seguimiento-hero text-white rounded-4 p-4 p-md-5 mb-4">
+            <p class="seguimiento-hero__etiqueta text-uppercase fw-semibold small mb-1">Seguimiento</p>
             <h1 class="h2 fw-bold mb-1">¿Dónde está mi envío?</h1>
-            <p class="text-muted mb-0">Consultá el estado con el enlace que recibiste o con tu número de seguimiento.</p>
-        </div>
+            <p class="seguimiento-hero__texto mb-4">Consultá el estado con el enlace que recibiste o con tu número de seguimiento.</p>
 
-        <form method="get" action="/seguimiento" class="card border-0 shadow-sm mb-4">
-            <div class="card-body p-4">
+            <form method="get" action="/seguimiento" class="bg-white text-body rounded-3 shadow p-3">
                 <label class="form-label fw-semibold" for="numero">Número de seguimiento</label>
                 <div class="input-group">
                     <input id="numero" name="numero" value="@Numero" class="form-control form-control-lg"
                            placeholder="ENV-…" autocomplete="off" maxlength="64" />
                     <button class="btn btn-primary" type="submit">Consultar</button>
                 </div>
-            </div>
-        </form>
+            </form>
+        </section>
 
         @if (noEncontrado)
         {
@@ -55,21 +53,25 @@
         @if (visible is not null)
         {
             var etapa = SeguimientoPublico.EtapaActual(visible.Estado);
-            <article class="card border-0 shadow-sm" aria-labelledby="estado-titulo">
-                <div class="card-body p-4">
+            @* --marca: color del operador; pinta la cabecera, las etapas, la entrega prevista y el historial. *@
+            <article class="card border-0 shadow seguimiento-tarjeta overflow-hidden" aria-labelledby="estado-titulo"
+                     style="--marca: @SeguimientoPublico.ColorMarcaCss(visible.ColorMarca)">
+                <div class="seguimiento-tarjeta__cabecera p-4">
                     <p class="seguimiento-marca small fw-semibold mb-3">
-                        <span class="seguimiento-marca__color" style="background: @SeguimientoPublico.ColorMarcaCss(visible.ColorMarca)" aria-hidden="true"></span>
+                        <span class="seguimiento-marca__color" aria-hidden="true"></span>
                         @visible.Operador
                     </p>
                     <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                         <div class="min-w-0">
                             <span class="small text-muted d-block">Número de seguimiento</span>
-                            <strong class="tracking-number">@visible.NumeroSeguimiento</strong>
+                            <strong class="tracking-number fs-5">@visible.NumeroSeguimiento</strong>
                         </div>
                         <span class="status-badge @EstadosVista.Clase(visible.Estado)">@EstadosVista.Nombre(visible.Estado)</span>
                     </div>
 
-                    <h2 id="estado-titulo" class="h5 mb-4">@SeguimientoPublico.Descripcion(visible.Estado)</h2>
+                    <h2 id="estado-titulo" class="h5 fw-bold mb-0">@SeguimientoPublico.Descripcion(visible.Estado)</h2>
+                </div>
+                <div class="card-body p-4">
 
                     @if (etapa >= 0)
                     {
@@ -87,11 +89,11 @@
 
                     @if (visible.FechaPrevista is DateOnly fechaPrevista)
                     {
-                        <p class="mt-4 mb-0">Entrega prevista: <strong>@fechaPrevista.ToString("dd/MM/yyyy")</strong></p>
+                        <p class="seguimiento-dato rounded-3 p-3 mt-4 mb-0">Entrega prevista: <strong>@fechaPrevista.ToString("dd/MM/yyyy")</strong></p>
                     }
                     else if (visible.EstimadaAntesDeUtc is DateTime antesDe)
                     {
-                        <p class="mt-4 mb-0">Entrega estimada antes del <strong>@HoraLocal(antesDe)</strong></p>
+                        <p class="seguimiento-dato rounded-3 p-3 mt-4 mb-0">Entrega estimada antes del <strong>@HoraLocal(antesDe)</strong></p>
                     }
 
                     @if (visible.BultosTotal > 1)

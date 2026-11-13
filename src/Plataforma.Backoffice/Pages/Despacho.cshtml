@@ -26,7 +26,7 @@
 
 @if (Model.Repartidores.Count == 0)
 {
-    <div class="alert alert-warning">No hay repartidores activos para este operador.</div>
+    <div class="alert alert-no-disponible" role="status">No hay repartidores activos para este operador.</div>
 }
 
 <form method="post">

@@ -423,3 +423,11 @@ body .app-content > .footer {
   position: static;
   width: auto;
 }
+
+/* Avisos de algo apagado o no disponible para usar: naranja (tonos naranja de Bootstrap). */
+.alert-no-disponible {
+  --bs-alert-color: #984c0c;
+  --bs-alert-bg: #ffe5d0;
+  --bs-alert-border-color: #fecba1;
+  --bs-alert-link-color: #984c0c;
+}

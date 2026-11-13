@@ -18,10 +18,11 @@
 
 <div class="row justify-content-center">
     <div class="col-md-10 col-lg-7">
-        <div class="mb-4">
-            <p class="text-uppercase text-primary fw-semibold small mb-1">Seguimiento</p>
+        <section class="seguimiento-hero text-white rounded-4 p-4 p-md-5 mb-4">
+            <p class="seguimiento-hero__etiqueta text-uppercase fw-semibold small mb-1">Seguimiento</p>
             <h1 class="h2 fw-bold mb-1">Retiro en domicilio</h1>
-        </div>
+            <p class="seguimiento-hero__texto mb-0">Seguí el estado del retiro de tus paquetes.</p>
+        </section>
 
         @if (retiro is null || operador is null)
         {
@@ -30,11 +31,17 @@
         else
         {
             var etapa = SeguimientoPublico.IndiceEtapaRetiro(retiro.Estado);
-            <article class="card border-0 shadow-sm" aria-labelledby="estado-retiro">
-                <div class="card-body p-4">
-                    <p class="seguimiento-marca small fw-semibold mb-3" style="color: @SeguimientoPublico.ColorMarcaCss(operador.ColorMarca)">@operador.Nombre</p>
+            <article class="card border-0 shadow seguimiento-tarjeta overflow-hidden" aria-labelledby="estado-retiro"
+                     style="--marca: @SeguimientoPublico.ColorMarcaCss(operador.ColorMarca)">
+                <div class="seguimiento-tarjeta__cabecera p-4">
+                    <p class="seguimiento-marca small fw-semibold mb-3">
+                        <span class="seguimiento-marca__color" aria-hidden="true"></span>
+                        @operador.Nombre
+                    </p>
                     <h2 id="estado-retiro" class="h4 fw-bold mb-1" data-estado-retiro="@retiro.Estado">@NombreEstado(retiro.Estado)</h2>
-                    <p class="text-muted">@SeguimientoPublico.DescripcionRetiro(retiro.Estado)</p>
+                    <p class="text-muted mb-0">@SeguimientoPublico.DescripcionRetiro(retiro.Estado)</p>
+                </div>
+                <div class="card-body p-4">
                     @if (!string.IsNullOrWhiteSpace(comercio))
                     {
                         <p class="small mb-1">Pedido por <strong>@comercio</strong></p>
@@ -54,7 +61,7 @@
                             @for (var i = 0; i < SeguimientoPublico.EtapasRetiro.Count; i++)
                             {
                                 var alcanzada = i <= etapa;
-                                <li class="badge rounded-pill @(alcanzada ? "text-bg-primary" : "text-bg-light")" aria-current="@(i == etapa ? "step" : null)">@SeguimientoPublico.EtapasRetiro[i].Nombre</li>
+                                <li class="badge rounded-pill seguimiento-pill @(alcanzada ? "alcanzada" : null)" aria-current="@(i == etapa ? "step" : null)">@SeguimientoPublico.EtapasRetiro[i].Nombre</li>
                             }
                         </ol>
                     }

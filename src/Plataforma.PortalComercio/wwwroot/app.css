@@ -193,12 +193,12 @@ h1:focus {
 
 .seguimiento-etapa.completa .seguimiento-etapa__punto,
 .seguimiento-etapa.completa + .seguimiento-etapa::before {
-    background: var(--bs-primary);
+    background: var(--marca, var(--bs-primary));
 }
 
 .seguimiento-etapa.actual .seguimiento-etapa__punto {
-    background: var(--bs-primary);
-    box-shadow: 0 0 0 0.3rem rgba(13, 110, 253, 0.2);
+    background: var(--marca, var(--bs-primary));
+    box-shadow: 0 0 0 0.3rem color-mix(in srgb, var(--marca, #0d6efd) 22%, transparent);
 }
 
 .seguimiento-etapa.actual .seguimiento-etapa__nombre {
@@ -214,25 +214,90 @@ h1:focus {
 }
 
 .seguimiento-marca__color {
+    background: var(--marca, var(--portal-primary));
     border-radius: 50%;
     display: inline-block;
     height: 0.75rem;
     width: 0.75rem;
 }
 
+/* Historial como línea de tiempo: un punto del color del operador por evento, el más reciente arriba. */
 .seguimiento-historial {
     list-style: none;
-    margin: 0;
+    margin: 0 0 0 0.35rem;
     padding: 0;
 }
 
 .seguimiento-historial li {
-    border-top: 1px solid #e9ecef;
+    border-left: 2px solid #e2e8f0;
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem 1rem;
     justify-content: space-between;
-    padding: 0.4rem 0;
+    padding: 0.35rem 0 0.75rem 1.1rem;
+    position: relative;
+}
+
+.seguimiento-historial li::before {
+    background: #fff;
+    border: 2px solid var(--marca, var(--bs-primary));
+    border-radius: 50%;
+    content: "";
+    height: 0.75rem;
+    left: -0.45rem;
+    position: absolute;
+    top: 0.55rem;
+    width: 0.75rem;
+}
+
+.seguimiento-historial li:first-child::before {
+    background: var(--marca, var(--bs-primary));
+}
+
+/* Franja de color con el título (y el buscador) de las páginas públicas de seguimiento. */
+.seguimiento-hero {
+    background:
+        radial-gradient(circle at 88% 12%, rgba(249, 115, 22, 0.55), transparent 45%),
+        linear-gradient(135deg, var(--portal-primary-dark), var(--portal-primary));
+    box-shadow: 0 1rem 2rem rgba(55, 48, 163, 0.18);
+}
+
+.seguimiento-hero__etiqueta {
+    color: #fed7aa;
+    letter-spacing: 0.08em;
+}
+
+.seguimiento-hero__texto {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Tarjeta del envío o retiro: cabecera teñida con el color del operador (--marca). */
+.seguimiento-tarjeta {
+    border-radius: 1rem;
+}
+
+.seguimiento-tarjeta__cabecera {
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--marca, #4f46e5) 14%, #fff),
+        color-mix(in srgb, var(--marca, #4f46e5) 3%, #fff));
+    border-top: 0.35rem solid var(--marca, #4f46e5);
+}
+
+.seguimiento-dato {
+    background: color-mix(in srgb, var(--marca, #4f46e5) 8%, #fff);
+    border-left: 4px solid var(--marca, #4f46e5);
+}
+
+/* Etapas del retiro. */
+.seguimiento-pill {
+    background: #eef2f7;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.seguimiento-pill.alcanzada {
+    background: var(--marca, var(--bs-primary));
+    color: #fff;
 }
 
 /* Celular: el número de seguimiento (ENV- y 32 caracteres, sin espacios) puede cortarse en cualquier carácter,
@@ -268,4 +333,12 @@ td .tracking-number {
     overflow: auto;
     padding: 0.5rem;
     white-space: pre;
+}
+
+/* Avisos de algo apagado o no disponible para usar: naranja (tonos naranja de Bootstrap). */
+.alert-no-disponible {
+  --bs-alert-color: #984c0c;
+  --bs-alert-bg: #ffe5d0;
+  --bs-alert-border-color: #fecba1;
+  --bs-alert-link-color: #984c0c;
 }
