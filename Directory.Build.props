@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    SAST (letra, desarrollo seguro): analizadores de seguridad de .NET en todos los proyectos de la solución.
+    Activa todas las reglas de la categoría Security (CA2xxx, CA3xxx y CA5xxx: inyección, criptografía débil,
+    deserialización insegura, validación de certificados, etc.). Los hallazgos salen como advertencias en cada
+    build, local y del CI; no cortan el build. Las imágenes Docker copian solo src/, así que no las cambia.
+  -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
+  </PropertyGroup>
+</Project>
