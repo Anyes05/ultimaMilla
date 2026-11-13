@@ -47,6 +47,18 @@ jobs:
       - name: Restore
         run: dotnet restore Plataforma.sln
 
+      # SCA (análisis de dependencias): lista los paquetes NuGet con vulnerabilidades conocidas, directos y transitivos.
+      # Informa y no corta el pipeline: la decisión sobre cada hallazgo se documenta (hay alguno sin arreglo en .NET 10).
+      - name: Dependency vulnerability scan (SCA)
+        run: |
+          dotnet list Plataforma.sln package --vulnerable --include-transitive | tee sca.txt
+          {
+            echo "## SCA: paquetes NuGet vulnerables"
+            echo '```'
+            grep -E "tiene los paquetes vulnerables|has the following vulnerable|^\s*>" sca.txt || echo "Sin paquetes vulnerables."
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build
         run: dotnet build Plataforma.sln --configuration Release --no-restore
 
@@ -132,6 +144,27 @@ jobs:
           docker build --file src/Plataforma.Worker/Dockerfile --tag tallernet-worker:$IMAGE_TAG .
           docker tag tallernet-worker:$IMAGE_TAG $ECR_REGISTRY/tallernet/worker:$IMAGE_TAG
           docker push $ECR_REGISTRY/tallernet/worker:$IMAGE_TAG
+
+      # Escaneo de las imágenes publicadas (sistema operativo y librerías) con Trivy, versión fija. Usa el login de ECR
+      # del paso anterior. Informa las vulnerabilidades altas y críticas sin cortar el despliegue.
+      - name: Scan images (Trivy)
+        if: env.AWS_PUBLISH_ENABLED == 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "## Trivy: vulnerabilidades HIGH y CRITICAL de las imágenes" >> "$GITHUB_STEP_SUMMARY"
+          for repositorio in backend frontend worker; do
+            imagen="$ECR_REGISTRY/tallernet/$repositorio:$IMAGE_TAG"
+            docker run --rm -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" aquasec/trivy:0.58.1 \
+              image --scanners vuln --severity HIGH,CRITICAL --no-progress --exit-code 0 "$imagen" | tee "trivy-$repositorio.txt"
+            {
+              echo "### tallernet/$repositorio"
+              echo '```'
+              grep -E "^Total:|\((debian|ubuntu|alpine|dotnet-core)" "trivy-$repositorio.txt" || echo "Sin resultados."
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
 
       - name: Configure kubectl
         if: env.AWS_PUBLISH_ENABLED == 'true'

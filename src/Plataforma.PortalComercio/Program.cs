@@ -92,8 +92,12 @@ app.UseAntiforgery();
 // /live, /ready y /health (letra 6.13); /health detalla base, Redis y RabbitMQ.
 app.MapChequeosSalud();
 
-app.MapPost("/session/login", async (HttpRequest request, IniciarSesion iniciarSesion, IEmisorToken emisor, CancellationToken cancellationToken) =>
+app.MapPost("/session/login", async (HttpRequest request, IAntiforgery antiforgery, IniciarSesion iniciarSesion, IEmisorToken emisor, CancellationToken cancellationToken) =>
 {
+    // Sin token válido (otra página o una pestaña vieja), se vuelve al login sin intentar la sesión.
+    if (!await antiforgery.IsRequestValidAsync(request.HttpContext))
+        return Results.Redirect("/login");
+
     var formulario = await request.ReadFormAsync(cancellationToken);
     var resultado = await iniciarSesion.Ejecutar(
         formulario["usuario"].ToString(),
