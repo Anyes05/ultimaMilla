@@ -39,7 +39,7 @@ public class BultoSobrante
             EnvioId = envioId,
             Motivo = motivo.Trim(),
             Usuario = usuario.Trim(),
-            Fecha = fecha
+            Fecha = fecha.ToUniversalTime()
         };
     }
 }

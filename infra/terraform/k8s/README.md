@@ -23,6 +23,13 @@ Antes del primer despliegue, cree `tallernet-application-secrets` en el namespac
 - `Avisos__ClaveFirma`: clave HMAC compartida entre Worker y receptor de prueba; se solicita durante `Deploy-Applications.ps1` y no se versiona.
 - `Mongo__ConnectionString`: URI `mongodb+srv://` de Atlas para el historial documental; se solicita durante `Deploy-Applications.ps1` y no se versiona.
 
+Claves opcionales. `Deploy-Applications.ps1` conserva las que ya existen al volver a aplicar el Secret y, en un ambiente nuevo, las pide (Enter para omitir: el worker sigue funcionando y deja el push y los correos en su log):
+
+- `Push__Fcm__CuentaServicioJson`: JSON completo de la cuenta de servicio de Firebase (proyecto `tallernet-push`), para el push de reasignación urgente. El script pide la ruta del archivo; el archivo nunca va en el repositorio.
+- `Notificaciones__SmtpHost`, `Notificaciones__SmtpUsuario`, `Notificaciones__SmtpClave` y `Notificaciones__Remitente`: servidor SMTP para el correo al destinatario.
+
+Para no tener que cargarlas a mano en cada ambiente nuevo, guárdelas como secrets del repositorio en GitHub (Settings → Secrets and variables → Actions): `FIREBASE_SERVICE_ACCOUNT_JSON` (el contenido completo del JSON), `SMTP_HOST`, `SMTP_USUARIO`, `SMTP_CLAVE` y `SMTP_REMITENTE`. El pipeline las carga en este Secret en cada despliegue, igual que `MONGODB_CONNECTION_STRING`; si alguna no existe, deja la clave como esté.
+
 Terraform crea por separado `tallernet-redis-credentials` y `tallernet-rabbitmq-credentials`; no duplique sus claves en este Secret. Las aplicaciones obtienen la contraseña de Redis desde el Secret de plataforma.
 
 ## Imágenes y despliegue

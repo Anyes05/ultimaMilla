@@ -75,7 +75,11 @@ public sealed partial class RepartidorHttpTests : IDisposable
         await service.IniciarRutaAsync();
 
         Assert.Equal($"/api/repartidor/rutas/{ruta.Id}/iniciar", handler.Requests.Last().Path);
-        Assert.Equal(ruta, service.ObtenerRuta());
+        // Los records con listas se comparan por referencia: se comparan los datos.
+        var despues = service.ObtenerRuta();
+        Assert.Equal(ruta.Id, despues.Id);
+        Assert.Null(despues.IniciadaEn);
+        Assert.Equal(ruta.Envios.Select(envio => (envio.Id, envio.Estado)), despues.Envios.Select(envio => (envio.Id, envio.Estado)));
     }
 
     [Fact]
@@ -246,18 +250,23 @@ public sealed partial class RepartidorHttpTests : IDisposable
     public async Task ActualizarDuranteSincronizacionInformaBloqueoYPermiteReintentar()
     {
         await Login();
-        service.RegistrarEntrega(service.ObtenerRuta().Envios[0].Id, "Receptor", "");
+        var entregado = service.ObtenerRuta().Envios[0].Id;
+        service.RegistrarEntrega(entregado, "Receptor", "");
         var vm = CrearRutaViewModel();
         var liberar = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         handler.Espera = liberar.Task;
+        // La pantalla agrupa por dirección: se confirma el envío registrado, no el primero que se muestra.
         handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta(
-            [new AplicadoContrato(vm.Envios[0].Id, EstadoEnvio.Entregado, 0)], [])));
+            [new AplicadoContrato(entregado, EstadoEnvio.Entregado, 0)], [])));
         var sincronizacion = vm.AutoSincronizarAsync();
         Assert.True(vm.Ocupado);
         await vm.DescargarRutaCommand.ExecuteAsync(null);
         Assert.Contains("operacion en curso", vm.Mensaje);
+        // Al terminar de sincronizar, la app vuelve a bajar la ruta.
+        handler.Respuestas.Enqueue(Ejemplo("rutas-hoy.response.json"));
         liberar.SetResult();
         await sincronizacion;
+        Assert.Equal(0, service.ObtenerCantidadSincronizacionesPendientes());
         handler.Respuestas.Enqueue(Ejemplo("rutas-hoy.response.json"));
         await vm.DescargarRutaCommand.ExecuteAsync(null);
         Assert.Equal("Ruta actualizada.", vm.Mensaje);

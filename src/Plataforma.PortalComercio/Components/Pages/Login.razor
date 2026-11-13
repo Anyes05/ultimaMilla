@@ -17,6 +17,8 @@
                     <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
                 }
                 <form method="post" action="/session/login">
+                    @* El endpoint valida el token: otra página no puede iniciar sesión en nombre del usuario (login CSRF). *@
+                    <AntiforgeryToken />
                     <div class="mb-3">
                         <label class="form-label fw-semibold" for="usuario">Usuario</label>
                         <input id="usuario" name="usuario" class="form-control form-control-lg" autocomplete="username" required />

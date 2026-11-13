@@ -153,7 +153,8 @@ public sealed class RetirosEstadosYCapacidadTests
             new RutaRepositorio(ctx), new RetiroRepositorio(ctx), new ComprobanteRetiroRepositorio(ctx), Gestion(ctx), new CacheLecturaMemoria());
         const string Foto = "/9j/2Q==";
         const string Firma = "[[{\"x\":1,\"y\":1},{\"x\":9,\"y\":9}]]";
-        var ahora = DateTimeOffset.UtcNow;
+        // Como la manda la app: hora de Uruguay (-03:00). Postgres solo acepta UTC: se guarda el mismo instante en UTC.
+        var ahora = DateTimeOffset.UtcNow.ToOffset(TimeSpan.FromHours(-3));
         // Los códigos de las etiquetas QR del retiro (en minúsculas también valen).
         Assert.Matches(@"^RET-[0-9A-F]{10}-B01$", Assert.Single(uno.CodigosBultos));
         var retirado = new ComprobanteRetiroApp(Guid.NewGuid(), uno.Id, "Retirado", [uno.CodigosBultos[0].ToLowerInvariant()], Foto, Firma, "Ana", null, ahora, -34.9m, -56.16m);
@@ -170,6 +171,7 @@ public sealed class RetirosEstadosYCapacidadTests
         Assert.Contains(resultado.Rechazados, r => r.RetiroId == ajeno.Id && r.Motivo.Contains("no está en tu ruta"));
         var guardado = Assert.Single(ctx.ComprobantesRetiro.AsNoTracking().ToList());
         Assert.Equal((uno.Id, uno.CodigosBultos[0], "Ana"), (guardado.RetiroId, guardado.CodigosBultos, guardado.NombreEntrega));
+        Assert.Equal((TimeSpan.Zero, ahora.UtcDateTime), (guardado.FechaDispositivo.Offset, guardado.FechaDispositivo.UtcDateTime));
 
         // Reenvío por respuesta perdida: mismo resultado, sin duplicar.
         var reenvio = await registrar.EjecutarAsync(Operador, repartidor, Hoy, [retirado], "alvaro");

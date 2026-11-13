@@ -35,7 +35,7 @@
 }
 @if (!avisosActivos)
 {
-    <div class="alert alert-info" role="status">Los avisos a tu sistema están desactivados por el operador: no se envían ni se pueden reenviar.</div>
+    <div class="alert alert-no-disponible" role="status">Los avisos a tu sistema están desactivados por el operador: no se envían ni se pueden reenviar.</div>
 }
 @if (!string.IsNullOrWhiteSpace(ErrorQuery ?? mensajeError))
 {

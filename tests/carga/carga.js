@@ -98,12 +98,23 @@ export const options = {
   },
 };
 
+// El login del Backoffice exige el token anti-CSRF del formulario: se pide la página, se toma el token (la cookie
+// que lo acompaña queda en el cookie jar del usuario virtual) y se envía con el usuario y la clave.
+function loginBackoffice() {
+  const etiquetas = { tags: { escenario: 'login' } };
+  const pagina = http.get(`${BACKOFFICE}/login`, etiquetas);
+  const token = ((pagina.body || '').match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/) || [])[1] || '';
+  return http.post(`${BACKOFFICE}/session/login`,
+    { usuario: USUARIO_BACKOFFICE, clave: CLAVE, __RequestVerificationToken: token },
+    { redirects: 0, ...etiquetas });
+}
+
 export function setup() {
   // Sin TOKENS (los tokens no se ven en ninguna pantalla), se toman números de seguimiento de Monitoreo
   // con el despachador y se consulta el seguimiento por número: mismo caso de uso y mismo caché.
   let numeros = [];
   if (TOKENS.length === 0) {
-    http.post(`${BACKOFFICE}/session/login`, { usuario: USUARIO_BACKOFFICE, clave: CLAVE }, { redirects: 0 });
+    loginBackoffice();
     const monitoreo = http.get(`${BACKOFFICE}/`);
     numeros = [...new Set([...monitoreo.body.matchAll(/tracking-number">([^<]+)</g)].map((m) => m[1].trim()))];
     if (numeros.length === 0) throw new Error('No hay TOKENS ni envíos visibles en Monitoreo para consultar.');
@@ -130,10 +141,7 @@ export function seguimiento(datos) {
 export function backoffice() {
   // Cada usuario virtual tiene su propia cookie de sesión; se loguea una vez.
   if (!http.cookieJar().cookiesForURL(BACKOFFICE).acceso_backoffice) {
-    http.post(`${BACKOFFICE}/session/login`, { usuario: USUARIO_BACKOFFICE, clave: CLAVE }, {
-      redirects: 0,
-      tags: { escenario: 'login' },
-    });
+    loginBackoffice();
   }
   group('monitoreo', () => {
     const r = http.get(`${BACKOFFICE}/`, { tags: { escenario: 'backoffice' } });

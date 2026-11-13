@@ -81,7 +81,7 @@ public class Bulto
     {
         if (RecibidoEnDeposito is not null)
             return false;
-        RecibidoEnDeposito = cuando;
+        RecibidoEnDeposito = cuando.ToUniversalTime();
         return true;
     }
 }
