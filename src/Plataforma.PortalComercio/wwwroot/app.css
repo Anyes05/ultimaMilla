@@ -254,6 +254,12 @@ h1:focus {
     background: var(--marca, var(--bs-primary));
 }
 
+/* Seguimiento sin resultado: el buscador se centra en el alto de la pantalla en vez de quedar arriba y vacío abajo. */
+.seguimiento-centrado {
+    align-content: center;
+    min-height: calc(100vh - 10rem);
+}
+
 /* Franja de color con el título (y el buscador) de las páginas públicas de seguimiento. */
 .seguimiento-hero {
     background:

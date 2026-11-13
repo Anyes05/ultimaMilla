@@ -16,7 +16,8 @@
     <meta name="robots" content="noindex, nofollow" />
 </HeadContent>
 
-<div class="row justify-content-center">
+@* Sin resultado, el buscador queda centrado en la pantalla; con resultado, arriba y la información debajo. *@
+<div class="row justify-content-center @(visible is null ? "seguimiento-centrado" : null)">
     <div class="col-md-10 col-lg-7">
         <section class="seguimiento-hero text-white rounded-4 p-4 p-md-5 mb-4">
             <p class="seguimiento-hero__etiqueta text-uppercase fw-semibold small mb-1">Seguimiento</p>
@@ -26,17 +27,19 @@
             <form method="get" action="/seguimiento" class="bg-white text-body rounded-3 shadow p-3">
                 <label class="form-label fw-semibold" for="numero">Número de seguimiento</label>
                 <div class="input-group">
-                    <input id="numero" name="numero" value="@Numero" class="form-control form-control-lg"
-                           placeholder="ENV-…" autocomplete="off" maxlength="64" />
+                    @* Si no se encontró, el campo vuelve vacío con la sugerencia; el número buscado se nombra en el aviso. *@
+                    <input id="numero" name="numero" value="@(noEncontrado ? null : Numero)" class="form-control form-control-lg"
+                           placeholder="Ej.: ENV-1A2B3C4D…" autocomplete="off" maxlength="64" aria-describedby="numero-ayuda" />
                     <button class="btn btn-primary" type="submit">Consultar</button>
                 </div>
+                <div id="numero-ayuda" class="form-text">Está en el mensaje o correo que recibiste del envío y empieza con ENV-.</div>
             </form>
         </section>
 
         @if (noEncontrado)
         {
             <div class="alert alert-warning" role="alert">
-                No encontramos un envío con ese seguimiento. Revisá el número o el enlace que recibiste.
+                No encontramos un envío con el seguimiento <strong class="tracking-number">@(Numero ?? "del enlace")</strong>. Revisá el número o el enlace que recibiste.
             </div>
         }
 
