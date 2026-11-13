@@ -40,20 +40,34 @@
         }
         else
         {
-            <div class="row g-3 text-center">
-                <div class="col-6 col-md"><span class="small text-muted d-block">Precio base</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioBase)</strong></div>
-                <div class="col-6 col-md"><span class="small text-muted d-block">Por kg</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioPorKg)</strong></div>
-                <div class="col-6 col-md"><span class="small text-muted d-block">Por km</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioPorKm)</strong></div>
-                <div class="col-6 col-md"><span class="small text-muted d-block">Recargo frágil</span><strong class="fs-5">+@TarifasModel.Importe(vigente.RecargoFragil)</strong></div>
-                <div class="col-6 col-md"><span class="small text-muted d-block">Recargo urgente</span><strong class="fs-5">+@TarifasModel.Importe(vigente.RecargoUrgente)</strong></div>
-                <div class="col-6 col-md"><span class="small text-muted d-block">Por cm³</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioPorCm3)</strong></div>
-                <div class="col-6 col-md"><span class="small text-muted d-block">Recargo zona</span><strong class="fs-5">+@TarifasModel.Importe(vigente.RecargoZona)</strong></div>
-                <div class="col-6 col-md" data-vigente-retiro><span class="small text-muted d-block">Por retiro</span><strong class="fs-5">@TarifasModel.Importe(vigente.PrecioRetiro)</strong></div>
+            @* 4 por fila en pantallas grandes, 3 en medianas y 2 en celular: cada importe en una sola línea. *@
+            <div class="row g-3">
+                @foreach (var (titulo, valor, atributo) in new (string, string, string?)[]
+                {
+                    ("Precio base", TarifasModel.Importe(vigente.PrecioBase), null),
+                    ("Por kg", TarifasModel.Importe(vigente.PrecioPorKg), null),
+                    ("Por km", TarifasModel.Importe(vigente.PrecioPorKm), null),
+                    ("Por cm³", TarifasModel.Importe(vigente.PrecioPorCm3), null),
+                    ("Recargo frágil", "+" + TarifasModel.Importe(vigente.RecargoFragil), null),
+                    ("Recargo urgente", "+" + TarifasModel.Importe(vigente.RecargoUrgente), null),
+                    ("Recargo zona", "+" + TarifasModel.Importe(vigente.RecargoZona), null),
+                    ("Por retiro", TarifasModel.Importe(vigente.PrecioRetiro), "retiro"),
+                })
+                {
+                    <div class="col-6 col-md-4 col-xl-3" data-vigente-retiro="@(atributo == "retiro" ? "" : null)">
+                        <div class="border rounded-3 bg-light p-3 h-100">
+                            <span class="small text-muted d-block">@titulo</span>
+                            <strong class="fs-5 text-nowrap">@valor</strong>
+                        </div>
+                    </div>
+                }
             </div>
             @if (Model.VersionVigente?.Valores is { } valores)
             {
-                <p class="small mb-1 mt-3" data-vigente-zonas><strong>Recargo por zona:</strong> @Model.DescribirZonas(valores)</p>
-                <p class="small mb-0" data-vigente-bonificaciones><strong>Bonificaciones:</strong> @Model.DescribirBonificaciones(valores)</p>
+                <div class="row g-3 mt-1 small">
+                    <div class="col-md-6" data-vigente-zonas><strong class="d-block">Recargo por zona</strong>@Model.DescribirZonas(valores)</div>
+                    <div class="col-md-6" data-vigente-bonificaciones><strong class="d-block">Bonificaciones</strong>@Model.DescribirBonificaciones(valores)</div>
+                </div>
             }
         }
     </div>
@@ -67,36 +81,22 @@
         <form method="post" asp-page-handler="Simular">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="row g-3 align-items-end">
-                <div class="col-sm-3">
+                <div class="col-12 col-sm-4">
                     <label class="form-label fw-semibold" asp-for="Simulacion.PesoKg">Peso (kg)</label>
                     <input class="form-control" asp-for="Simulacion.PesoKg" type="number" step="0.1" min="0" />
                     <span class="text-danger small" asp-validation-for="Simulacion.PesoKg"></span>
                 </div>
-                <div class="col-sm-3">
+                <div class="col-12 col-sm-4">
                     <label class="form-label fw-semibold" asp-for="Simulacion.DistanciaKm">Distancia (km)</label>
                     <input class="form-control" asp-for="Simulacion.DistanciaKm" type="number" step="0.1" min="0" />
                     <span class="text-danger small" asp-validation-for="Simulacion.DistanciaKm"></span>
                 </div>
-                <div class="col-sm-3">
+                <div class="col-12 col-sm-4">
                     <label class="form-label fw-semibold" asp-for="Simulacion.VolumenCm3">Volumen (cm³)</label>
                     <input class="form-control" asp-for="Simulacion.VolumenCm3" type="number" step="any" min="0" />
                     <span class="text-danger small" asp-validation-for="Simulacion.VolumenCm3"></span>
                 </div>
-                <div class="col-sm-3 d-flex flex-column gap-1">
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" asp-for="Simulacion.Urgente" />
-                        <label class="form-check-label" asp-for="Simulacion.Urgente">Urgente</label>
-                    </div>
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" asp-for="Simulacion.Fragil" />
-                        <label class="form-check-label" asp-for="Simulacion.Fragil">Frágil</label>
-                    </div>
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" asp-for="Simulacion.ConZona" />
-                        <label class="form-check-label" asp-for="Simulacion.ConZona">Zona sin recargo propio</label>
-                    </div>
-                </div>
-                <div class="col-sm-3">
+                <div class="col-12 col-sm-6">
                     <label class="form-label fw-semibold" asp-for="Simulacion.ZonaId">Zona</label>
                     <select class="form-select" asp-for="Simulacion.ZonaId">
                         <option value="">Sin zona</option>
@@ -106,7 +106,7 @@
                         }
                     </select>
                 </div>
-                <div class="col-sm-3">
+                <div class="col-12 col-sm-6">
                     <label class="form-label fw-semibold" asp-for="Simulacion.ComercioId">Comercio</label>
                     <select class="form-select" asp-for="Simulacion.ComercioId">
                         <option value="">Cualquiera</option>
@@ -116,8 +116,22 @@
                         }
                     </select>
                 </div>
-                <div class="col-sm-3 text-sm-end">
-                    <button type="submit" class="btn btn-primary w-100" disabled="@(vigente is null)">Calcular</button>
+                <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" asp-for="Simulacion.Urgente" />
+                            <label class="form-check-label" asp-for="Simulacion.Urgente">Urgente</label>
+                        </div>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" asp-for="Simulacion.Fragil" />
+                            <label class="form-check-label" asp-for="Simulacion.Fragil">Frágil</label>
+                        </div>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" asp-for="Simulacion.ConZona" />
+                            <label class="form-check-label" asp-for="Simulacion.ConZona">Zona sin recargo propio</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary px-4 col-12 col-sm-auto" disabled="@(vigente is null)">Calcular</button>
                 </div>
             </div>
         </form>
@@ -152,37 +166,61 @@
         </p>
         <form method="post" asp-page-handler="Publicar">
             <div class="row g-3">
-                <div class="col-6 col-md">
+                <div class="col-6 col-md-4 col-xl-3">
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioBase">Precio base</label>
-                    <input class="form-control" asp-for="NuevaVersion.PrecioBase" type="number" step="0.01" min="0" />
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" asp-for="NuevaVersion.PrecioBase" type="number" step="0.01" min="0" />
+                    </div>
                 </div>
-                <div class="col-6 col-md">
+                <div class="col-6 col-md-4 col-xl-3">
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioPorKg">Por kg</label>
-                    <input class="form-control" asp-for="NuevaVersion.PrecioPorKg" type="number" step="0.01" min="0" />
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" asp-for="NuevaVersion.PrecioPorKg" type="number" step="0.01" min="0" />
+                    </div>
                 </div>
-                <div class="col-6 col-md">
+                <div class="col-6 col-md-4 col-xl-3">
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioPorKm">Por km</label>
-                    <input class="form-control" asp-for="NuevaVersion.PrecioPorKm" type="number" step="0.01" min="0" />
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" asp-for="NuevaVersion.PrecioPorKm" type="number" step="0.01" min="0" />
+                    </div>
                 </div>
-                <div class="col-6 col-md">
+                <div class="col-6 col-md-4 col-xl-3">
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.RecargoFragil">Recargo frágil</label>
-                    <input class="form-control" asp-for="NuevaVersion.RecargoFragil" type="number" step="0.01" min="0" />
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" asp-for="NuevaVersion.RecargoFragil" type="number" step="0.01" min="0" />
+                    </div>
                 </div>
-                <div class="col-6 col-md">
+                <div class="col-6 col-md-4 col-xl-3">
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.RecargoUrgente">Recargo urgente</label>
-                    <input class="form-control" asp-for="NuevaVersion.RecargoUrgente" type="number" step="0.01" min="0" />
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" asp-for="NuevaVersion.RecargoUrgente" type="number" step="0.01" min="0" />
+                    </div>
                 </div>
-                <div class="col-6 col-md">
+                <div class="col-6 col-md-4 col-xl-3">
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioPorCm3">Por cm³</label>
-                    <input class="form-control" asp-for="NuevaVersion.PrecioPorCm3" type="number" step="any" min="0" />
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" asp-for="NuevaVersion.PrecioPorCm3" type="number" step="any" min="0" />
+                    </div>
                 </div>
-                <div class="col-6 col-md">
+                <div class="col-6 col-md-4 col-xl-3">
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.RecargoZona">Recargo zona</label>
-                    <input class="form-control" asp-for="NuevaVersion.RecargoZona" type="number" step="0.01" min="0" />
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" asp-for="NuevaVersion.RecargoZona" type="number" step="0.01" min="0" />
+                    </div>
                 </div>
-                <div class="col-6 col-md">
+                <div class="col-6 col-md-4 col-xl-3">
                     <label class="form-label fw-semibold" asp-for="NuevaVersion.PrecioRetiro">Por retiro</label>
-                    <input class="form-control" asp-for="NuevaVersion.PrecioRetiro" type="number" step="0.01" min="0" />
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input class="form-control" asp-for="NuevaVersion.PrecioRetiro" type="number" step="0.01" min="0" />
+                    </div>
                 </div>
             </div>
             <div asp-validation-summary="ModelOnly" class="text-danger mt-3"></div>
