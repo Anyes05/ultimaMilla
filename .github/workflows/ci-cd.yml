@@ -143,6 +143,12 @@ jobs:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
           MONGODB_CONNECTION_STRING: ${{ secrets.MONGODB_CONNECTION_STRING }}
+          # Opcionales: viven en los secrets del repositorio (no en AWS), así sobreviven a un ambiente nuevo.
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USUARIO: ${{ secrets.SMTP_USUARIO }}
+          SMTP_CLAVE: ${{ secrets.SMTP_CLAVE }}
+          SMTP_REMITENTE: ${{ secrets.SMTP_REMITENTE }}
         run: |
           aws eks update-kubeconfig --name tallernet-cluster --region "$AWS_REGION"
           kubectl -n tallernet get secret tallernet-application-secrets
@@ -153,6 +159,20 @@ jobs:
           mongo_connection_string_base64="$(printf %s "$MONGODB_CONNECTION_STRING" | base64 --wrap=0)"
           kubectl -n tallernet patch secret tallernet-application-secrets --type merge \
             --patch "{\"data\":{\"Mongo__ConnectionString\":\"$mongo_connection_string_base64\"}}"
+          # Push (Firebase) y correo (SMTP): se cargan solo si el secret del repositorio existe; si no, quedan como estén.
+          cargar_opcional() {
+            if [ -n "$2" ]; then
+              valor="$(printf %s "$2" | base64 --wrap=0)"
+              kubectl -n tallernet patch secret tallernet-application-secrets --type merge \
+                --patch "{\"data\":{\"$1\":\"$valor\"}}" > /dev/null
+              echo "Clave $1 cargada en el secret de la aplicación."
+            fi
+          }
+          cargar_opcional Push__Fcm__CuentaServicioJson "$FIREBASE_SERVICE_ACCOUNT_JSON"
+          cargar_opcional Notificaciones__SmtpHost "$SMTP_HOST"
+          cargar_opcional Notificaciones__SmtpUsuario "$SMTP_USUARIO"
+          cargar_opcional Notificaciones__SmtpClave "$SMTP_CLAVE"
+          cargar_opcional Notificaciones__Remitente "$SMTP_REMITENTE"
           kubectl -n tallernet delete job database-migration --ignore-not-found
           sed "s|tallernet/backend:bootstrap|$ECR_REGISTRY/tallernet/backend:$IMAGE_TAG|g" infra/terraform/k8s/base/migration.yaml | kubectl apply -f -
           kubectl -n tallernet wait --for=condition=complete job/database-migration --timeout=5m

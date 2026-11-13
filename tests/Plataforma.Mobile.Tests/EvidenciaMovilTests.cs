@@ -129,20 +129,32 @@ public sealed partial class RepartidorHttpTests
         await Login();
         var envio = service.ObtenerRuta().Envios[0];
         service.RegistrarEntrega(envio.Id, "Receptor", "");
+        var rutasAntes = handler.Requests.Count(request => request.Path == "/api/repartidor/rutas/hoy");
         var liberar = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         handler.Espera = liberar.Task;
         handler.Respuestas.Enqueue(Ok(new SincronizacionRespuesta([new(envio.Id, EstadoEnvio.Entregado, 0)], [])));
         var sincronizando = service.SincronizarAsync();
+        Task otraSincronizacion = Task.CompletedTask;
+        Task descarga = Task.CompletedTask;
         try
         {
+            // Modificar la cola o cerrar sesión durante la operación se rechaza.
             Assert.Throws<InvalidOperationException>(() => service.RegistrarEntrega(service.ObtenerRuta().Envios[1].Id, "Otro", ""));
-            await Assert.ThrowsAsync<InvalidOperationException>(() => service.SincronizarAsync());
-            await Assert.ThrowsAsync<InvalidOperationException>(() => service.DescargarRutaAsync());
             Assert.Throws<InvalidOperationException>(() => service.CerrarSesion());
+            // Sincronizar y actualizar la ruta esperan su turno en lugar de rechazarse.
+            handler.Respuestas.Enqueue(Ejemplo("rutas-hoy.response.json"));
+            otraSincronizacion = service.SincronizarAsync();
+            descarga = service.DescargarRutaAsync();
+            Assert.False(otraSincronizacion.IsCompleted);
+            Assert.False(descarga.IsCompleted);
         }
         finally { liberar.SetResult(); }
-        await sincronizando;
-        Assert.Equal(EstadoSincronizacion.Sincronizado, service.ObtenerRuta().Envios[0].Sincronizacion);
+        var resultado = await sincronizando;
+        await otraSincronizacion;
+        await descarga;
+        Assert.Equal(1, resultado.Aplicadas);
+        Assert.Equal(0, service.ObtenerCantidadSincronizacionesPendientes());
+        Assert.Equal(1, handler.Requests.Count(request => request.Path == "/api/repartidor/rutas/hoy") - rutasAntes);
     }
 
     [Fact]

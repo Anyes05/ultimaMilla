@@ -80,7 +80,8 @@ public class ComprobanteRetiro
             Firma = firma ?? string.Empty,
             NombreEntrega = (nombreEntrega ?? string.Empty).Trim(),
             Motivo = (motivo ?? string.Empty).Trim(),
-            FechaDispositivo = fechaDispositivo,
+            // PostgreSQL (timestamptz) solo acepta offset 0: la app la manda con −03:00. Se guarda el mismo instante en UTC.
+            FechaDispositivo = fechaDispositivo.ToUniversalTime(),
             Latitud = latitud,
             Longitud = longitud,
             Usuario = usuario,

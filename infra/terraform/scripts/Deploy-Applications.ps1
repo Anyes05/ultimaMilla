@@ -48,6 +48,15 @@ function ConvertTo-Base64 {
     return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Value))
 }
 
+function Get-SecretValueBase64 {
+    # Valor (en base64) de una clave del secret si ya existe en el clúster; vacío si no existe el secret o la clave.
+    param([Parameter(Mandatory)][string]$Key)
+
+    $value = & kubectl -n $Namespace get secret tallernet-application-secrets -o "jsonpath={.data.$Key}" 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($value)) { return "" }
+    return $value.Trim()
+}
+
 function Invoke-KubectlApply {
     param([Parameter(Mandatory)][string]$Manifest)
 
@@ -88,6 +97,43 @@ if ([string]::IsNullOrWhiteSpace($mongoConnectionStringBase64)) {
     $mongoConnectionStringBase64 = ConvertTo-Base64 $mongoConnectionString
 }
 
+# Claves opcionales que se cargan aparte (no van en el repositorio). Al volver a aplicar el secret se conservan las
+# que ya existen; si el ambiente es nuevo se piden, y con Enter quedan sin configurar: el worker sigue funcionando y
+# deja el push y los correos en su log en lugar de enviarlos.
+$optionalSecretData = [ordered]@{}
+
+# Push de reasignación urgente (letra 6.11 y opcional 7.3): cuenta de servicio de Firebase.
+$firebaseBase64 = Get-SecretValueBase64 -Key "Push__Fcm__CuentaServicioJson"
+if ([string]::IsNullOrWhiteSpace($firebaseBase64)) {
+    $firebasePath = Read-Host -Prompt "Ruta del JSON de la cuenta de servicio de Firebase (Enter para omitir)"
+    if (-not [string]::IsNullOrWhiteSpace($firebasePath)) {
+        if (-not (Test-Path -LiteralPath $firebasePath)) { throw "No existe el archivo $firebasePath." }
+        $firebaseBase64 = ConvertTo-Base64 (Get-Content -Raw -LiteralPath $firebasePath)
+    }
+}
+if (-not [string]::IsNullOrWhiteSpace($firebaseBase64)) {
+    $optionalSecretData["Push__Fcm__CuentaServicioJson"] = $firebaseBase64
+}
+
+# Correo al destinatario (RF 27): servidor SMTP.
+$smtpKeys = @("Notificaciones__SmtpHost", "Notificaciones__SmtpUsuario", "Notificaciones__SmtpClave", "Notificaciones__Remitente")
+$smtpExisting = [ordered]@{}
+foreach ($smtpKey in $smtpKeys) { $smtpExisting[$smtpKey] = Get-SecretValueBase64 -Key $smtpKey }
+if ([string]::IsNullOrWhiteSpace($smtpExisting["Notificaciones__SmtpHost"])) {
+    $smtpHost = Read-Host -Prompt "Servidor SMTP para los correos al destinatario (Enter para omitir)"
+    if (-not [string]::IsNullOrWhiteSpace($smtpHost)) {
+        $smtpExisting["Notificaciones__SmtpHost"] = ConvertTo-Base64 $smtpHost
+        $smtpExisting["Notificaciones__SmtpUsuario"] = ConvertTo-Base64 (Read-Host -Prompt "Usuario SMTP")
+        $smtpExisting["Notificaciones__SmtpClave"] = ConvertTo-Base64 (ConvertTo-PlainText (Read-Host -Prompt "Clave SMTP" -AsSecureString))
+        $smtpExisting["Notificaciones__Remitente"] = ConvertTo-Base64 (Read-Host -Prompt "Remitente de los correos")
+    }
+}
+foreach ($smtpKey in $smtpKeys) {
+    if (-not [string]::IsNullOrWhiteSpace($smtpExisting[$smtpKey])) {
+        $optionalSecretData[$smtpKey] = $smtpExisting[$smtpKey]
+    }
+}
+
 try {
     $connectionString = "Host=$rdsEndpoint;Port=5432;Database=tallernet;Username=tallernet_admin;Password=$rdsPassword;SSL Mode=Require"
     $secretManifest = [ordered]@{
@@ -106,7 +152,11 @@ try {
             Avisos__ClaveFirma         = ConvertTo-Base64 $avisoSigningKey
             Mongo__ConnectionString    = $mongoConnectionStringBase64
         }
-    } | ConvertTo-Json -Depth 4
+    }
+    foreach ($optionalKey in $optionalSecretData.Keys) {
+        $secretManifest.data[$optionalKey] = $optionalSecretData[$optionalKey]
+    }
+    $secretManifest = $secretManifest | ConvertTo-Json -Depth 4
     Invoke-KubectlApply -Manifest $secretManifest
 }
 finally {
@@ -116,6 +166,9 @@ finally {
     $mongoConnectionString = $null
     $mongoConnectionStringBase64 = $null
     $connectionString = $null
+    $firebaseBase64 = $null
+    $smtpExisting = $null
+    $optionalSecretData = $null
 }
 
 $migrationPath = Join-Path $terraformDirectory "k8s\base\migration.yaml"
