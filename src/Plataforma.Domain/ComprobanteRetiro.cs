@@ -80,7 +80,7 @@ public class ComprobanteRetiro
             Firma = firma ?? string.Empty,
             NombreEntrega = (nombreEntrega ?? string.Empty).Trim(),
             Motivo = (motivo ?? string.Empty).Trim(),
-            FechaDispositivo = fechaDispositivo,
+            FechaDispositivo = fechaDispositivo.ToUniversalTime(),
             Latitud = latitud,
             Longitud = longitud,
             Usuario = usuario,

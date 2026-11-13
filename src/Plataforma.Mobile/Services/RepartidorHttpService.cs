@@ -349,7 +349,8 @@ public sealed class RepartidorHttpService(
                             RetiroId = retiro.Id, Resultado = "Retirado",
                             retiro.Comprobante.CodigosBultos, retiro.Comprobante.Foto, retiro.Comprobante.Firma,
                             NombreEntrega = retiro.Comprobante.NombreResponsable,
-                            retiro.Comprobante.FechaDispositivo, retiro.Comprobante.Latitud, retiro.Comprobante.Longitud
+                            FechaDispositivo = retiro.Comprobante.FechaDispositivo.ToUniversalTime(),
+                            retiro.Comprobante.Latitud, retiro.Comprobante.Longitud
                         } }
                     })
                 };
