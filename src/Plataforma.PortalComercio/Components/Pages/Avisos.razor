@@ -139,25 +139,26 @@
             <div class="table-responsive">
                 <table class="table align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>Fecha</th><th>Envío</th><th>Evento del envío</th><th>Aviso</th><th>Formato</th><th>Intentos</th><th>Detalle</th><th></th></tr>
+                        <tr><th>Fecha</th><th>Envío</th><th>Qué le avisamos</th><th>Estado del aviso</th><th></th></tr>
                     </thead>
                     <tbody>
                         @foreach (var entrega in Entregas)
                         {
                             <tr @key="entrega.Id">
-                                <td class="small">@TextosUsuario.HoraOperador(entrega.ActualizadaEn, zonaHoraria, "dd/MM HH:mm:ss")</td>
+                                <td class="small text-nowrap">@TextosUsuario.HoraOperador(entrega.ActualizadaEn, zonaHoraria, "dd/MM HH:mm")</td>
                                 <td><span class="tracking-number">@(Tracking.TryGetValue(entrega.EnvioId, out var numero) ? numero : entrega.EnvioId.ToString()[..8])</span></td>
-                                <td>@TiposDeEvento.Nombre(entrega.TipoEvento)</td>
-                                <td><span class="status-badge @ClaseEstado(entrega.Estado)">@NombreEstado(entrega.Estado)</span></td>
-                                <td><span class="badge text-bg-light">v@(entrega.VersionContrato)</span></td>
-                                <td>@entrega.Intentos</td>
-                                <td class="small text-muted">
-                                    @(entrega.UltimoError ?? (entrega.UltimoCodigoHttp is int codigo ? $"HTTP {codigo}" : "—"))
-                                    @* El cuerpo exacto que recibió tu sistema (y que se firmó). *@
-                                    <details class="mt-1">
-                                        <summary>Ver mensaje</summary>
+                                <td>
+                                    @QueSeAviso(entrega.TipoEvento, entrega.Payload)
+                                    @* Lo técnico (formato, respuesta HTTP y el mensaje firmado) queda para quien integra el sistema. *@
+                                    <details class="small text-muted mt-1">
+                                        <summary>Datos técnicos (para tu equipo de sistemas)</summary>
+                                        <div class="mt-1">Formato v@(entrega.VersionContrato) · @(entrega.UltimoCodigoHttp is int codigo ? $"respuesta HTTP {codigo}" : "sin respuesta")@(entrega.UltimoError is { Length: > 0 } error ? $" · {error}" : "")</div>
                                         <pre class="aviso-mensaje">@MensajeLegible(entrega.Payload)</pre>
                                     </details>
+                                </td>
+                                <td>
+                                    <span class="status-badge @ClaseEstado(entrega.Estado)">@NombreEstado(entrega.Estado)</span>
+                                    <span class="d-block small text-muted mt-1">@DetalleEstado(entrega.Estado, entrega.Intentos)</span>
                                 </td>
                                 <td class="text-end">
                                     @if (entrega.Estado == EstadoEntrega.Fallido && avisosActivos)
@@ -173,7 +174,7 @@
                         }
                         @if (Entregas.Count == 0)
                         {
-                            <tr><td colspan="8" class="text-center text-muted py-5">Todavía no se enviaron avisos.</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted py-5">Todavía no se enviaron avisos.</td></tr>
                         }
                     </tbody>
                 </table>
@@ -301,10 +302,40 @@
 
     private static string NombreEstado(EstadoEntrega estado) => estado switch
     {
-        EstadoEntrega.Entregado => "Recibido por tu sistema",
-        EstadoEntrega.Fallido => "Falló",
+        EstadoEntrega.Entregado => "Recibido",
+        EstadoEntrega.Fallido => "No se pudo entregar",
         _ => "Reintentando"
     };
+
+    private static string DetalleEstado(EstadoEntrega estado, int intentos) => estado switch
+    {
+        EstadoEntrega.Entregado => intentos <= 1 ? "Tu sistema lo recibió al primer intento." : $"Tu sistema lo recibió después de {intentos} intentos.",
+        EstadoEntrega.Fallido => $"Tu sistema no respondió tras {intentos} intentos. Podés reenviarlo.",
+        _ => "Tu sistema todavía no respondió; lo volvemos a intentar solos."
+    };
+
+    /// <summary>
+    /// El aviso en palabras: para un cambio de estado, "El envío pasó de En depósito a Asignado a ruta";
+    /// para los demás tipos, su nombre. El mensaje original sigue en los datos técnicos.
+    /// </summary>
+    private static string QueSeAviso(string tipoEvento, string payload)
+    {
+        try
+        {
+            using var documento = System.Text.Json.JsonDocument.Parse(payload);
+            if (documento.RootElement.TryGetProperty("envio", out var envio) &&
+                envio.TryGetProperty("estadoAnterior", out var anterior) &&
+                envio.TryGetProperty("estadoNuevo", out var nuevo) &&
+                Enum.TryParse<EstadoEnvio>(anterior.GetString(), out var desde) &&
+                Enum.TryParse<EstadoEnvio>(nuevo.GetString(), out var hasta))
+                return $"El envío pasó de {EstadosVista.Nombre(desde)} a {EstadosVista.Nombre(hasta)}.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+        }
+
+        return TiposDeEvento.Nombre(tipoEvento);
+    }
 
     public sealed class SuscripcionForm
     {
