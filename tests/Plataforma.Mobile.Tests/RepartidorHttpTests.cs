@@ -628,10 +628,14 @@ public sealed partial class RepartidorHttpTests : IDisposable
         Assert.True(await service.IniciarSesionAsync("alvaro@demo.test", "Demo123!"));
         Assert.Empty(service.ObtenerRuta().Envios);
         var ruta = ContratosRepartidor.Leer<RutaContrato[]>(ContratosRepartidor.LeerEjemplo("rutas-hoy.response.json"))[0];
-        var segunda = ruta with { Id = Guid.NewGuid(), Envios = [ruta.Envios[0] with { Id = Guid.NewGuid() }] };
-        handler.Respuestas.Enqueue(Ok(new[] { ruta, segunda }));
+        // Dos rutas el mismo día: la app muestra una a la vez (la que está en curso; si no, la pendiente; si no, la
+        // primera) y no las junta. La segunda todavía no salió del depósito.
+        var segunda = ruta with { Id = Guid.NewGuid(), Envios = [ruta.Envios[0] with { Id = Guid.NewGuid(), Estado = EstadoEnvio.AsignadoARuta }] };
+        handler.Respuestas.Enqueue(Ok(new[] { segunda, ruta }));
         await service.DescargarRutaAsync();
-        Assert.Equal(4, service.ObtenerRuta().Envios.Count);
+        Assert.Equal(ruta.Id, service.ObtenerRuta().Id);
+        Assert.Equal(ruta.Envios.Select(envio => envio.Id), service.ObtenerRuta().Envios.Select(envio => envio.Id));
+        Assert.DoesNotContain(service.ObtenerRuta().Envios, envio => envio.Id == segunda.Envios[0].Id);
         var rutaAnterior = service.ObtenerRuta();
         var envioPendiente = rutaAnterior.Envios[0];
         service.RegistrarEntrega(envioPendiente.Id, "Receptor", "");

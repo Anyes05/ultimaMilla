@@ -79,6 +79,12 @@ jobs:
       - name: Run notification tests
         run: dotnet test tests/Plataforma.Avisos.Tests/Plataforma.Avisos.Tests.csproj --configuration Release --no-build --no-restore
 
+      # Pruebas de la app móvil (6.15): compilan la lógica de la app sin MAUI, por eso no están en Plataforma.sln y se
+      # compilan aquí. Si una prueba se cuelga, se corta a los 2 minutos y el log dice cuál fue.
+      - name: Run mobile app tests
+        timeout-minutes: 8
+        run: dotnet test tests/Plataforma.Mobile.Tests/Plataforma.Mobile.Tests.csproj --configuration Release --blame-hang-timeout 2m
+
   publish-images:
     name: Build and publish images
     needs: test
