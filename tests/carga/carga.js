@@ -18,7 +18,9 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 const BACKOFFICE = __ENV.BACKOFFICE || 'http://localhost:8080';
 const API = __ENV.API || BACKOFFICE;
 const PERFIL = __ENV.PERFIL || 'humo';
-const CLAVE = __ENV.CLAVE || 'Demo123!';
+// La clave de los usuarios no se guarda en el script: se pasa con -e CLAVE=... (en local, la de la semilla).
+const CLAVE = __ENV.CLAVE || '';
+if (!CLAVE) throw new Error('Falta la clave de los usuarios: pasala con -e CLAVE=...');
 const USUARIO_BACKOFFICE = __ENV.USUARIO_BACKOFFICE || 'norte.despachador';
 // Los dos repartidores de la semilla (Norte y Sur): la sincronización simultánea es de repartidores distintos,
 // de operadores distintos, y no del mismo usuario repetido.

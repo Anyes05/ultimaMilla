@@ -57,7 +57,7 @@ k6 se detiene solo (`abortOnFail`).
 | `TOKENS` | **Opcional.** Tokens de seguimiento público separados por coma. Sin ellos, se toman números de seguimiento de Monitoreo (con el despachador) y se consulta el seguimiento por número: mismo caso de uso y caché | `abc…,def…` |
 | `REPARTIDORES` | Usuarios repartidor; se loguean una vez y se reparten entre los usuarios virtuales. Por defecto, los dos de la semilla | `alvaro@demo.test,sur.repartidor` |
 | `RESULTADO` | **Opcional.** Archivo JSON donde se guarda el resumen (umbrales y métricas) como evidencia | `k6-carga-09-11.json` |
-| `USUARIO_BACKOFFICE`, `CLAVE` | Usuario del Backoffice y clave de la semilla | `norte.despachador` |
+| `USUARIO_BACKOFFICE`, `CLAVE` | Usuario del Backoffice y clave de los usuarios de la semilla; `CLAVE` es obligatoria (no se guarda en el script) | `norte.despachador` |
 
 El seguimiento se mide por `api.` y no por `tracking.`, porque `tracking.` tiene un límite de 30 req/min
 por IP (protección contra enumeración). Ese límite se demuestra aparte: con más de 30 consultas por minuto
@@ -69,13 +69,13 @@ Local, contra compose y sin instalar k6:
 
 ```powershell
 docker run --rm -i --network ultimamilla_default -v ${PWD}/tests/carga:/carga grafana/k6 run `
-  -e PERFIL=humo -e BACKOFFICE=http://backoffice:8080 /carga/carga.js
+  -e PERFIL=humo -e CLAVE=<clave> -e BACKOFFICE=http://backoffice:8080 /carga/carga.js
 ```
 
 Contra la nube (ventana de AWS acordada con Joel, porque genera costo):
 
 ```powershell
-k6 run -e PERFIL=carga -e BACKOFFICE=https://backoffice.tallernet.cloud-ip.cc `
+k6 run -e PERFIL=carga -e CLAVE=<clave> -e BACKOFFICE=https://backoffice.tallernet.cloud-ip.cc `
   -e API=https://api.tallernet.cloud-ip.cc tests/carga/carga.js
 ```
 

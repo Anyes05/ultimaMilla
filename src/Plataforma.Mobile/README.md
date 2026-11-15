@@ -284,7 +284,7 @@ doble silenciosamente. No se usan credenciales AWS desde la app.
 La app solo admite API: no hay selector ni registro DI del modo demo.
 Los dobles se conservan como soporte de pruebas automatizadas y persistencia
 compartida, no como una alternativa de acceso. El seed de API usa
-usuario para Norte y `sur.repartidor` para Sur, con `Demo123!` en el laboratorio.
+usuario para Norte y `sur.repartidor` para Sur, con la clave de desarrollo de la semilla (`DatosSemilla.ClaveDesarrollo`) en el laboratorio.
 No usar estos accesos de desarrollo en produccion.
 
 La app usa exclusivamente `repartidor-api.db`. Si existe una base demo anterior,

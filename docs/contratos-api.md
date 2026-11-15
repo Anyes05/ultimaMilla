@@ -97,7 +97,7 @@ Autentica un usuario con rol repartidor y devuelve la sesión con JWT.
 ```json
 {
   "usuario": "alvaro@demo.test",
-  "clave": "Demo123!"
+  "clave": "<clave>"
 }
 ```
 
@@ -549,7 +549,7 @@ Transiciones relevantes para la sync del repartidor (desde `EnTransito`): `Entre
 # Login repartidor
 curl -s -X POST "{{baseUrl}}/api/repartidor/login" \
   -H "Content-Type: application/json" \
-  -d '{"usuario":"alvaro@demo.test","clave":"Demo123!"}'
+  -d '{"usuario":"alvaro@demo.test","clave":"<clave>"}'
 
 # Hoja de ruta (reemplazar <token>)
 curl -s "{{baseUrl}}/api/repartidor/rutas/hoy" \
@@ -565,7 +565,7 @@ curl -s -X POST "{{baseUrl}}/api/repartidor/sincronizacion" \
 curl -s -b cookies.txt "{{baseUrl}}/tecnico/cache"   # cookie de sesión de un administrador
 ```
 
-Usuario demo de repartidor Norte: `alvaro@demo.test` / `Demo123!` (solo ambientes de desarrollo/demo).
+Usuario demo de repartidor Norte: `alvaro@demo.test`, con la clave de desarrollo de la semilla (`DatosSemilla.ClaveDesarrollo`; solo ambientes de desarrollo/demo).
 
 ---
 

@@ -31,7 +31,7 @@ public sealed class AutenticacionIdentity : IAutenticacionIdentity
             if (await _users.CheckPasswordAsync(identity, clave))
                 return true;
 
-            // Si el seed Identity usó Demo123! pero el perfil aún tiene otra clave (EKS),
+            // Si el seed Identity usó la clave de desarrollo pero el perfil aún tiene otra clave (EKS),
             // realineamos Identity al hash legado válido.
             if (_legado.Coincide(clave, hashLegado))
             {
