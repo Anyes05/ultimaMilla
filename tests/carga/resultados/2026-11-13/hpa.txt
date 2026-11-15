@@ -1,0 +1,1282 @@
+=== 11:45:25
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 12%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          7m38s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          7m49s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          7m32s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          7m49s
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          7m14s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:45:43
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          7m55s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          8m6s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          7m49s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          8m6s
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          7m31s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:46:00
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 13%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          8m13s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          8m24s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          8m7s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          8m24s
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          7m49s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:46:17
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          8m30s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          8m41s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          8m24s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          8m41s
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          8m6s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:46:34
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 12%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          8m47s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          8m58s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          8m41s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          8m58s
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          8m23s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:46:51
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          9m4s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          9m15s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          8m58s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          9m15s
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          8m40s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:47:08
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 12%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          9m21s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          9m32s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          9m15s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          9m32s
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          8m57s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:47:25
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 14%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          9m38s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          9m49s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          9m32s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          9m49s
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          9m14s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:47:43
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 14%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          9m56s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          10m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          9m50s
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          10m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          9m32s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:48:00
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 13%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          10m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          10m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          10m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          10m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          9m49s
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:48:17
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 25%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          10m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          10m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          10m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          10m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          10m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:48:34
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 32%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          10m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          10m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          10m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          10m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          10m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:48:52
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 12%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          11m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          11m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          10m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          11m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          10m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:49:09
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 12%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          11m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          11m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          11m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          11m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          10m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:49:26
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          11m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          11m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          11m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          11m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          11m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:49:43
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          11m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          12m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          11m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          12m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          11m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:50:00
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 224%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS              RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running             0          12m
+pod/backoffice-67f4664cf6-ptfhh            0/1     Running             0          2s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running             0          12m
+pod/backoffice-67f4664cf6-wl8pk            0/1     ContainerCreating   0          1s
+pod/portal-84fffcbcd6-22tvc                1/1     Running             0          12m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running             0          12m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running             0          11m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running             0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running             0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running             0          14h
+=== 11:50:17
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 335%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          12m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          19s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          12m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          18s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          12m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          12m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          12m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:50:34
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 327%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          12m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          36s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          12m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          35s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          12m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          12m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          12m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:50:51
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 278%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          13m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          53s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          13m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          52s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          12m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          13m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          12m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:51:08
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 250%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          13m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          70s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          13m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          69s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          13m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          13m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          12m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:51:25
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 231%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          13m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          87s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          13m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          86s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          13m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          13m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          13m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:51:42
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 211%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          13m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          104s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          14m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          103s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          13m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          14m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          13m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:51:59
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 223%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          14m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          2m1s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          14m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          2m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          14m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          14m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          13m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:52:16
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 217%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          14m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          2m18s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          14m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          2m17s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          14m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          14m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          14m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:52:34
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 231%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          14m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          2m35s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          14m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          2m34s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          14m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          14m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          14m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:52:50
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 212%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          15m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          2m52s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          15m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          2m51s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          14m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          15m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          14m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:53:07
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 227%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          15m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          3m9s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          15m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          3m8s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          15m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          15m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          14m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:53:25
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 161%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          15m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          3m26s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          15m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          3m25s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          15m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          15m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          15m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:53:42
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 174%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          15m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          3m44s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          16m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          3m43s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          15m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          16m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          15m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:53:59
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 170%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          16m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          4m1s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          16m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          4m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          16m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          16m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          15m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:54:16
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 12%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          16m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          4m18s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          16m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          4m17s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          16m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          16m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          16m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:54:33
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 12%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          16m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          4m35s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          16m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          4m34s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          16m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          16m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          16m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:54:51
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 10%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          17m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          4m52s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          17m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          4m51s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          16m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          17m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          16m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:55:08
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 13%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          17m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          5m9s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          17m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          5m8s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          17m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          17m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          16m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:55:25
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 15%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          17m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          5m27s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          17m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          5m26s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          17m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          17m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          17m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:55:42
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 16%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          17m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          5m44s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          18m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          5m43s
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          17m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          18m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          17m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:55:59
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 13%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          18m
+pod/backoffice-67f4664cf6-ptfhh            1/1     Running   0          6m1s
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          18m
+pod/backoffice-67f4664cf6-wl8pk            1/1     Running   0          6m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          18m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          18m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          17m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:56:17
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 10%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          18m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          18m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          18m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          18m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          18m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:56:34
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 10%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          18m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          18m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          18m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          18m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          18m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:56:51
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          19m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          19m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          18m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          19m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          18m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:57:08
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          19m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          19m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          19m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          19m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          18m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:57:26
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          19m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          19m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          19m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          19m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          19m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:57:43
+NAME                                             REFERENCE               TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 9%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          19m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          20m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          19m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          20m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          19m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:58:00
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 10%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          20m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          20m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          20m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          20m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          19m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:58:17
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 17%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          20m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          20m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          20m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          20m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          20m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:58:34
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 13%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          20m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          20m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          20m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          20m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          20m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:58:51
+NAME                                             REFERENCE               TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 9%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          21m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          21m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          20m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          21m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          20m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:59:08
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 47%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          21m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          21m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          21m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          21m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          20m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:59:25
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 172%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            0/1     Running   0          9s
+pod/backoffice-67f4664cf6-brs9f            0/1     Running   0          9s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          21m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          21m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          21m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          21m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          21m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:59:42
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 234%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          26s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          26s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          21m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          22m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          21m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          22m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          21m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 11:59:59
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 239%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          43s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          43s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          22m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          22m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          22m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          22m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          21m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:00:16
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 178%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          60s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          60s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          22m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          22m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          22m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          22m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          22m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:00:34
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 186%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          77s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          77s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          22m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          22m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          22m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          22m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          22m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:00:51
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 195%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          94s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          94s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          23m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          23m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          22m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          23m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          22m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:01:08
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 186%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          111s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          111s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          23m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          23m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          23m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          23m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          22m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:01:25
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 213%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          2m8s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          2m8s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          23m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          23m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          23m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          23m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          23m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:01:42
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 252%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          2m25s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          2m25s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          23m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          24m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          23m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          24m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          23m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:01:59
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 202%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          2m42s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          2m42s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          24m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          24m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          24m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          24m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          23m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:02:16
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 223%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          2m59s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          2m59s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          24m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          24m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          24m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          24m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          24m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:02:33
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 192%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          3m16s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          3m16s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          24m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          24m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          24m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          24m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          24m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:02:50
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 165%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          3m33s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          3m33s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          25m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          25m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          24m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          25m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          24m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:03:06
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 224%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          3m50s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          3m50s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          25m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          25m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          25m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          25m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          24m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:03:23
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 177%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          4m7s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          4m7s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          25m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          25m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          25m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          25m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          25m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:03:41
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 159%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          4m24s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          4m24s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          25m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          26m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          25m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          26m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          25m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:03:58
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 157%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          4m41s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          4m41s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          26m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          26m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          26m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          26m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          25m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:04:15
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 156%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          4m58s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          4m58s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          26m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          26m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          26m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          26m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          26m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:04:32
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 131%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          5m15s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          5m15s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          26m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          26m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          26m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          26m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          26m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:04:49
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 149%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          5m33s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          5m33s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          27m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          27m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          26m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          27m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          26m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:05:06
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 153%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          5m50s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          5m50s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          27m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          27m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          27m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          27m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          26m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:05:23
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 156%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          6m7s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          6m7s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          27m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          27m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          27m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          27m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          27m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:05:40
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 157%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          6m24s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          6m24s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          27m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          28m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          27m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          28m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          27m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:05:57
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 159%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          6m41s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          6m41s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          28m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          28m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          28m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          28m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          27m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:06:14
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 154%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          6m58s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          6m58s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          28m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          28m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          28m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          28m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          28m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:06:31
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 154%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          7m15s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          7m15s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          28m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          28m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          28m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          28m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          28m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:06:49
+NAME                                             REFERENCE               TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 105%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          7m33s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          7m33s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          29m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          29m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          28m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          29m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          28m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:07:06
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 97%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          7m51s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          7m51s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          29m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          29m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          29m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          29m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          28m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:07:25
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 13%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          8m9s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          8m9s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          29m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          29m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          29m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          29m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          29m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:07:43
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 13%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          8m27s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          8m27s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          29m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          30m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          29m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          30m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          29m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:08:00
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          8m45s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          8m45s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          30m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          30m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          30m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          30m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          29m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:08:18
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 13%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          9m3s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          9m3s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          30m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          30m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          30m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          30m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          30m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:08:36
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          9m20s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          9m20s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          30m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          31m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          30m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          31m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          30m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:08:54
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 11%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-89bc6            1/1     Running   0          9m38s
+pod/backoffice-67f4664cf6-brs9f            1/1     Running   0          9m38s
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          31m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          31m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          31m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          31m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          30m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:09:11
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 10%/70%   2         4         4          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          31m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          31m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          31m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          31m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          31m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:09:30
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 10%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          31m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          31m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          31m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          31m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          31m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:09:48
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 10%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          32m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          32m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          31m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          32m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          31m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:10:06
+NAME                                             REFERENCE               TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 9%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          32m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          32m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          32m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          32m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          31m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:10:23
+NAME                                             REFERENCE               TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 9%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          32m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          32m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          32m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          32m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          32m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:10:41
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 10%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          32m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          33m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          32m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          33m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          32m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h
+=== 12:10:59
+NAME                                             REFERENCE               TARGETS        MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/backoffice   Deployment/backoffice   cpu: 12%/70%   2         4         2          3d13h
+
+NAME                                       READY   STATUS    RESTARTS   AGE
+pod/backoffice-67f4664cf6-mnjms            1/1     Running   0          33m
+pod/backoffice-67f4664cf6-szp9v            1/1     Running   0          33m
+pod/portal-84fffcbcd6-22tvc                1/1     Running   0          33m
+pod/portal-84fffcbcd6-ghbsr                1/1     Running   0          33m
+pod/queue-worker-6c58695788-bbbfh          1/1     Running   0          32m
+pod/tallernet-otel-lgtm-7cd5bc665c-xgwb7   1/1     Running   0          14h
+pod/tallernet-rabbitmq-0                   1/1     Running   0          14h
+pod/tallernet-redis-6fbbb79789-c4zx6       1/1     Running   0          14h

@@ -87,3 +87,51 @@ Mientras corre: Grafana → Tablero técnico (latencia, p95, p99, errores y requ
 - Salida de k6 con los umbrales (✓ o ✗), y el JSON de `-e RESULTADO=…`.
 - Captura del tablero durante la corrida.
 - Si hay HPA: `kubectl get hpa` y `kubectl get pods` antes, durante y después.
+
+## Resultados
+
+Corridas contra producción (EKS, versión `829eff6`), con el script de este directorio. Los archivos están en
+[`resultados/2026-11-13`](resultados/2026-11-13): el resumen JSON de k6 de cada corrida y el registro del HPA y los
+pods (`kubectl -n tallernet get hpa,pods` cada ~17 s). Antes de versionar los JSON se les quitó `setup_data`, que
+traía los tokens de sesión de los repartidores.
+
+| Fecha | Perfil | Resultado |
+|---|---|---|
+| 12/11/2026 20:28 | `humo` | Aprobada: 471 requests, 0 % de errores, los 10 umbrales cumplidos (corrida de Joel; solo valida el script) |
+| 13/11/2026 11:49 | `carga` | Interrumpida a los 4m09s por un Ctrl+C manual, sin errores hasta ese momento (`k6-carga-cortada.json`); no se informa |
+| 13/11/2026 11:58–12:06 | `carga` | **Completa, los 10 umbrales cumplidos** (`k6-carga.json`) |
+
+### Corrida completa del 13/11 (perfil `carga`, 8 minutos)
+
+23.705 requests (~48,7 por segundo), hasta 70 usuarios virtuales. Sin `TOKENS`, el seguimiento se midió por número
+en `/Seguimiento` del Backoffice (mismo caso de uso y caché que el seguimiento por token).
+
+| Umbral | Objetivo | Resultado |
+|---|---|---|
+| Errores en seguimiento | < 1 % | 0,03 % (6 de 18.799) ✓ |
+| Errores en Backoffice | < 1 % | 0,09 % (3 de 3.228) ✓ |
+| Errores en sincronización | < 1 % | 0 % (0 de 60) ✓ |
+| Seguimiento p95 / p99 | < 300 / < 800 ms | 278 ms / cumplido ✓ |
+| Backoffice p95 / p99 | < 800 / < 1500 ms | 357 ms / cumplido ✓ |
+| Sincronización (lote de 20) p95 | < 2000 ms | 1284 ms ✓ |
+| Checks | > 99 % | 99,96 % ✓ |
+| Corte de seguridad | < 10 % | 0,04 % ✓ |
+
+Las 30 sincronizaciones simultáneas respondieron 200 y cada una rechazó sus 20 comprobantes sin escribir, como se
+espera. Los 9 requests fallidos fueron esperas agotadas (~60 s) mientras entraban las réplicas nuevas.
+
+### Autoescalado (HPA del Backoffice)
+
+Del registro `hpa.txt`:
+
+| Hora | Réplicas | CPU / objetivo | Momento |
+|---|---|---|---|
+| 11:45 | 2 | 12 % / 70 % | Reposo |
+| 11:50 | **4** | 335 % / 70 % | Primera corrida (interrumpida) |
+| 11:56 | 2 | 10 % / 70 % | Bajó sola al terminar la carga |
+| 11:59 | **4** | 234 % / 70 % | ~1 minuto después de empezar la corrida completa |
+| 12:09 | 2 | 10 % / 70 % | Bajó sola, con la estabilización de 120 s |
+
+Con 4 réplicas, el máximo configurado, el CPU siguió entre 150 % y 250 % de lo solicitado (100m por pod) y aun así se
+cumplieron los tiempos: el ambiente quedó cerca de su límite. El perfil `hpa` no se corrió, porque el escalado ya
+quedó demostrado con el perfil `carga` y el HPA llegaba a su máximo.

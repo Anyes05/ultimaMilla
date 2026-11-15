@@ -110,7 +110,14 @@ proyecto tiene paquetes vulnerables.
 - **ECR:** `scan_on_push = true` en los tres repositorios (Terraform): cada imagen se escanea al subirla.
 - **Trivy** (versión fija 0.58.1) en el CI, sobre las tres imágenes publicadas, vulnerabilidades HIGH y CRITICAL,
   con el resultado en el resumen del run. Prueba local de la imagen base `mcr.microsoft.com/dotnet/aspnet:10.0`
-  (Ubuntu 24.04): **0 HIGH y 0 CRITICAL**.
+  (Ubuntu 24.04) del 13/11: **0 HIGH y 0 CRITICAL**.
+- **Resultado del escaneo de ECR (14/11, imágenes de `153de15`):** las tres imágenes tienen las mismas **4
+  vulnerabilidades altas**, todas en paquetes del sistema operativo de la imagen base: CVE-2026-84243 en glibc
+  (`libc6`, `libc-bin`, `glibc` 2.39-0ubuntu8.9) y CVE-2026-82560 en `perl` 5.38.2. Ninguna está en el código ni
+  en las dependencias propias. Se publicaron después de la prueba local del 13/11, por eso esa prueba dio 0.
+  Tratamiento: se corrigen al reconstruir las imágenes cuando Microsoft publique la imagen base actualizada, o
+  actualizando esos paquetes en el Dockerfile; mientras tanto, el riesgo es bajo porque los contenedores no
+  exponen intérpretes ni shell al exterior.
 
 ### DAST (OWASP ZAP)
 
@@ -140,6 +147,7 @@ cookie anti-CSRF y un comentario dentro de un archivo JavaScript que trae Blazor
 |---|---|---|---|
 | Login sin token anti-CSRF (Portal y Backoffice) | ZAP, regla 10202 | El formulario incluye el token y `/session/login` lo valida; sin token válido vuelve al login. El script de k6 pide el token antes de iniciar sesión | Repetir ZAP tras el despliegue: la regla 10202 debe pasar en los dos sitios |
 | SignalR Redis vulnerable | SCA | Sin arreglo disponible en .NET 10 | Aceptado con mitigación (R-03); el CI lo sigue reportando hasta que se actualice |
+| glibc y perl de la imagen base (4 altas) | Escaneo de ECR | Reconstruir con la imagen base actualizada o actualizar esos paquetes en el Dockerfile | Volver a escanear la imagen nueva en ECR y Trivy |
 
 ## 8. Pendientes
 
