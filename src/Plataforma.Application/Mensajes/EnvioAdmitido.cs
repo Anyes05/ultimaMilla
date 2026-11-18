@@ -4,7 +4,7 @@ using Plataforma.Domain;
 namespace Plataforma.Application.Mensajes;
 
 /// <summary>
-/// Contrato v1: se dio de alta un envío. Admitido es el estado inicial, no un cambio de estado, por eso es un evento
+/// //Contrato v1: se dio de alta un envío. Admitido es el estado inicial, no un cambio de estado, por eso es un evento
 /// aparte y los consumidores de <see cref="EnvioEstadoCambiado"/> (avisos, historial, tablero) no lo reciben.
 /// Ver <c>contracts/mensajes/v1/</c>.
 /// </summary>

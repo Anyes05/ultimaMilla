@@ -16,6 +16,10 @@ El plan Free DNS de Cloudns no permite automatizar registros mediante HTTP API. 
 
 El estado se mantiene localmente en `terraform.tfstate`, excluido de Git. Cada nueva cuenta AWS Academy debe comenzar con un estado local nuevo y no se debe reutilizar un state de otra cuenta.
 
+Tambien puede separarse por workspace, por ejemplo `tallernet-lab-<cuenta>`.
+En ese caso Terraform guarda el estado en `terraform.tfstate.d/<workspace>/terraform.tfstate`.
+`Deploy-Lab.ps1` comprueba el estado del workspace seleccionado y admite que aun no exista en el primer despliegue.
+
 ## Ejecucion local
 
 `.env` contiene la configuración local no sensible y está excluido de Git. Cárguelo antes de ejecutar Terraform:

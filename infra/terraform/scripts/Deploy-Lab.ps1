@@ -107,7 +107,17 @@ function Initialize-NginxHelmRepository {
 }
 
 function Get-StateResources {
-    if (-not (Test-Path "terraform.tfstate")) {
+    $workspace = (& terraform workspace show).Trim()
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    $statePath = if ($workspace -eq "default") {
+        "terraform.tfstate"
+    }
+    else {
+        Join-Path "terraform.tfstate.d" (Join-Path $workspace "terraform.tfstate")
+    }
+
+    if (-not (Test-Path -LiteralPath $statePath)) {
         return @()
     }
 
